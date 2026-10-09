@@ -19,37 +19,54 @@
     <div class="ath-card p-3 mb-4">
       <div class="row align-items-center">
         <div class="col-md-6 mb-2 mb-md-0">
-          <input type="text" class="form-control ath-input" v-model="search" placeholder="Tìm kiếm theo mã, họ tên, số điện thoại..." />
+          <div class="input-group">
+            <div class="input-group-prepend">
+              <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                <i class="fas fa-search text-muted"></i>
+              </span>
+            </div>
+            <input type="text" 
+                   class="form-control ath-input border-left-0" 
+                   v-model="search" 
+                   placeholder="Tìm kiếm theo mã độc giả, họ tên, số điện thoại..." />
+            <div class="input-group-append" v-if="search">
+              <button class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="col-md-6 d-flex justify-content-md-end gap-2">
-          <button class="btn btn-sm mr-2" 
+        <div class="col-md-6 d-flex justify-content-md-end flex-wrap gap-2">
+          <button class="btn btn-sm mr-2 mb-1 mb-md-0" 
                   :class="filterRole === 'all' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   @click="filterRole = 'all'">
             Tất cả ({{ users.length }})
           </button>
-          <button class="btn btn-sm mr-2" 
+          <button class="btn btn-sm mr-2 mb-1 mb-md-0" 
                   :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   @click="filterRole = 'MANAGER'">
-            Thủ thư / Quản lý
+            <i class="fas fa-user-shield mr-1"></i> Quản lý / Thủ thư
           </button>
-          <button class="btn btn-sm" 
+          <button class="btn btn-sm mb-1 mb-md-0" 
                   :class="filterRole === 'Blacklist' ? 'ath-btn-danger' : 'ath-btn-outline'"
                   @click="filterRole = 'Blacklist'">
-            Blacklist ({{ blacklistCount }})
+            <i class="fas fa-ban mr-1"></i> Blacklist ({{ blacklistCount }})
           </button>
         </div>
       </div>
     </div>
 
     <!-- Users Table -->
-    <div class="ath-card p-4">
+    <div class="ath-card p-3 p-md-4">
       <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-success" role="status"></div>
         <p class="text-muted small mt-2">Đang tải danh sách người dùng...</p>
       </div>
 
       <div v-else-if="filteredUsers.length === 0" class="text-center py-5">
-        <p class="text-muted mb-0">Không có người dùng nào khớp với bộ lọc.</p>
+        <i class="fas fa-users-slash text-muted mb-2" style="font-size: 2.5rem;"></i>
+        <h6 class="font-serif-headline font-weight-bold">Không tìm thấy người dùng phù hợp</h6>
+        <p class="text-muted small mb-0">Thử thay đổi từ khóa hoặc bộ lọc vai trò.</p>
       </div>
 
       <div v-else class="table-responsive">
@@ -61,7 +78,7 @@
               <th>Số điện thoại</th>
               <th>Vai trò (Role)</th>
               <th>Trạng thái thẻ</th>
-              <th>Số lần vi phạm</th>
+              <th>Vi phạm</th>
               <th class="text-right">Thao tác Quản trị</th>
             </tr>
           </thead>
@@ -69,8 +86,8 @@
             <tr v-for="u in filteredUsers" :key="u._id">
               <td class="font-mono-code font-weight-bold text-dark">{{ u.MaDocGia }}</td>
               <td>
-                <strong class="text-dark">{{ u.HoLot }} {{ u.Ten }}</strong>
-                <small class="text-muted d-block">{{ u.DiaChi || '—' }}</small>
+                <strong class="text-dark d-block" style="font-size: 0.95rem;">{{ u.HoLot }} {{ u.Ten }}</strong>
+                <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;">{{ u.DiaChi || '—' }}</small>
               </td>
               <td class="font-mono-code small">{{ u.DienThoai }}</td>
               <td>
@@ -94,31 +111,31 @@
               <td class="text-right">
                 <!-- Nâng cấp / Hạ cấp Role -->
                 <button v-if="u.Role === 'USER'" 
-                        class="btn btn-sm btn-outline-success py-1 px-2 mr-1"
+                        class="ath-action-btn ath-action-btn-success mr-1"
                         @click="changeRole(u, 'MANAGER')"
                         title="Nâng cấp lên Quản lý / Thủ thư">
-                  <i class="fas fa-arrow-up mr-1"></i> Thăng cấp
+                  <i class="fas fa-arrow-up text-success"></i> Thăng cấp
                 </button>
                 <button v-else-if="u.Role === 'MANAGER'" 
-                        class="btn btn-sm btn-outline-warning py-1 px-2 mr-1"
+                        class="ath-action-btn mr-1"
                         @click="changeRole(u, 'USER')"
                         title="Hạ cấp về Độc giả thường">
-                  <i class="fas fa-arrow-down mr-1"></i> Hạ cấp
+                  <i class="fas fa-arrow-down text-warning"></i> Hạ cấp
                 </button>
 
                 <!-- Mở khóa Blacklist nếu bị phạt -->
                 <button v-if="u.TrangThaiThe === 'Blacklist' || (u.SoLanViPham || 0) > 0" 
-                        class="btn btn-sm btn-outline-info py-1 px-2 mr-1"
+                        class="ath-action-btn ath-action-btn-success mr-1"
                         @click="unblockUser(u)"
                         title="Mở khóa thẻ và reset số lần vi phạm">
-                  <i class="fas fa-unlock mr-1"></i> Mở khóa
+                  <i class="fas fa-unlock text-info"></i> Mở khóa
                 </button>
 
                 <!-- Xóa độc giả -->
-                <button class="btn btn-sm btn-outline-danger py-1 px-2" 
+                <button class="ath-action-btn ath-action-btn-danger" 
                         @click="deleteUser(u)"
                         title="Xóa tài khoản">
-                  <i class="fas fa-trash-alt"></i>
+                  <i class="fas fa-trash-alt text-danger"></i>
                 </button>
               </td>
             </tr>

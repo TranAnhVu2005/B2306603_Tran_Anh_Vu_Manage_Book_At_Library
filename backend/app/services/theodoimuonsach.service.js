@@ -197,7 +197,7 @@ class TheoDoiMuonSachService {
         return result;
     }
 
-    async baoMat(id, ghiChu = "Độc giả báo mất sách") {
+    async baoMat(id, ghiChu = "Đọc giả báo mất sách") {
         const record = await this.findById(id);
         if (!record) {
             throw new Error("Không tìm thấy phiếu mượn.");

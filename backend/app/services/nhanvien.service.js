@@ -15,6 +15,7 @@ class NhanVienService {
             SoDienThoai: payload.SoDienThoai !== undefined ? String(payload.SoDienThoai).trim() : "",
         };
 
+        // Lọc bỏ những giá trị undefined trong object data
         Object.keys(data).forEach(
             (key) => data[key] === undefined && delete data[key]
         );
@@ -39,7 +40,10 @@ class NhanVienService {
     async find(filter = {}) {
         const query = {};
         if (filter.search) {
+            // Chữ i = ignorecase (không phân biệt hoa thường)
             const regex = { $regex: new RegExp(filter.search, "i") };
+
+            //Khớp họ tên nhân viên hay mã số nhân viên đều được
             query.$or = [{ HoTenNV: regex }, { MSNV: regex }];
         }
         if (filter.chucVu) {
@@ -78,6 +82,7 @@ class NhanVienService {
             filter = { MSNV: id };
         }
 
+        // returnDocument: "after" trả về dữ liệu sau khi đã cập nhật
         const result = await this.NhanVien.findOneAndUpdate(
             filter,
             { $set: data },

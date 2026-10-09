@@ -19,34 +19,35 @@
     <div v-else class="ath-card p-4 p-md-5">
       <div class="row">
         <!-- Book Cover -->
-        <div class="col-md-4 mb-4 mb-md-0">
-          <div class="border rounded p-2 text-center" style="background-color: var(--paper); border-color: var(--paper-border) !important;">
+        <div class="col-md-4 mb-4 mb-md-0 text-center">
+          <div class="d-inline-block position-relative ath-book-spine p-2" 
+               style="background-color: var(--paper-subtle); max-width: 280px; width: 100%;">
             <img :src="book.HinhAnh || defaultCover" 
                  :alt="book.TenSach" 
                  class="img-fluid rounded shadow-sm"
-                 style="max-height: 400px; width: auto; object-fit: cover;" 
+                 style="max-height: 380px; width: 100%; object-fit: cover;" 
                  @error="onImageError" />
           </div>
         </div>
 
         <!-- Book Meta & Actions -->
         <div class="col-md-8">
-          <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <span class="font-mono-code text-muted font-weight-bold">
-              MÃ SÁCH: <strong class="text-dark">{{ book.MaSach }}</strong>
+              MÃ SÁCH LƯU TRỮ: <strong class="text-dark">{{ book.MaSach }}</strong>
             </span>
             <span v-if="book.SoQuyen > 0" class="ath-badge ath-badge-available">
-              <i class="fas fa-check-circle"></i> Sẵn sàng mượn ({{ book.SoQuyen }} cuốn)
+              <i class="fas fa-check-circle"></i> Sẵn sàng phục vụ ({{ book.SoQuyen }} cuốn)
             </span>
             <span v-else class="ath-badge ath-badge-out">
               <i class="fas fa-ban"></i> Tạm hết tại kho
             </span>
           </div>
 
-          <h2 class="font-serif-headline font-weight-bold text-dark mb-2">
+          <h1 class="font-serif-headline font-weight-bold text-dark mb-2" style="font-size: 2.1rem; line-height: 1.25;">
             {{ book.TenSach }}
-          </h2>
-          <p class="lead font-italic text-muted mb-4" style="font-family: var(--font-serif);">
+          </h1>
+          <p class="lead font-italic text-muted mb-4" style="font-family: var(--font-serif); font-size: 1.15rem;">
             Tác giả: <strong class="text-dark">{{ book.TacGia }}</strong>
           </p>
 
@@ -54,19 +55,20 @@
           <div class="p-3 border rounded mb-4" style="background-color: var(--paper); border-color: var(--paper-border) !important;">
             <div class="row">
               <div class="col-sm-6 mb-2">
-                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Nhà xuất bản:</small>
-                <strong class="text-dark">{{ book.MaNXB }}</strong>
+                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.05em;">Nhà xuất bản:</small>
+                <strong class="text-dark">{{ publisherName }}</strong>
+                <span class="font-mono-code text-muted small ml-1">({{ book.MaNXB }})</span>
               </div>
               <div class="col-sm-6 mb-2">
-                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Năm xuất bản:</small>
+                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.05em;">Năm xuất bản:</small>
                 <strong class="text-dark">{{ book.NamXuatBan || '—' }}</strong>
               </div>
-              <div class="col-sm-6 mb-2">
-                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Nguồn gốc / Xuất xứ:</small>
+              <div class="col-sm-6 mb-2 mb-sm-0">
+                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.05em;">Nguồn gốc / Xuất xứ:</small>
                 <strong class="text-dark">{{ book.NguonGoc || 'Việt Nam' }}</strong>
               </div>
-              <div class="col-sm-6 mb-2">
-                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Đơn giá bồi hoàn:</small>
+              <div class="col-sm-6">
+                <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.05em;">Đơn giá bảo lưu (đền bù):</small>
                 <strong class="font-mono-code text-dark">{{ formatCurrency(book.DonGia) }}</strong>
               </div>
             </div>
@@ -74,22 +76,24 @@
 
           <!-- Description -->
           <div class="mb-4">
-            <h6 class="text-uppercase small font-weight-bold text-muted mb-2">Tóm tắt nội dung</h6>
-            <p class="text-dark leading-relaxed" style="font-size: 0.95rem;">
+            <h6 class="text-uppercase small font-weight-bold text-muted mb-2" style="letter-spacing: 0.05em;">
+              <i class="fas fa-align-left mr-1"></i> Tóm tắt nội dung
+            </h6>
+            <p class="text-dark leading-relaxed" style="font-size: 0.95rem; line-height: 1.6;">
               {{ book.MoTa || 'Hiện chưa có tóm tắt chi tiết cho cuốn sách này.' }}
             </p>
           </div>
 
           <!-- CTA Buttons -->
-          <div class="d-flex align-items-center pt-3 border-top" style="border-color: var(--paper-border) !important;">
-            <button v-if="book.SoQuyen > 0" class="ath-btn-primary mr-3" @click="showBorrowModal = true">
+          <div class="d-flex align-items-center pt-3 border-top flex-wrap gap-2" style="border-color: var(--paper-border) !important;">
+            <button v-if="book.SoQuyen > 0" class="ath-btn-primary mr-3 mb-2 mb-sm-0" @click="showBorrowModal = true">
               <i class="fas fa-bookmark mr-1"></i> Đăng ký mượn cuốn này
             </button>
-            <button v-else class="ath-btn-outline mr-3" disabled style="opacity: 0.6;">
+            <button v-else class="ath-btn-outline mr-3 mb-2 mb-sm-0" disabled style="opacity: 0.55; cursor: not-allowed;">
               <i class="fas fa-ban mr-1"></i> Tạm hết trong kho
             </button>
             <small class="text-muted">
-              <i class="fas fa-shield-alt mr-1 text-success"></i> Thời hạn mượn: 14 ngày tiêu chuẩn
+              <i class="fas fa-shield-alt mr-1 text-success"></i> Hạn mức mượn: 14 ngày • Nhận sách tại Quầy Thủ Thư
             </small>
           </div>
         </div>
@@ -110,6 +114,7 @@
 import BorrowModal from "../components/BorrowModal.vue";
 import ToastNotification from "../components/ToastNotification.vue";
 import sachService from "../services/sach.service";
+import nxbService from "../services/nhaxuatban.service";
 import theoDoiService from "../services/theodoimuon.service";
 import authService from "../services/auth.service";
 
@@ -122,20 +127,33 @@ export default {
   data() {
     return {
       book: null,
+      publishers: [],
       loading: false,
       showBorrowModal: false,
       defaultCover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
     };
   },
+  computed: {
+    publisherName() {
+      if (!this.book || !this.book.MaNXB) return "—";
+      const p = this.publishers.find(n => n.MaNXB === this.book.MaNXB);
+      return p ? p.TenNXB : this.book.MaNXB;
+    }
+  },
   created() {
-    this.fetchBook();
+    this.fetchData();
   },
   methods: {
-    async fetchBook() {
+    async fetchData() {
       this.loading = true;
       try {
         const id = this.$route.params.id;
-        this.book = await sachService.get(id);
+        const [bookRes, nxbRes] = await Promise.all([
+          sachService.get(id),
+          nxbService.getAll().catch(() => [])
+        ]);
+        this.book = bookRes;
+        this.publishers = nxbRes;
       } catch (err) {
         this.$refs.toast.show("Không tìm thấy thông tin cuốn sách.", "error");
       } finally {

@@ -29,7 +29,7 @@ exports.login = async (req, res, next) => {
             });
         }
 
-        // 2. Thử đăng nhập Độc giả
+        // 2. Thử đăng nhập Đọc giả
         const reader = await docGiaService.login(identifier, password);
         if (reader) {
             return res.json({

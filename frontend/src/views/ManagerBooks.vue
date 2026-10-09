@@ -15,32 +15,49 @@
           <i class="fas fa-plus mr-1"></i> Thêm sách mới
         </button>
         <button class="ath-btn-outline" @click="fetchData">
-          <i class="fas fa-sync-alt"></i>
+          <i class="fas fa-sync-alt mr-1"></i> Làm mới
         </button>
       </div>
     </div>
 
-    <!-- Search Box -->
+    <!-- Search & Statistics Box -->
     <div class="ath-card p-3 mb-4">
       <div class="row align-items-center">
         <div class="col-md-6 mb-2 mb-md-0">
-          <input type="text" class="form-control ath-input" v-model="search" placeholder="Lọc theo tên sách, tác giả, mã sách..." />
+          <div class="input-group">
+            <div class="input-group-prepend">
+              <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                <i class="fas fa-search text-muted"></i>
+              </span>
+            </div>
+            <input type="text" 
+                   class="form-control ath-input border-left-0" 
+                   v-model="search" 
+                   placeholder="Lọc theo tên sách, tác giả, mã sách, NXB..." />
+            <div class="input-group-append" v-if="search">
+              <button class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="col-md-6 text-md-right small text-muted">
-          Tổng số đầu sách: <strong>{{ books.length }}</strong> • Tổng số lượng trong kho: <strong>{{ totalQuantity }} quyển</strong>
+          Tổng số đầu sách: <strong>{{ books.length }}</strong> • Tổng số lượng trong kho: <strong class="text-success">{{ totalQuantity }} quyển</strong>
         </div>
       </div>
     </div>
 
     <!-- Table of Books -->
-    <div class="ath-card p-4">
+    <div class="ath-card p-3 p-md-4">
       <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-success" role="status"></div>
         <p class="text-muted small mt-2">Đang tải danh sách sách...</p>
       </div>
 
       <div v-else-if="filteredBooks.length === 0" class="text-center py-5">
-        <p class="text-muted mb-0">Không tìm thấy sách nào phù hợp.</p>
+        <i class="fas fa-book-open text-muted mb-2" style="font-size: 2.5rem;"></i>
+        <h6 class="font-serif-headline font-weight-bold">Không tìm thấy sách nào phù hợp</h6>
+        <p class="text-muted small mb-0">Vui lòng thử lại với từ khóa khác.</p>
       </div>
 
       <div v-else class="table-responsive">
@@ -52,39 +69,59 @@
               <th>Tên sách & Tác giả</th>
               <th>NXB</th>
               <th>Năm XB</th>
-              <th>Tồn kho</th>
+              <th style="min-width: 130px;">Tồn kho</th>
               <th>Đơn giá</th>
-              <th class="text-right">Hành động</th>
+              <th class="text-right" style="min-width: 140px;">Hành động</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="book in filteredBooks" :key="book._id">
               <td style="width: 50px;">
-                <img :src="book.HinhAnh || defaultCover" 
-                     :alt="book.TenSach"
-                     class="rounded border" 
-                     style="width: 38px; height: 50px; object-fit: cover;"
-                     @error="e => e.target.src = defaultCover" />
+                <div class="position-relative overflow-hidden ath-book-spine" style="width: 38px; height: 50px; background-color: var(--paper-subtle);">
+                  <img v-if="book.HinhAnh" 
+                       :src="book.HinhAnh" 
+                       :alt="book.TenSach"
+                       class="w-100 h-100" 
+                       style="object-fit: cover;" 
+                       @error="e => e.target.style.display = 'none'" />
+                  <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted" style="font-size: 0.8rem;">
+                    <i class="fas fa-book"></i>
+                  </div>
+                </div>
               </td>
               <td class="font-mono-code font-weight-bold text-dark">{{ book.MaSach }}</td>
               <td>
-                <strong class="font-serif-headline text-dark d-block">{{ book.TenSach }}</strong>
+                <strong class="font-serif-headline text-dark d-block" style="font-size: 0.95rem;">{{ book.TenSach }}</strong>
                 <small class="text-muted font-italic">{{ book.TacGia }}</small>
               </td>
               <td><span class="badge badge-light border">{{ book.MaNXB }}</span></td>
               <td class="small">{{ book.NamXuatBan || '—' }}</td>
               <td>
-                <span :class="book.SoQuyen > 0 ? 'text-success font-weight-bold' : 'text-danger font-weight-bold'">
-                  {{ book.SoQuyen }} cuốn
-                </span>
+                <!-- Quick Adjust Quantity (+ / -) -->
+                <div class="d-flex align-items-center">
+                  <button class="ath-action-btn py-0 px-2 mr-1" 
+                          :disabled="book.SoQuyen <= 0"
+                          @click="quickAdjustStock(book, -1)" 
+                          title="Bớt 1 cuốn">
+                    -
+                  </button>
+                  <span class="font-weight-bold font-mono-code mx-1" :class="book.SoQuyen > 0 ? 'text-success' : 'text-danger'">
+                    {{ book.SoQuyen }}
+                  </span>
+                  <button class="ath-action-btn py-0 px-2 ml-1" 
+                          @click="quickAdjustStock(book, 1)" 
+                          title="Thêm 1 cuốn">
+                    +
+                  </button>
+                </div>
               </td>
               <td class="font-mono-code small">{{ formatCurrency(book.DonGia) }}</td>
               <td class="text-right">
-                <button class="btn btn-sm btn-outline-secondary py-1 px-2 mr-1" @click="openEditModal(book)" title="Chỉnh sửa">
-                  <i class="fas fa-edit"></i>
+                <button class="ath-action-btn mr-1" @click="openEditModal(book)" title="Chỉnh sửa">
+                  <i class="fas fa-edit text-secondary"></i> Sửa
                 </button>
-                <button class="btn btn-sm btn-outline-danger py-1 px-2" @click="handleDelete(book)" title="Xóa sách">
-                  <i class="fas fa-trash-alt"></i>
+                <button class="ath-action-btn ath-action-btn-danger" @click="handleDelete(book)" title="Xóa sách">
+                  <i class="fas fa-trash-alt text-danger"></i> Xóa
                 </button>
               </td>
             </tr>
@@ -95,7 +132,7 @@
 
     <!-- Create / Edit Book Modal -->
     <div v-if="showModal" class="ath-modal-overlay" @click.self="showModal = false">
-      <div class="ath-modal-content p-4" style="max-width: 600px;">
+      <div class="ath-modal-content p-4" style="max-width: 620px;">
         <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
           <h5 class="font-serif-headline font-weight-bold mb-0">
             {{ isEditing ? 'Chỉnh Sửa Thông Tin Sách' : 'Thêm Sách Mới Vào Kho' }}
@@ -200,7 +237,6 @@ export default {
         HinhAnh: "",
         MoTa: "",
       },
-      defaultCover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
     };
   },
   computed: {
@@ -218,10 +254,28 @@ export default {
       );
     }
   },
+  watch: {
+    showModal(val) {
+      if (val) {
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", this.handleKeyDown);
+      } else {
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", this.handleKeyDown);
+      }
+    }
+  },
+  beforeUnmount() {
+    document.body.style.overflow = "";
+    window.removeEventListener("keydown", this.handleKeyDown);
+  },
   created() {
     this.fetchData();
   },
   methods: {
+    handleKeyDown(e) {
+      if (e.key === "Escape") this.showModal = false;
+    },
     async fetchData() {
       this.loading = true;
       try {
@@ -243,6 +297,17 @@ export default {
     formatCurrency(val) {
       if (!val) return "0 ₫";
       return Number(val).toLocaleString("vi-VN") + " ₫";
+    },
+    async quickAdjustStock(book, delta) {
+      const newStock = (book.SoQuyen || 0) + delta;
+      if (newStock < 0) return;
+      try {
+        await sachService.update(book._id || book.MaSach, { SoQuyen: newStock });
+        book.SoQuyen = newStock;
+        this.$refs.toast.show(`Đã cập nhật tồn kho cuốn '${book.TenSach}': ${newStock} quyển.`);
+      } catch (err) {
+        this.$refs.toast.show("Không thể cập nhật số lượng.", "error");
+      }
     },
     openCreateModal() {
       this.isEditing = false;

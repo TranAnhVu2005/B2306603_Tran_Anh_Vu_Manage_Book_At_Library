@@ -45,16 +45,25 @@
           </div>
         </div>
 
-        <!-- Reader Info Input (nếu chưa tự nhận diện) -->
+        <!-- Reader Info Input -->
         <div class="form-group mb-3">
-          <label class="small font-weight-bold mb-1">Mã thẻ Độc giả / Số điện thoại:</label>
-          <input type="text" 
+          <label class="small font-weight-bold mb-1">Thông tin Độc giả Đăng ký:</label>
+          <div v-if="loggedInUser" class="p-2 px-3 border rounded d-flex justify-content-between align-items-center mb-1" style="background-color: var(--paper-subtle); border-color: var(--paper-border) !important;">
+            <div>
+              <strong class="text-dark d-block" style="font-size: 0.9rem;">{{ loggedInUser.fullName || loggedInUser.username }}</strong>
+              <small class="font-mono-code text-muted">Mã thẻ: <strong>{{ loggedInUser.username }}</strong> • SĐT: {{ loggedInUser.phone || '—' }}</small>
+            </div>
+            <span class="ath-badge ath-badge-available" style="font-size: 0.65rem;">
+              <i class="fas fa-check-circle"></i> Xác thực
+            </span>
+          </div>
+          <input v-else 
+                 type="text" 
                  class="ath-input" 
                  v-model="readerCode" 
-                 placeholder="VD: DG01 hoặc 0912345678" 
-                 :disabled="!!loggedInUser" />
+                 placeholder="VD: DG01 hoặc 0912345678" />
           <small class="form-text text-muted" style="font-size: 0.725rem;">
-            <i class="fas fa-info-circle mr-1 text-info"></i> Mỗi độc giả mượn tối đa 3 cuốn đang lưu hành.
+            <i class="fas fa-info-circle mr-1 text-info"></i> Định mức thư viện: Tối đa 03 cuốn đang lưu hành cùng thời điểm.
           </small>
         </div>
 
@@ -68,7 +77,7 @@
 
         <div class="alert alert-warning py-2 px-3 small mb-0 border-0" style="background-color: #FEF6EB; color: #9A5B18; font-size: 0.75rem;">
           <i class="fas fa-exclamation-triangle mr-1"></i>
-          Yêu cầu mượn sẽ ở trạng thái <strong>Chờ duyệt</strong>. Sau khi thủ thư xét duyệt, bạn vui lòng đến thư viện nhận sách trong vòng 48 giờ.
+          Yêu cầu sẽ ở trạng thái <strong>Chờ duyệt</strong>. Sau khi thủ thư xét duyệt, bạn vui lòng đến quầy nhận sách vật lý.
         </div>
       </div>
 
@@ -77,8 +86,8 @@
         <button type="button" class="ath-btn-outline mr-2" @click="$emit('close')">
           Hủy bỏ
         </button>
-        <button type="button" class="ath-btn-primary" :disabled="loading" @click="handleConfirm">
-          <i v-if="loading" class="fas fa-spinner fa-spin mr-1"></i>
+        <button type="button" class="ath-btn-primary" :disabled="submitting" @click="handleConfirm">
+          <i v-if="submitting" class="fas fa-spinner fa-spin mr-1"></i>
           <i v-else class="fas fa-check mr-1"></i>
           Gửi yêu cầu mượn
         </button>
@@ -107,26 +116,42 @@ export default {
     return {
       readerCode: "",
       note: "Đăng ký mượn trực tuyến",
-      loading: false,
+      submitting: false,
       loggedInUser: null,
     };
   },
   watch: {
     show(val) {
       if (val) {
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", this.handleKeyDown);
+        this.submitting = false;
         this.loggedInUser = authService.getUser();
         if (this.loggedInUser) {
           this.readerCode = this.loggedInUser.username || this.loggedInUser.phone || "";
         }
+      } else {
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", this.handleKeyDown);
       }
     }
   },
+  beforeUnmount() {
+    document.body.style.overflow = "";
+    window.removeEventListener("keydown", this.handleKeyDown);
+  },
   methods: {
+    handleKeyDown(e) {
+      if (e.key === "Escape") {
+        this.$emit("close");
+      }
+    },
     handleConfirm() {
       if (!this.readerCode.trim()) {
         alert("Vui lòng nhập Mã độc giả hoặc Số điện thoại để đăng ký mượn!");
         return;
       }
+      this.submitting = true;
       this.$emit("confirm", {
         maDocGia: this.readerCode.trim(),
         maSach: this.book.MaSach,

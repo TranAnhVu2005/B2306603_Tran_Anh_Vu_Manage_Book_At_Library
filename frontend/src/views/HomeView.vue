@@ -47,8 +47,7 @@
               <input type="text" 
                      class="form-control border-left-0 ath-input" 
                      v-model="searchKeyword" 
-                     placeholder="Tìm theo tên sách, tác giả hoặc mã sách..." 
-                     @input="handleSearch" />
+                     placeholder="Tìm theo tên sách, tác giả hoặc mã sách..." />
               <div class="input-group-append" v-if="searchKeyword">
                 <button class="btn btn-outline-secondary" type="button" @click="clearSearch" style="border-color: var(--paper-border);">
                   <i class="fas fa-times"></i>
@@ -77,16 +76,33 @@
             </div>
           </div>
         </div>
+
+        <!-- Active Filter Status Bar -->
+        <div v-if="hasActiveFilters" class="d-flex align-items-center justify-content-between pt-3 mt-3 border-top small" style="border-color: var(--paper-border) !important;">
+          <div class="text-muted">
+            <i class="fas fa-filter mr-1 text-secondary"></i> Đang lọc: 
+            <span v-if="searchKeyword" class="badge badge-light border mr-1 font-mono-code">"{{ searchKeyword }}"</span>
+            <span v-if="selectedPublisher !== 'all'" class="badge badge-light border mr-1">{{ selectedPublisher }}</span>
+            <span v-if="availableOnly" class="badge badge-success mr-1">Còn kho</span>
+            <span>(tìm thấy <strong>{{ filteredBooks.length }}</strong> tác phẩm)</span>
+          </div>
+          <button class="btn btn-sm btn-link text-danger p-0 font-weight-bold" @click="resetFilters">
+            <i class="fas fa-redo-alt mr-1"></i> Xóa bộ lọc
+          </button>
+        </div>
       </div>
     </section>
 
     <!-- Books Grid Section -->
     <section>
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="font-serif-headline font-weight-bold mb-0 text-dark">
-          Danh Mục Ấn Bản Lưu Chiểu ({{ filteredBooks.length }})
-        </h5>
-        <button class="btn btn-sm ath-btn-outline" @click="fetchBooks">
+        <div>
+          <h5 class="font-serif-headline font-weight-bold mb-0 text-dark">
+            Danh Mục Ấn Bản Lưu Chiểu
+          </h5>
+          <small class="text-muted">Hiển thị {{ filteredBooks.length }} trên tổng số {{ books.length }} ấn bản trong hệ thống</small>
+        </div>
+        <button class="ath-btn-outline" @click="fetchBooks">
           <i class="fas fa-sync-alt mr-1"></i> Làm mới
         </button>
       </div>
@@ -155,6 +171,9 @@ export default {
     };
   },
   computed: {
+    hasActiveFilters() {
+      return !!this.searchKeyword.trim() || this.selectedPublisher !== "all" || this.availableOnly;
+    },
     availableBooksCount() {
       return this.books.filter(b => b.SoQuyen > 0).length;
     },
