@@ -1,0 +1,251 @@
+:root {
+  --paper: #FAF9F5;
+  --paper-subtle: #F4F2EB;
+  --paper-border: #E6E2D8;
+  --ink-primary: #1C1917;
+  --ink-secondary: #4A463F;
+  --ink-muted: #787368;
+  --primary: #143529;
+  --primary-dark: #0E241C;
+  --primary-light: #F0F5F2;
+  --accent: #8C3D28;
+  --accent-soft: #FDF4F2;
+  --status-available: #23694C;
+  --status-scarce: #9A5B18;
+  --status-out: #8F2822;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-sans: 'Work Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.font-serif-headline {
+  font-family: var(--font-serif);
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+/* Athenaeum Card Architecture */
+.ath-card {
+  background-color: #ffffff;
+  border: 1px solid var(--paper-border);
+  border-radius: 4px;
+  transition: all 0.25s ease;
+}
+
+.ath-card:hover {
+  border-color: var(--ink-secondary);
+  box-shadow: 0 4px 16px rgba(28, 25, 23, 0.05);
+}
+
+/* Athenaeum Buttons */
+.ath-btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.ath-btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.ath-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ath-btn-outline {
+  background-color: #ffffff;
+  color: var(--ink-secondary);
+  border: 1px solid var(--paper-border);
+  border-radius: 4px;
+  font-size: 0.825rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.ath-btn-outline:hover {
+  border-color: var(--ink-primary);
+  color: var(--ink-primary);
+  text-decoration: none;
+  background-color: var(--paper-subtle);
+}
+
+.ath-btn-danger {
+  background-color: var(--accent);
+  color: #ffffff;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.ath-btn-danger:hover {
+  background-color: #722e1c;
+  color: #ffffff;
+}
+
+/* Badges */
+.ath-badge {
+  font-size: 0.725rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ath-badge-available {
+  background-color: #E8F5EE;
+  color: var(--status-available);
+  border: 1px solid #C4E5D4;
+}
+
+.ath-badge-scarce {
+  background-color: #FEF6EB;
+  color: var(--status-scarce);
+  border: 1px solid #F8DFC0;
+}
+
+.ath-badge-out {
+  background-color: #FDF2F1;
+  color: var(--status-out);
+  border: 1px solid #F6D0CD;
+}
+
+.ath-badge-pending {
+  background-color: #EEF4FF;
+  color: #2457C5;
+  border: 1px solid #D1E1FF;
+}
+
+.ath-badge-blacklist {
+  background-color: #262626;
+  color: #FF7B72;
+  border: 1px solid #404040;
+}
+
+/* Table styling */
+.ath-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff;
+  border: 1px solid var(--paper-border);
+  border-radius: 4px;
+}
+
+.ath-table th {
+  background-color: var(--paper-subtle);
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--paper-border);
+}
+
+.ath-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--paper-border);
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.ath-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ath-table tr:hover td {
+  background-color: #FAF9F5;
+}
+
+/* Input Fields */
+.ath-input {
+  background-color: #ffffff;
+  border: 1px solid var(--paper-border);
+  color: var(--ink-primary);
+  border-radius: 4px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.ath-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(20, 53, 41, 0.15);
+}
+
+/* Modal Overlay */
+.ath-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(28, 25, 23, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.ath-modal-content {
+  background: #ffffff;
+  border: 1px solid var(--paper-border);
+  border-radius: 4px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 550px;
+  width: 100%;
+  animation: athModalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes athModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
