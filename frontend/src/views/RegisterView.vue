@@ -6,7 +6,7 @@
           <!-- Header -->
           <div class="text-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
             <img
-              src="@/assets/logoweb.png"
+              src="@/assets/library_logo.png"
               alt="Logo Thư Viện"
               class="mb-2"
               style="width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(20, 53, 41, 0.15));"
