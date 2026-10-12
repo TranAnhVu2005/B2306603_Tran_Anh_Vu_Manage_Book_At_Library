@@ -12,7 +12,7 @@
               style="width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(20, 53, 41, 0.15));"
             />
             <h4 class="font-serif-headline font-weight-bold mb-1 text-dark">
-              Đăng Ký Thẻ Thư Viện Mới
+              Đăng Ký
             </h4>
             <small class="text-muted">
               Cấp thẻ bạn đọc trực tuyến phục vụ nghiên cứu & mượn học liệu
@@ -21,14 +21,14 @@
 
           <form @submit.prevent="handleRegister">
             <div class="form-group mb-3">
-              <label class="small font-weight-bold mb-1">Số Điện Thoại (dùng để đăng nhập):</label>
+              <label class="small font-weight-bold mb-1">Số điện thoại:</label>
               <input type="tel" class="form-control ath-input" v-model="form.DienThoai" placeholder="VD: 0912345678" required />
               <small class="form-text text-muted" style="font-size:0.72rem;">Mã độc giả sẽ được hệ thống tự động cấp sau khi đăng ký thành công.</small>
             </div>
 
             <div class="row">
               <div class="col-md-7 form-group mb-3">
-                <label class="small font-weight-bold mb-1">Họ và Tên Đệm:</label>
+                <label class="small font-weight-bold mb-1">Họ và tên đệm:</label>
                 <input type="text" class="form-control ath-input" v-model="form.HoLot" placeholder="VD: Nguyễn Văn" required />
               </div>
 
@@ -40,12 +40,12 @@
 
             <div class="row">
               <div class="col-md-6 form-group mb-3">
-                <label class="small font-weight-bold mb-1">Ngày Sinh:</label>
+                <label class="small font-weight-bold mb-1">Ngày sinh:</label>
                 <input type="date" class="form-control ath-input" v-model="form.NgaySinh" required />
               </div>
 
               <div class="col-md-6 form-group mb-3">
-                <label class="small font-weight-bold mb-1">Giới Tính:</label>
+                <label class="small font-weight-bold mb-1">Giới tính:</label>
                 <select class="form-control ath-input" v-model="form.Phai">
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
@@ -60,16 +60,34 @@
             </div>
 
             <div class="form-group mb-4">
-              <label class="small font-weight-bold mb-1">Mật Khẩu Đăng Nhập:</label>
+              <label class="small font-weight-bold mb-1">Mật khẩu đăng nhập:</label>
               <input type="password" class="form-control ath-input" v-model="form.Password" placeholder="Nhập mật khẩu an toàn..." required />
             </div>
 
-            <button type="submit" class="ath-btn-primary w-100 py-2" :disabled="loading">
+            <button type="submit" class="ath-btn-primary w-100 py-2 mb-3" :disabled="loading">
               <i v-if="loading" class="fas fa-spinner fa-spin mr-1"></i>
               <i v-else class="fas fa-user-plus mr-1"></i>
-              Hoàn Tất Đăng Ký Thẻ
+              Hoàn Tất Đăng Ký
             </button>
           </form>
+
+          <!-- Đường phân cách và nút đăng ký Google ở dưới -->
+          <div class="position-relative my-3 text-center">
+            <hr style="border-color: var(--paper-border);" />
+            <span class="position-absolute bg-white px-3 text-muted small" style="top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem;">
+              Hoặc tiếp tục với
+            </span>
+          </div>
+
+          <button 
+            type="button" 
+            class="btn btn-outline-secondary w-100 py-2 d-flex align-items-center justify-content-center font-weight-bold" 
+            style="border-color: #d1d5db; color: #374151;"
+            @click="handleGoogleRegister"
+          >
+            <i class="fab fa-google text-danger mr-2"></i>
+            Đăng ký bằng tài khoản Google
+          </button>
 
           <div class="text-center mt-3 small text-muted">
             Đã có thẻ thư viện? 
@@ -123,6 +141,9 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    handleGoogleRegister() {
+      this.$refs.toast.show("Chức năng đăng ký bằng Google đang được phát triển!", "info");
     }
   }
 };

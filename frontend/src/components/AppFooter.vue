@@ -9,7 +9,7 @@
         <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
           <div class="d-flex align-items-center mb-3">
             <img
-              src="@/assets/logoweb.png"
+              src="@/assets/library_logo.png"
               alt="Logo Thư Viện"
               class="mr-2"
               style="width: 36px; height: 36px; object-fit: contain; filter: brightness(1.05);"
