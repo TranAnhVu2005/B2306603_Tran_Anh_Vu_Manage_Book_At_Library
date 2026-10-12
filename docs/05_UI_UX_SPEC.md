@@ -30,6 +30,13 @@ Dự án áp dụng phong cách thiết kế **Athenaeum Editorial (Thư viện 
 * **Nội dung / Nút bấm / Nhãn (`font-sans`)**: `Work Sans` hoặc `Plus Jakarta Sans` (Rõ ràng, không chân, dễ đọc trên mọi thiết bị).
 * **Mã số (`font-mono`)**: Font số đơn cách dùng cho `MaSach`, `MaDocGia`, `DonGia` (VD: `S001`, `85.000 ₫`).
 
+### 1.3. Biểu Trưng & Nhận Diện Hình Ảnh (Logo & Brand Assets)
+* **Biểu trưng chính thức (`logoweb.png`)**:
+  * **Favicon**: Được cấu hình chuẩn tại `index.html` (`<link rel="icon" type="image/png" href="/logoweb.png">`).
+  * **Header Brand Logo & Layout**: Hiển thị icon biểu trưng độc lập (44×44px) với hiệu ứng bóng mờ nhẹ `drop-shadow(0 2px 6px rgba(20,53,41,0.16))`. Bố cục áp dụng hệ thống 3 cột cân đối tuyệt đối: Cột trái chứa icon logo, Cột giữa căn giữa toàn bộ menu điều hướng (`mx-auto`), Cột phải là cụm tài khoản người dùng, giúp loại bỏ hoàn toàn khoảng trống lệch và tạo cảm giác cân xứng, thoáng đãng.
+  * **Footer & Authentication Views**: Hiển thị đồng bộ ở chân trang (`AppFooter`) và thẻ xác thực (`LoginView`, `RegisterView`) thay cho các icon chữ cái tạm thời.
+
+
 ---
 
 ## 2. Bản Đồ Màn Hình & Tuyến Đường (Vue Router)
@@ -84,10 +91,15 @@ Dự án áp dụng phong cách thiết kế **Athenaeum Editorial (Thư viện 
 
 ## 3. Các Thành Phần Giao Diện Tái Sử Dụng (Vue Components)
 
-1. **`AppHeader.vue`**: Thanh điều hướng trên cùng, hiển thị logo Athenaeum, danh mục, và thông tin đăng nhập.
-2. **`BookCard.vue`**: Thẻ sách kế thừa từ thiết kế của Stitch:
-   - Bo góc nhẹ `rounded` (4px).
-   - Viền `border border-paper-border`.
-   - Bố cục thông tin rõ ràng, badge trạng thái còn/hết sách.
-3. **`BorrowModal.vue`**: Hộp thoại popup xác nhận mượn sách với nền làm mờ nhẹ (`backdrop-blur-[2px]`).
+1. **`AppHeader.vue`**: Thanh điều hướng trên cùng mang bản sắc Athenaeum Editorial, đồng bộ và phân cấp khoa học giữa các vai trò:
+   - **Tất cả người dùng / Độc giả**: Nút *"Tra cứu sách"* (`/`) và *"Sách đang mượn"* (`/profile` khi đã đăng nhập).
+   - **Thủ thư (`MANAGER`) & Super Admin (`ADMIN`)**: Tích hợp Dropdown *"Nghiệp vụ Thủ thư"* gom nhóm 3 module (`Duyệt mượn & Trả sách`, `Quản lý kho sách`, `Quản lý Nhà xuất bản`), giúp thanh điều hướng luôn gọn gàng trên 1 dòng duy nhất, không bị tràn hay rớt chữ.
+   - **Super Admin (`ADMIN`)**: Dropdown riêng biệt *"Quản trị Hệ thống"* màu nhấn niêm phong thư viện (`var(--accent)`), bao gồm các chức năng: `Phân quyền & Tài khoản`, `Danh sách vi phạm (Blacklist)`.
+   - **User Menu & Mobile Drawer**: Popup hiển thị danh tính thẻ độc giả, role badge, nút chuyển hướng và mobile drawer hỗ trợ đầy đủ thiết bị di động.
+2. **`BookCard.vue`**: Thẻ sách mang bản sắc Athenaeum:
+   - Gáy sách học thuật `.ath-book-spine` tạo chiều sâu vật lý của sách in.
+   - Viền hairline sắc nét `border border-paper-border`, bo góc chuẩn 4px.
+   - Bố cục thông tin rõ ràng, badge trạng thái còn/hết sách, xử lý ảnh bìa mượt mà với fallback icon sách.
+3. **`BorrowModal.vue`**: Hộp thoại popup xác nhận mượn sách với nền làm mờ nhẹ (`backdrop-blur-[2px]`), tự động khóa cuộn trang (`body scroll lock`) và phím tắt `Escape`.
 4. **`ToastNotification.vue`**: Thông báo phản hồi góc dưới bên phải màn hình khi hoàn thành tác vụ (thêm sách, duyệt đơn, trả sách thành công).
+

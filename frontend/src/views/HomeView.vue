@@ -1,33 +1,78 @@
 <template>
   <div class="pb-5">
     <!-- Hero Bibliographic Section -->
-    <section class="py-4 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
+    <section
+      class="py-4 mb-4 border-bottom"
+      style="border-color: var(--paper-border) !important"
+    >
       <div class="row align-items-center">
         <div class="col-lg-8">
-          <div class="d-flex align-items-center mb-2 font-mono-code text-uppercase small" style="color: var(--primary); letter-spacing: 0.05em;">
+          <div
+            class="d-flex align-items-center mb-2 font-mono-code text-uppercase small"
+            style="color: var(--primary); letter-spacing: 0.05em"
+          >
             <i class="fas fa-feather-alt mr-2"></i>
-            <span>Mục lục & Tra cứu Thư viện Học thuật</span>
+            <span>Tìm và mượn tài liệu chỉ qua vài click chuột</span>
           </div>
-          <h1 class="font-serif-headline font-weight-bold mb-2 text-dark" style="font-size: 2.4rem; letter-spacing: -0.01em;">
-            Kho Tri Thức & Học Liệu Thư Viện
+          <h1
+            class="font-serif-headline font-weight-bold mb-2 text-dark"
+            style="font-size: 2.4rem; letter-spacing: -0.01em"
+          >
+            NGUỒN HỌC LIỆU PHONG PHÚ BẬC NHẤT VÙNG ĐỒNG BẰNG SÔNG CỬU LONG
           </h1>
-          <p class="font-italic text-muted mb-0 lead" style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--ink-secondary) !important;">
-            Hệ thống quản lý lưu trữ ấn bản học thuật, giáo trình chuẩn hóa và tư liệu nghiên cứu. Hỗ trợ độc giả tra cứu trực tuyến và đăng ký mượn lưu chiểu nhanh chóng.
+          <p
+            class="font-italic text-muted mb-0 lead"
+            style="
+              font-family: var(--font-serif);
+              font-size: 1.15rem;
+              color: var(--ink-secondary) !important;
+            "
+          >
+            Hệ thống quản lý lưu trữ ấn bản học thuật, giáo trình chuẩn hóa và
+            tư liệu nghiên cứu. Hỗ trợ độc giả tra cứu trực tuyến và đăng ký
+            mượn sách nhanh chóng.
           </p>
         </div>
         <div class="col-lg-4 text-lg-right mt-3 mt-lg-0">
-          <div class="p-3 border rounded d-inline-block text-left" style="background-color: #fff; border-color: var(--paper-border) !important; min-width: 240px;">
+          <div
+            class="p-3 border rounded d-inline-block text-left"
+            style="
+              background-color: #fff;
+              border-color: var(--paper-border) !important;
+              min-width: 240px;
+            "
+          >
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="small text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Tổng số đầu sách:</span>
-              <strong class="font-mono-code h5 mb-0" style="color: var(--primary);">{{ books.length }}</strong>
+              <span
+                class="small text-muted font-weight-bold text-uppercase"
+                style="font-size: 0.7rem"
+                >Tổng số đầu sách:</span
+              >
+              <strong
+                class="font-mono-code h5 mb-0"
+                style="color: var(--primary)"
+                >{{ books.length }}</strong
+              >
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="small text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Sẵn sàng mượn:</span>
-              <strong class="font-mono-code text-success">{{ availableBooksCount }}</strong>
+              <span
+                class="small text-muted font-weight-bold text-uppercase"
+                style="font-size: 0.7rem"
+                >Sẵn sàng mượn:</span
+              >
+              <strong class="font-mono-code text-success">{{
+                availableBooksCount
+              }}</strong>
             </div>
             <div class="d-flex justify-content-between align-items-center">
-              <span class="small text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Hạn mức cá nhân:</span>
-              <span class="badge badge-light border font-mono-code">03 cuốn</span>
+              <span
+                class="small text-muted font-weight-bold text-uppercase"
+                style="font-size: 0.7rem"
+                >Hạn mức cá nhân:</span
+              >
+              <span class="badge badge-light border font-mono-code"
+                >03 cuốn</span
+              >
             </div>
           </div>
         </div>
@@ -40,16 +85,26 @@
           <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
             <div class="input-group">
               <div class="input-group-prepend">
-                <span class="input-group-text bg-white border-right-0" style="border-color: var(--paper-border);">
+                <span
+                  class="input-group-text bg-white border-right-0"
+                  style="border-color: var(--paper-border)"
+                >
                   <i class="fas fa-search text-muted"></i>
                 </span>
               </div>
-              <input type="text" 
-                     class="form-control border-left-0 ath-input" 
-                     v-model="searchKeyword" 
-                     placeholder="Tìm theo tên sách, tác giả hoặc mã sách..." />
+              <input
+                type="text"
+                class="form-control border-left-0 ath-input"
+                v-model="searchKeyword"
+                placeholder="Tìm theo tên sách, tác giả hoặc mã sách..."
+              />
               <div class="input-group-append" v-if="searchKeyword">
-                <button class="btn btn-outline-secondary" type="button" @click="clearSearch" style="border-color: var(--paper-border);">
+                <button
+                  class="btn btn-outline-secondary"
+                  type="button"
+                  @click="clearSearch"
+                  style="border-color: var(--paper-border)"
+                >
                   <i class="fas fa-times"></i>
                 </button>
               </div>
@@ -58,19 +113,38 @@
 
           <!-- Publisher Filter -->
           <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-            <select class="form-control ath-input" v-model="selectedPublisher" @change="fetchBooks">
+            <select
+              class="form-control ath-input"
+              v-model="selectedPublisher"
+              @change="fetchBooks"
+            >
               <option value="all">Tất cả Nhà xuất bản</option>
-              <option v-for="nxb in publishers" :key="nxb.MaNXB" :value="nxb.MaNXB">
+              <option
+                v-for="nxb in publishers"
+                :key="nxb.MaNXB"
+                :value="nxb.MaNXB"
+              >
                 {{ nxb.TenNXB }} ({{ nxb.MaNXB }})
               </option>
             </select>
           </div>
 
           <!-- Availability Checkbox -->
-          <div class="col-lg-3 col-md-6 d-flex align-items-center justify-content-lg-end">
+          <div
+            class="col-lg-3 col-md-6 d-flex align-items-center justify-content-lg-end"
+          >
             <div class="custom-control custom-checkbox select-none">
-              <input type="checkbox" class="custom-control-input" id="availCheck" v-model="availableOnly" @change="fetchBooks" />
-              <label class="custom-control-label small font-weight-bold text-dark cursor-pointer" for="availCheck">
+              <input
+                type="checkbox"
+                class="custom-control-input"
+                id="availCheck"
+                v-model="availableOnly"
+                @change="fetchBooks"
+              />
+              <label
+                class="custom-control-label small font-weight-bold text-dark cursor-pointer"
+                for="availCheck"
+              >
                 Chỉ hiện sách còn kho
               </label>
             </div>
@@ -78,15 +152,35 @@
         </div>
 
         <!-- Active Filter Status Bar -->
-        <div v-if="hasActiveFilters" class="d-flex align-items-center justify-content-between pt-3 mt-3 border-top small" style="border-color: var(--paper-border) !important;">
+        <div
+          v-if="hasActiveFilters"
+          class="d-flex align-items-center justify-content-between pt-3 mt-3 border-top small"
+          style="border-color: var(--paper-border) !important"
+        >
           <div class="text-muted">
-            <i class="fas fa-filter mr-1 text-secondary"></i> Đang lọc: 
-            <span v-if="searchKeyword" class="badge badge-light border mr-1 font-mono-code">"{{ searchKeyword }}"</span>
-            <span v-if="selectedPublisher !== 'all'" class="badge badge-light border mr-1">{{ selectedPublisher }}</span>
-            <span v-if="availableOnly" class="badge badge-success mr-1">Còn kho</span>
-            <span>(tìm thấy <strong>{{ filteredBooks.length }}</strong> tác phẩm)</span>
+            <i class="fas fa-filter mr-1 text-secondary"></i> Đang lọc:
+            <span
+              v-if="searchKeyword"
+              class="badge badge-light border mr-1 font-mono-code"
+              >"{{ searchKeyword }}"</span
+            >
+            <span
+              v-if="selectedPublisher !== 'all'"
+              class="badge badge-light border mr-1"
+              >{{ selectedPublisher }}</span
+            >
+            <span v-if="availableOnly" class="badge badge-success mr-1"
+              >Còn kho</span
+            >
+            <span
+              >(tìm thấy <strong>{{ filteredBooks.length }}</strong> tác
+              phẩm)</span
+            >
           </div>
-          <button class="btn btn-sm btn-link text-danger p-0 font-weight-bold" @click="resetFilters">
+          <button
+            class="btn btn-sm btn-link text-danger p-0 font-weight-bold"
+            @click="resetFilters"
+          >
             <i class="fas fa-redo-alt mr-1"></i> Xóa bộ lọc
           </button>
         </div>
@@ -98,9 +192,12 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h5 class="font-serif-headline font-weight-bold mb-0 text-dark">
-            Danh Mục Ấn Bản Lưu Chiểu
+            Danh Mục Sách
           </h5>
-          <small class="text-muted">Hiển thị {{ filteredBooks.length }} trên tổng số {{ books.length }} ấn bản trong hệ thống</small>
+          <small class="text-muted"
+            >Hiển thị {{ filteredBooks.length }} trên tổng số
+            {{ books.length }} ấn bản trong hệ thống</small
+          >
         </div>
         <button class="ath-btn-outline" @click="fetchBooks">
           <i class="fas fa-sync-alt mr-1"></i> Làm mới
@@ -114,10 +211,17 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="filteredBooks.length === 0" class="ath-card text-center py-5 px-3">
-        <i class="fas fa-book-open text-muted mb-3" style="font-size: 3rem;"></i>
-        <h6 class="font-serif-headline font-weight-bold">Không tìm thấy cuốn sách nào</h6>
-        <p class="text-muted small mb-3">Vui lòng thử tìm kiếm bằng từ khóa khác hoặc bỏ chọn bộ lọc.</p>
+      <div
+        v-else-if="filteredBooks.length === 0"
+        class="ath-card text-center py-5 px-3"
+      >
+        <i class="fas fa-book-open text-muted mb-3" style="font-size: 3rem"></i>
+        <h6 class="font-serif-headline font-weight-bold">
+          Không tìm thấy cuốn sách nào
+        </h6>
+        <p class="text-muted small mb-3">
+          Vui lòng thử tìm kiếm bằng từ khóa khác hoặc bỏ chọn bộ lọc.
+        </p>
         <button class="ath-btn-primary" @click="resetFilters">
           <i class="fas fa-redo mr-1"></i> Đặt lại bộ lọc
         </button>
@@ -125,17 +229,23 @@
 
       <!-- Books Grid -->
       <div v-else class="row">
-        <div class="col-lg-4 col-md-6 mb-4" v-for="book in filteredBooks" :key="book._id">
+        <div
+          class="col-lg-4 col-md-6 mb-4"
+          v-for="book in filteredBooks"
+          :key="book._id"
+        >
           <BookCard :book="book" @borrow="openBorrowModal" />
         </div>
       </div>
     </section>
 
     <!-- Borrow Modal -->
-    <BorrowModal :show="showBorrowModal" 
-                 :book="selectedBook" 
-                 @close="showBorrowModal = false" 
-                 @confirm="submitBorrowRequest" />
+    <BorrowModal
+      :show="showBorrowModal"
+      :book="selectedBook"
+      @close="showBorrowModal = false"
+      @confirm="submitBorrowRequest"
+    />
 
     <!-- Toast Notification -->
     <ToastNotification ref="toast" />
@@ -172,24 +282,35 @@ export default {
   },
   computed: {
     hasActiveFilters() {
-      return !!this.searchKeyword.trim() || this.selectedPublisher !== "all" || this.availableOnly;
+      return (
+        !!this.searchKeyword.trim() ||
+        this.selectedPublisher !== "all" ||
+        this.availableOnly
+      );
     },
     availableBooksCount() {
-      return this.books.filter(b => b.SoQuyen > 0).length;
+      return this.books.filter((b) => b.SoQuyen > 0).length;
     },
     filteredBooks() {
-      return this.books.filter(book => {
-        const matchesKeyword = !this.searchKeyword.trim() || 
-          book.TenSach.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
-          book.TacGia.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
+      return this.books.filter((book) => {
+        const matchesKeyword =
+          !this.searchKeyword.trim() ||
+          book.TenSach.toLowerCase().includes(
+            this.searchKeyword.toLowerCase(),
+          ) ||
+          book.TacGia.toLowerCase().includes(
+            this.searchKeyword.toLowerCase(),
+          ) ||
           book.MaSach.toLowerCase().includes(this.searchKeyword.toLowerCase());
 
-        const matchesPublisher = this.selectedPublisher === "all" || book.MaNXB === this.selectedPublisher;
+        const matchesPublisher =
+          this.selectedPublisher === "all" ||
+          book.MaNXB === this.selectedPublisher;
         const matchesAvailability = !this.availableOnly || book.SoQuyen > 0;
 
         return matchesKeyword && matchesPublisher && matchesAvailability;
       });
-    }
+    },
   },
   created() {
     this.fetchData();
@@ -213,7 +334,8 @@ export default {
     async fetchBooks() {
       try {
         const params = {};
-        if (this.selectedPublisher !== "all") params.maNxb = this.selectedPublisher;
+        if (this.selectedPublisher !== "all")
+          params.maNxb = this.selectedPublisher;
         if (this.availableOnly) params.availableOnly = "true";
         this.books = await sachService.getAll(params);
       } catch (err) {
@@ -248,13 +370,19 @@ export default {
           GhiChu: payload.ghiChu,
         });
         this.showBorrowModal = false;
-        this.$refs.toast.show(result.message || "Gửi yêu cầu mượn thành công! Vui lòng chờ xét duyệt.");
+        this.$refs.toast.show(
+          result.message ||
+            "Gửi yêu cầu mượn thành công! Vui lòng chờ xét duyệt.",
+        );
         this.fetchBooks();
       } catch (err) {
-        const errMsg = err.response?.data?.message || err.message || "Không thể gửi yêu cầu mượn.";
+        const errMsg =
+          err.response?.data?.message ||
+          err.message ||
+          "Không thể gửi yêu cầu mượn.";
         this.$refs.toast.show(errMsg, "error", 4500);
       }
-    }
-  }
+    },
+  },
 };
 </script>

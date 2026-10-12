@@ -5,9 +5,23 @@ class NhanVienService {
         this.NhanVien = client.db().collection("nhanvien");
     }
 
+    // ─── Auto-generate MSNV: NV-0001, NV-0002, ... ───────────────────────────
+    async generateMSNV() {
+        const last = await this.NhanVien.find(
+            { MSNV: { $regex: /^NV-\d{4}$/ } },
+            { projection: { MSNV: 1 } }
+        ).sort({ MSNV: -1 }).limit(1).toArray();
+
+        let nextNum = 1;
+        if (last.length > 0) {
+            const lastNum = parseInt(last[0].MSNV.replace("NV-", ""), 10);
+            nextNum = lastNum + 1;
+        }
+        return `NV-${String(nextNum).padStart(4, "0")}`;
+    }
+
     extractData(payload) {
         const data = {
-            MSNV: payload.MSNV ? String(payload.MSNV).trim() : undefined,
             HoTenNV: payload.HoTenNV ? String(payload.HoTenNV).trim() : undefined,
             Password: payload.Password ? String(payload.Password).trim() : undefined,
             ChucVu: payload.ChucVu ? String(payload.ChucVu).trim() : "THUTHU",
@@ -24,14 +38,12 @@ class NhanVienService {
 
     async create(payload) {
         const data = this.extractData(payload);
-        if (!data.MSNV || !data.HoTenNV || !data.Password) {
-            throw new Error("Vui lòng điền đầy đủ MSNV, HoTenNV và Password.");
+        if (!data.HoTenNV || !data.Password) {
+            throw new Error("Vui lòng điền đầy đủ HoTenNV và Password.");
         }
 
-        const existing = await this.NhanVien.findOne({ MSNV: data.MSNV });
-        if (existing) {
-            throw new Error(`Mã số nhân viên '${data.MSNV}' đã tồn tại.`);
-        }
+        // Tự động sinh MSNV
+        data.MSNV = await this.generateMSNV();
 
         const result = await this.NhanVien.insertOne(data);
         return await this.NhanVien.findOne({ _id: result.insertedId });

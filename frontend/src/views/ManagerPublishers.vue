@@ -97,10 +97,21 @@
         </div>
 
         <form @submit.prevent="saveNXB">
-          <div class="form-group mb-3">
-            <label class="small font-weight-bold mb-1">Mã NXB (duy nhất):</label>
-            <input type="text" class="ath-input" v-model="form.MaNXB" :disabled="isEditing" placeholder="VD: NXB06" required />
-            <small class="form-text text-muted" style="font-size: 0.725rem;">Mã NXB dùng để liên kết với các đầu sách lưu trữ.</small>
+          <!-- Khi chỉnh sửa: hiển thị mã hiện tại (read-only) -->
+          <div v-if="isEditing" class="form-group mb-3">
+            <label class="small font-weight-bold mb-1">Mã NXB:</label>
+            <div class="ath-input d-flex align-items-center" style="background:var(--paper-50,#f5f4ef);cursor:not-allowed;">
+              <span class="badge badge-secondary font-mono-code mr-2">{{ form.MaNXB }}</span>
+              <small class="text-muted">Mã NXB không thể thay đổi.</small>
+            </div>
+          </div>
+          <!-- Khi thêm mới: thông báo tự động sinh mã -->
+          <div v-else class="form-group mb-3">
+            <label class="small font-weight-bold mb-1">Mã NXB:</label>
+            <div class="ath-input d-flex align-items-center" style="background:var(--paper-50,#f5f4ef);cursor:default;">
+              <i class="fas fa-magic mr-2 text-muted small"></i>
+              <small class="text-muted">Mã sẽ được tự động sinh (NXB-0001, NXB-0002, …)</small>
+            </div>
           </div>
           <div class="form-group mb-3">
             <label class="small font-weight-bold mb-1">Tên Nhà Xuất Bản:</label>
@@ -144,7 +155,6 @@ export default {
       isEditing: false,
       saving: false,
       form: {
-        MaNXB: "",
         TenNXB: "",
         DiaChi: "",
       }
@@ -198,7 +208,6 @@ export default {
     openCreateModal() {
       this.isEditing = false;
       this.form = {
-        MaNXB: `NXB0${this.publishers.length + 1}`,
         TenNXB: "",
         DiaChi: "",
       };

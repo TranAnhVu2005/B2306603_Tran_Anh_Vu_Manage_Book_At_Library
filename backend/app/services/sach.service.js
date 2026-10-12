@@ -7,9 +7,23 @@ class SachService {
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
+    // ─── Auto-generate MaSach: SACH-000001, SACH-000002, ... ─────────────────
+    async generateMaSach() {
+        const last = await this.Sach.find(
+            { MaSach: { $regex: /^SACH-\d{6}$/ } },
+            { projection: { MaSach: 1 } }
+        ).sort({ MaSach: -1 }).limit(1).toArray();
+
+        let nextNum = 1;
+        if (last.length > 0) {
+            const lastNum = parseInt(last[0].MaSach.replace("SACH-", ""), 10);
+            nextNum = lastNum + 1;
+        }
+        return `SACH-${String(nextNum).padStart(6, "0")}`;
+    }
+
     extractData(payload) {
         const data = {
-            MaSach: payload.MaSach ? String(payload.MaSach).trim() : undefined,
             TenSach: payload.TenSach ? String(payload.TenSach).trim() : undefined,
             DonGia: payload.DonGia !== undefined ? Number(payload.DonGia) : undefined,
             SoQuyen: payload.SoQuyen !== undefined ? Number(payload.SoQuyen) : undefined,
@@ -29,18 +43,12 @@ class SachService {
 
     async create(payload) {
         const data = this.extractData(payload);
-        if (!data.MaSach || !data.TenSach || data.DonGia === undefined || data.SoQuyen === undefined || !data.MaNXB || !data.TacGia) {
-            throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc: MaSach, TenSach, DonGia, SoQuyen, MaNXB, TacGia.");
+        if (!data.TenSach || data.DonGia === undefined || data.SoQuyen === undefined || !data.MaNXB || !data.TacGia) {
+            throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc: TenSach, DonGia, SoQuyen, MaNXB, TacGia.");
         }
 
         if (data.DonGia < 0 || data.SoQuyen < 0) {
             throw new Error("Đơn giá và số quyển phải là số không âm (>= 0).");
-        }
-
-        // Kiểm tra trùng MaSach
-        const existing = await this.Sach.findOne({ MaSach: data.MaSach });
-        if (existing) {
-            throw new Error(`Sách có mã '${data.MaSach}' đã tồn tại.`);
         }
 
         // Kiểm tra MaNXB có tồn tại không
@@ -48,6 +56,9 @@ class SachService {
         if (!nxb) {
             throw new Error(`Nhà xuất bản có mã '${data.MaNXB}' không tồn tại trong hệ thống.`);
         }
+
+        // Tự động sinh MaSach
+        data.MaSach = await this.generateMaSach();
 
         const result = await this.Sach.insertOne(data);
         return await this.Sach.findOne({ _id: result.insertedId });

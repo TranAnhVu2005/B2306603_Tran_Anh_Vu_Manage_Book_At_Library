@@ -144,7 +144,15 @@
           <div class="row">
             <div class="col-md-4 form-group mb-2">
               <label class="small font-weight-bold mb-1">Mã sách:</label>
-              <input type="text" class="ath-input" v-model="form.MaSach" :disabled="isEditing" placeholder="VD: S07" required />
+              <!-- Edit mode: hiển thị mã hiện tại -->
+              <div v-if="isEditing" class="ath-input d-flex align-items-center" style="background:var(--paper-50,#f5f4ef);cursor:not-allowed;">
+                <span class="badge badge-secondary font-mono-code mr-1">{{ form.MaSach }}</span>
+              </div>
+              <!-- Create mode: thông báo sinh tự động -->
+              <div v-else class="ath-input d-flex align-items-center" style="background:var(--paper-50,#f5f4ef);">
+                <i class="fas fa-magic mr-1 text-muted small"></i>
+                <small class="text-muted">Tự động sinh (SACH-000001…)</small>
+              </div>
             </div>
             <div class="col-md-8 form-group mb-2">
               <label class="small font-weight-bold mb-1">Tên cuốn sách:</label>
@@ -227,10 +235,9 @@ export default {
       isEditing: false,
       saving: false,
       form: {
-        MaSach: "",
         TenSach: "",
         TacGia: "",
-        MaNXB: "NXB01",
+        MaNXB: "",
         SoQuyen: 5,
         DonGia: 85000,
         NamXuatBan: 2024,
@@ -312,10 +319,9 @@ export default {
     openCreateModal() {
       this.isEditing = false;
       this.form = {
-        MaSach: `S0${this.books.length + 1}`,
         TenSach: "",
         TacGia: "",
-        MaNXB: this.publishers[0]?.MaNXB || "NXB01",
+        MaNXB: this.publishers[0]?.MaNXB || "",
         SoQuyen: 5,
         DonGia: 100000,
         NamXuatBan: new Date().getFullYear(),

@@ -6,9 +6,23 @@ class DocGiaService {
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
+    // ─── Auto-generate MaDocGia: DG-000001, DG-000002, ... ───────────────────
+    async generateMaDocGia() {
+        const last = await this.DocGia.find(
+            { MaDocGia: { $regex: /^DG-\d{6}$/ } },
+            { projection: { MaDocGia: 1 } }
+        ).sort({ MaDocGia: -1 }).limit(1).toArray();
+
+        let nextNum = 1;
+        if (last.length > 0) {
+            const lastNum = parseInt(last[0].MaDocGia.replace("DG-", ""), 10);
+            nextNum = lastNum + 1;
+        }
+        return `DG-${String(nextNum).padStart(6, "0")}`;
+    }
+
     extractData(payload) {
         const data = {
-            MaDocGia: payload.MaDocGia ? String(payload.MaDocGia).trim() : undefined,
             HoLot: payload.HoLot ? String(payload.HoLot).trim() : undefined,
             Ten: payload.Ten ? String(payload.Ten).trim() : undefined,
             NgaySinh: payload.NgaySinh ? String(payload.NgaySinh).trim() : undefined,
@@ -29,14 +43,8 @@ class DocGiaService {
 
     async create(payload) {
         const data = this.extractData(payload);
-        if (!data.MaDocGia || !data.HoLot || !data.Ten || !data.DienThoai || !data.Password) {
-            throw new Error("Vui lòng điền đầy đủ các thông tin: MaDocGia, HoLot, Ten, DienThoai, Password.");
-        }
-
-        // Kiểm tra trùng MaDocGia
-        const existingCode = await this.DocGia.findOne({ MaDocGia: data.MaDocGia });
-        if (existingCode) {
-            throw new Error(`Mã độc giả '${data.MaDocGia}' đã tồn tại.`);
+        if (!data.HoLot || !data.Ten || !data.DienThoai || !data.Password) {
+            throw new Error("Vui lòng điền đầy đủ các thông tin: HoLot, Ten, DienThoai, Password.");
         }
 
         // Kiểm tra trùng số điện thoại
@@ -44,6 +52,9 @@ class DocGiaService {
         if (existingPhone) {
             throw new Error(`Số điện thoại '${data.DienThoai}' đã được đăng ký.`);
         }
+
+        // Tự động sinh MaDocGia
+        data.MaDocGia = await this.generateMaDocGia();
 
         const result = await this.DocGia.insertOne(data);
         return await this.DocGia.findOne({ _id: result.insertedId });
@@ -76,6 +87,7 @@ class DocGiaService {
     }
 
     async login(identifier, password) {
+        // Cho phép đăng nhập bằng MaDocGia hoặc số điện thoại
         const user = await this.DocGia.findOne({
             $or: [{ MaDocGia: identifier }, { DienThoai: identifier }],
             Password: password,
@@ -86,7 +98,7 @@ class DocGiaService {
     async update(id, payload) {
         const data = this.extractData(payload);
         delete data.MaDocGia; // Không sửa MaDocGia
-        delete data.Role; // Không sửa Role qua update thông thường
+        delete data.Role;     // Không sửa Role qua update thông thường
 
         let filter = {};
         if (ObjectId.isValid(id)) {

@@ -5,10 +5,12 @@
         <div class="ath-card p-4 p-md-5">
           <!-- Header -->
           <div class="text-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
-            <div class="d-inline-flex align-items-center justify-content-center mb-2 font-weight-bold" 
-                 style="width: 46px; height: 46px; background-color: var(--primary); color: #fff; font-family: var(--font-serif); font-size: 1.6rem; border-radius: 4px;">
-              A
-            </div>
+            <img
+              src="@/assets/logoweb.png"
+              alt="Logo Thư Viện"
+              class="mb-2"
+              style="width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(20, 53, 41, 0.15));"
+            />
             <h4 class="font-serif-headline font-weight-bold mb-1 text-dark">
               Đăng Ký Thẻ Thư Viện Mới
             </h4>
@@ -18,16 +20,10 @@
           </div>
 
           <form @submit.prevent="handleRegister">
-            <div class="row">
-              <div class="col-md-6 form-group mb-3">
-                <label class="small font-weight-bold mb-1">Mã Độc Giả (Bắt buộc):</label>
-                <input type="text" class="form-control ath-input" v-model="form.MaDocGia" placeholder="VD: DG04 hoặc B2109880" required />
-              </div>
-
-              <div class="col-md-6 form-group mb-3">
-                <label class="small font-weight-bold mb-1">Số Điện Thoại:</label>
-                <input type="tel" class="form-control ath-input" v-model="form.DienThoai" placeholder="VD: 0912345678" required />
-              </div>
+            <div class="form-group mb-3">
+              <label class="small font-weight-bold mb-1">Số Điện Thoại (dùng để đăng nhập):</label>
+              <input type="tel" class="form-control ath-input" v-model="form.DienThoai" placeholder="VD: 0912345678" required />
+              <small class="form-text text-muted" style="font-size:0.72rem;">Mã độc giả sẽ được hệ thống tự động cấp sau khi đăng ký thành công.</small>
             </div>
 
             <div class="row">
@@ -101,7 +97,6 @@ export default {
   data() {
     return {
       form: {
-        MaDocGia: "",
         HoLot: "",
         Ten: "",
         NgaySinh: "2003-01-01",

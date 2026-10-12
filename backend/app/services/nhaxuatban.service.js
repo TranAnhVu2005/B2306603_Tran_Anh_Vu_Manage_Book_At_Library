@@ -6,9 +6,24 @@ class NhaXuatBanService {
         this.Sach = client.db().collection("sach");
     }
 
+    // ─── Auto-generate MaNXB: NXB-0001, NXB-0002, ... ───────────────────────
+    async generateMaNXB() {
+        // Tìm document có MaNXB lớn nhất theo thứ tự từ điển ngược
+        const last = await this.NhaXuatBan.find(
+            { MaNXB: { $regex: /^NXB-\d{4}$/ } },
+            { projection: { MaNXB: 1 } }
+        ).sort({ MaNXB: -1 }).limit(1).toArray();
+
+        let nextNum = 1;
+        if (last.length > 0) {
+            const lastNum = parseInt(last[0].MaNXB.replace("NXB-", ""), 10);
+            nextNum = lastNum + 1;
+        }
+        return `NXB-${String(nextNum).padStart(4, "0")}`;
+    }
+
     extractData(payload) {
         const data = {
-            MaNXB: payload.MaNXB ? String(payload.MaNXB).trim() : undefined,
             TenNXB: payload.TenNXB ? String(payload.TenNXB).trim() : undefined,
             DiaChi: payload.DiaChi !== undefined ? String(payload.DiaChi).trim() : "",
         };
@@ -21,14 +36,12 @@ class NhaXuatBanService {
 
     async create(payload) {
         const data = this.extractData(payload);
-        if (!data.MaNXB || !data.TenNXB) {
-            throw new Error("Mã NXB và Tên NXB là bắt buộc.");
+        if (!data.TenNXB) {
+            throw new Error("Tên NXB là bắt buộc.");
         }
 
-        const existing = await this.NhaXuatBan.findOne({ MaNXB: data.MaNXB });
-        if (existing) {
-            throw new Error(`Nhà xuất bản có mã '${data.MaNXB}' đã tồn tại.`);
-        }
+        // Tự động sinh MaNXB
+        data.MaNXB = await this.generateMaNXB();
 
         const result = await this.NhaXuatBan.insertOne(data);
         return await this.NhaXuatBan.findOne({ _id: result.insertedId });
@@ -58,7 +71,7 @@ class NhaXuatBanService {
 
     async update(id, payload) {
         const data = this.extractData(payload);
-        // Không cho phép thay đổi MaNXB nếu đã có
+        // Không cho phép thay đổi MaNXB
         delete data.MaNXB;
 
         let filter = {};

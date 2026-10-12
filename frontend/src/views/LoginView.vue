@@ -5,10 +5,12 @@
         <div class="ath-card p-4 p-md-5">
           <!-- Brand Header -->
           <div class="text-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
-            <div class="d-inline-flex align-items-center justify-content-center mb-2 font-weight-bold" 
-                 style="width: 46px; height: 46px; background-color: var(--primary); color: #fff; font-family: var(--font-serif); font-size: 1.6rem; border-radius: 4px;">
-              A
-            </div>
+            <img
+              src="@/assets/logoweb.png"
+              alt="Logo Thư Viện"
+              class="mb-2"
+              style="width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(20, 53, 41, 0.15));"
+            />
             <h4 class="font-serif-headline font-weight-bold mb-1 text-dark">
               Đăng Nhập Thư Viện
             </h4>
