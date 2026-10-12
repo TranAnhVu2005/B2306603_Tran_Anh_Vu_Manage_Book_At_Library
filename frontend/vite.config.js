@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       port: 3001,
       proxy: {
         "/api": {
-          target: env.RENDER_API_URL || "http://localhost:3000/",
+          target: env.VITE_API_URL || "http://localhost:3000/",
           changeOrigin: true,
         },
       }

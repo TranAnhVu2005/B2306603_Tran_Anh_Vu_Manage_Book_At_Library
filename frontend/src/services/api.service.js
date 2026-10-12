@@ -7,9 +7,17 @@ const commonConfig = {
     }
 };
 
-export default (baseURL) => {
+export default (baseURL = "") => {
+    // Đặt link Render trực tiếp làm giá trị dự phòng nếu VITE_API_URL chưa kịp ăn trên cloud
+    const fallbackApiUrl = "https://b2306603-tran-anh-vu-manage-book-at.onrender.com";
+    const targetApiUrl = import.meta.env.VITE_API_URL || fallbackApiUrl;
+
+    const base = targetApiUrl
+        ? `${targetApiUrl.replace(/\/$/, "")}${baseURL}`
+        : baseURL;
+
     return axios.create({
-        baseURL,
+        baseURL: base,
         ...commonConfig,
     });
-}
+};
