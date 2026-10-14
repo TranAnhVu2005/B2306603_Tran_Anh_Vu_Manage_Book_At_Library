@@ -17,8 +17,8 @@ class TheoDoiMuonService {
         return (await this.api.post("/", data)).data;
     }
 
-    async duyet(id) {
-        return (await this.api.put(`/${id}/duyet`)).data;
+    async duyet(id, msnv = "") {
+        return (await this.api.put(`/${id}/duyet`, { msnv })).data;
     }
 
     async tuChoi(id, lyDo) {

@@ -18,9 +18,10 @@ exports.dangKyMuon = async (req, res, next) => {
 exports.duyetMuon = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
-        const result = await service.duyetMuon(req.params.id);
+        const msnv = req.body?.msnv || req.headers["x-msnv"] || "NV-0002";
+        const result = await service.duyetMuon(req.params.id, msnv);
         return res.json({
-            message: "Duyệt yêu cầu mượn thành công. Đã trừ 1 cuốn trong kho.",
+            message: "Duyệt yêu cầu mượn thành công. Đã xuất kho 1 cuốn và hẹn trả sau 14 ngày.",
             data: result,
         });
     } catch (error) {
@@ -61,7 +62,7 @@ exports.baoMat = async (req, res, next) => {
         const { ghiChu } = req.body;
         const result = await service.baoMat(req.params.id, ghiChu);
         return res.json({
-            message: "Đã ghi nhận sự cố mất sách và tính tiền bồi hoàn.",
+            message: "Đã ghi nhận sự cố mất sách và tính tiền bồi thường.",
             data: result,
         });
     } catch (error) {
@@ -99,7 +100,7 @@ exports.delete = async (req, res, next) => {
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy phiếu mượn để xóa."));
         }
-        return res.json({ message: "Xóa phiếu mượn thành công." });
+        return res.json({ message: "Xóa phiếu mượn lưu trữ thành công." });
     } catch (error) {
         return next(new ApiError(400, error.message));
     }

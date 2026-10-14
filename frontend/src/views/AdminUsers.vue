@@ -3,15 +3,15 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
       <div>
-        <span class="text-uppercase small font-weight-bold text-danger" style="letter-spacing: 0.05em;">
-          <i class="fas fa-shield-alt mr-1"></i> Khu Vực Quản Trị Tối Cao (Super Admin)
+        <span class="text-uppercase small fw-bold text-danger" style="letter-spacing: 0.05em;">
+          <i class="fas fa-shield-alt me-1"></i> Khu Vực Quản Trị Tối Cao (Super Admin)
         </span>
-        <h2 class="font-serif-headline font-weight-bold text-dark mb-0">
+        <h2 class="font-serif-headline fw-bold text-dark mb-0">
           Phân Quyền Người Dùng & Quản Lý Blacklist
         </h2>
       </div>
       <button class="ath-btn-outline" @click="fetchData">
-        <i class="fas fa-sync-alt mr-1"></i> Làm mới
+        <i class="fas fa-sync-alt me-1"></i> Làm mới
       </button>
     </div>
 
@@ -20,37 +20,33 @@
       <div class="row align-items-center">
         <div class="col-md-6 mb-2 mb-md-0">
           <div class="input-group">
-            <div class="input-group-prepend">
-              <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
-                <i class="fas fa-search text-muted"></i>
-              </span>
-            </div>
+            <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+              <i class="fas fa-search text-muted"></i>
+            </span>
             <input type="text" 
-                   class="form-control ath-input border-left-0" 
+                   class="form-control ath-input border-start-0" 
                    v-model="search" 
                    placeholder="Tìm kiếm theo mã độc giả, họ tên, số điện thoại..." />
-            <div class="input-group-append" v-if="search">
-              <button class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
+            <button v-if="search" class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
         </div>
         <div class="col-md-6 d-flex justify-content-md-end flex-wrap gap-2">
-          <button class="btn btn-sm mr-2 mb-1 mb-md-0" 
+          <button class="btn btn-sm me-2 mb-1 mb-md-0" 
                   :class="filterRole === 'all' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   @click="filterRole = 'all'">
             Tất cả ({{ users.length }})
           </button>
-          <button class="btn btn-sm mr-2 mb-1 mb-md-0" 
+          <button class="btn btn-sm me-2 mb-1 mb-md-0" 
                   :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   @click="filterRole = 'MANAGER'">
-            <i class="fas fa-user-shield mr-1"></i> Quản lý / Thủ thư
+            <i class="fas fa-user-shield me-1"></i> Quản lý / Thủ thư
           </button>
           <button class="btn btn-sm mb-1 mb-md-0" 
                   :class="filterRole === 'Blacklist' ? 'ath-btn-danger' : 'ath-btn-outline'"
                   @click="filterRole = 'Blacklist'">
-            <i class="fas fa-ban mr-1"></i> Blacklist ({{ blacklistCount }})
+            <i class="fas fa-ban me-1"></i> Blacklist ({{ blacklistCount }})
           </button>
         </div>
       </div>
@@ -65,7 +61,7 @@
 
       <div v-else-if="filteredUsers.length === 0" class="text-center py-5">
         <i class="fas fa-users-slash text-muted mb-2" style="font-size: 2.5rem;"></i>
-        <h6 class="font-serif-headline font-weight-bold">Không tìm thấy người dùng phù hợp</h6>
+        <h6 class="font-serif-headline fw-bold">Không tìm thấy người dùng phù hợp</h6>
         <p class="text-muted small mb-0">Thử thay đổi từ khóa hoặc bộ lọc vai trò.</p>
       </div>
 
@@ -79,21 +75,21 @@
               <th>Vai trò (Role)</th>
               <th>Trạng thái thẻ</th>
               <th>Vi phạm</th>
-              <th class="text-right">Thao tác Quản trị</th>
+              <th class="text-end">Thao tác Quản trị</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="u in filteredUsers" :key="u._id">
-              <td class="font-mono-code font-weight-bold text-dark">{{ u.MaDocGia }}</td>
+              <td class="font-mono-code fw-bold text-dark">{{ u.MaDocGia }}</td>
               <td>
                 <strong class="text-dark d-block" style="font-size: 0.95rem;">{{ u.HoLot }} {{ u.Ten }}</strong>
                 <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;">{{ u.DiaChi || '—' }}</small>
               </td>
               <td class="font-mono-code small">{{ u.DienThoai }}</td>
               <td>
-                <span v-if="u.Role === 'ADMIN'" class="badge badge-danger">ADMIN</span>
-                <span v-else-if="u.Role === 'MANAGER'" class="badge badge-success">QUẢN LÝ / THỦ THƯ</span>
-                <span v-else class="badge badge-light border">ĐỘC GIẢ (USER)</span>
+                <span v-if="u.Role === 'ADMIN'" class="badge bg-danger">ADMIN</span>
+                <span v-else-if="u.Role === 'MANAGER'" class="badge bg-success">QUẢN LÝ / THỦ THƯ</span>
+                <span v-else class="badge bg-light text-dark border">ĐỘC GIẢ (USER)</span>
               </td>
               <td>
                 <span v-if="u.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist">
@@ -108,16 +104,16 @@
                   {{ u.SoLanViPham || 0 }} / 3
                 </strong>
               </td>
-              <td class="text-right">
+              <td class="text-end">
                 <!-- Nâng cấp / Hạ cấp Role -->
                 <button v-if="u.Role === 'USER'" 
-                        class="ath-action-btn ath-action-btn-success mr-1"
+                        class="ath-action-btn ath-action-btn-success me-1"
                         @click="changeRole(u, 'MANAGER')"
                         title="Nâng cấp lên Quản lý / Thủ thư">
                   <i class="fas fa-arrow-up text-success"></i> Thăng cấp
                 </button>
                 <button v-else-if="u.Role === 'MANAGER'" 
-                        class="ath-action-btn mr-1"
+                        class="ath-action-btn me-1"
                         @click="changeRole(u, 'USER')"
                         title="Hạ cấp về Độc giả thường">
                   <i class="fas fa-arrow-down text-warning"></i> Hạ cấp
@@ -125,7 +121,7 @@
 
                 <!-- Mở khóa Blacklist nếu bị phạt -->
                 <button v-if="u.TrangThaiThe === 'Blacklist' || (u.SoLanViPham || 0) > 0" 
-                        class="ath-action-btn ath-action-btn-success mr-1"
+                        class="ath-action-btn ath-action-btn-success me-1"
                         @click="unblockUser(u)"
                         title="Mở khóa thẻ và reset số lần vi phạm">
                   <i class="fas fa-unlock text-info"></i> Mở khóa
@@ -199,6 +195,12 @@ export default {
       }
     },
     async changeRole(u, newRole) {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      if (currentUser.username === u.MaDocGia && newRole !== "ADMIN") {
+        this.$refs.toast.show("Bạn không thể tự hạ cấp quyền quản trị của chính mình!", "error");
+        return;
+      }
+
       const actionName = newRole === "MANAGER" ? "nâng cấp lên Quản lý / Thủ thư" : "hạ cấp về Độc giả thường";
       if (!confirm(`Bạn có chắc muốn ${actionName} cho tài khoản '${u.HoLot} ${u.Ten}' (${u.MaDocGia})?`)) return;
 
@@ -221,6 +223,12 @@ export default {
       }
     },
     async deleteUser(u) {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      if (currentUser.username === u.MaDocGia) {
+        this.$refs.toast.show("Bạn không thể tự xóa tài khoản của chính mình!", "error");
+        return;
+      }
+
       if (!confirm(`Xác nhận xóa tài khoản '${u.HoLot} ${u.Ten}'?`)) return;
       try {
         await docGiaService.delete(u._id || u.MaDocGia);

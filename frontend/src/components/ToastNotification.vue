@@ -1,12 +1,10 @@
 <template>
   <div v-if="visible" class="ath-toast-wrapper">
     <div class="ath-toast d-flex align-items-center shadow-lg" :class="type === 'error' ? 'ath-toast-error' : 'ath-toast-success'">
-      <i v-if="type === 'error'" class="fas fa-exclamation-circle mr-2" style="font-size: 1.1rem;"></i>
-      <i v-else class="fas fa-check-circle mr-2" style="font-size: 1.1rem;"></i>
-      <span class="small font-weight-500">{{ message }}</span>
-      <button type="button" class="close ml-3 text-white" style="opacity: 0.8; font-size: 1rem;" @click="visible = false">
-        <span>&times;</span>
-      </button>
+      <i v-if="type === 'error'" class="fas fa-exclamation-circle me-2" style="font-size: 1.1rem;"></i>
+      <i v-else class="fas fa-check-circle me-2" style="font-size: 1.1rem;"></i>
+      <span class="small fw-medium">{{ message }}</span>
+      <button type="button" class="btn-close btn-close-white ms-3" aria-label="Close" @click="visible = false"></button>
     </div>
   </div>
 </template>

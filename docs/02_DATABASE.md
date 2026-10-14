@@ -1,107 +1,190 @@
 # 02. THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE SCHEMA)
 
-* **Database**: MongoDB
-* **Database Name**: `quanlymuonsach`
-* **Quy chuẩn**: Giữ nguyên 100% các trường theo lược đồ tối thiểu CT449 và bổ sung các trường nghiệp vụ thực tế (Role, Trạng thái đơn mượn, Vi phạm, Blacklist).
+* **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
+* **Tên Database**: `quanlymuonsach`
+* **Quy chuẩn**: Bám sát 100% Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25). Toàn bộ 5 collections đều chuẩn hóa tên trường, kiểu dữ liệu, ràng buộc toàn vẹn và cơ chế mã hóa mật khẩu bảo mật.
 
 ---
 
-## 1. Danh Sách Collections
+## 1. Danh Sách Tập Hợp (Collections)
 
-* `nhaxuatban`: Danh mục nhà xuất bản sách
-* `sach`: Kho sách và chi tiết từng đầu sách
-* `docgia`: Hồ sơ độc giả (kèm theo dõi vi phạm & trạng thái khóa thẻ)
-* `theodoimuonsach`: Giao dịch mượn/trả (kèm trạng thái duyệt đơn, ngày hẹn trả, sự cố mất sách)
-* `nhanvien`: Tài khoản nhân viên/quản trị viên (có phân quyền Admin / Thủ thư)
+| STT | Tên Collection | Diễn Giải Nghiệp Vụ |
+|:---:|:---|:---|
+| 1 | `docgia` | Danh sách thông tin tài khoản độc giả và trạng thái thẻ |
+| 2 | `nhanvien` | Danh sách tài khoản nhân viên thư viện và quản trị viên |
+| 3 | `nhaxuatban` | Danh mục thông tin các nhà xuất bản |
+| 4 | `sach` | Danh mục thông tin các đầu sách và số lượng tồn kho |
+| 5 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
 
 ---
 
-## 2. Chi Tiết Cấu Trúc Schema
+## 2. Chi Tiết Lược Đồ Dữ Liệu Từng Bảng (Schema Specification)
 
-### 2.1. Collection: `nhaxuatban`
+### 2.1. Bảng Độc Giả (`docgia`)
+Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mượn sách, thông tin tài khoản đăng nhập, cấp bậc phân quyền và các chỉ số theo dõi vi phạm nội quy để xử lý đưa vào danh sách đen (Blacklist).
+
 ```json
 {
-  "_id": "ObjectId",
-  "MaNXB": "NXB01",           // [Bắt buộc, Duy nhất]
-  "TenNXB": "NXB Trẻ",        // [Bắt buộc]
-  "DiaChi": "161B Lý Chính Thắng, Q3, TP.HCM"
+  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
+  "MaDocGia": "DG-000001",            // [Duy nhất] Mã số định danh độc giả (Tự sinh hệ thống)
+  "HoLot": "Trần Minh",               // [Bắt buộc] Họ và tên đệm của độc giả
+  "Ten": "Triết",                     // [Bắt buộc] Tên của độc giả
+  "NgaySinh": "2003-09-15",           // [Bắt buộc] Ngày tháng năm sinh (Định dạng YYYY-MM-DD)
+  "Phai": 1,                          // [Bắt buộc, Integer] Giới tính: 1: Nam, 0: Nữ, 2: Khác
+  "DiaChi": "Xuân Khánh, Cần Thơ",   // Địa chỉ cư trú của độc giả
+  "DienThoai": "0912345678",          // [Bắt buộc, Duy nhất] Số điện thoại liên hệ (Dùng để đăng nhập)
+  "MatKhau": "$2a$10$e7...",          // [Bắt buộc, String] Mật khẩu tài khoản (Đã mã hóa Bcrypt an toàn)
+  "Role": "USER",                     // [USER | MANAGER | ADMIN] Vai trò người dùng trong hệ thống
+  "SoLanViPham": 0,                   // [Number >= 0] Số lần vi phạm nội quy (trả trễ hạn, làm mất sách)
+  "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "Blacklist"] Trạng thái thẻ thư viện
+}
+```
+
+* **Quy tắc Blacklist tự động**: Nếu `SoLanViPham >= 3`, hệ thống tự động khóa thẻ độc giả, chuyển `TrangThaiThe = "Blacklist"` và từ chối mọi yêu cầu đăng ký mượn sách mới. Chỉ Quản trị viên tối cao (Super Admin) mới có quyền mở khóa thẻ và đặt lại `SoLanViPham = 0`.
+
+---
+
+### 2.2. Bảng Nhân Viên (`nhanvien`)
+Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và quản trị viên hệ thống có quyền đăng nhập vào các phân hệ nghiệp vụ quản lý.
+
+```json
+{
+  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
+  "MSNV": "NV-0001",                  // [Duy nhất] Mã số nhân viên (Tự sinh chuẩn NV-0001)
+  "HoTenNV": "Nguyễn Quản Trị Viên", // [Bắt buộc] Họ và tên đầy đủ của nhân viên
+  "MatKhau": "$2a$10$k9...",          // [Bắt buộc] Mật khẩu đăng nhập hệ thống (Đã mã hóa Bcrypt)
+  "ChucVu": "ADMIN",                  // ["THUTHU" | "ADMIN"] Chức danh công tác
+  "SoDienThoai": "0901234567",        // Số điện thoại nhân viên
+  "DiaChi": "Ninh Kiều, Cần Thơ"     // Địa chỉ liên hệ của nhân viên
 }
 ```
 
 ---
 
-### 2.2. Collection: `sach`
+### 2.3. Bảng Sách (`sach`)
+Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồm đơn giá bồi thường và số lượng tồn kho thực tế.
+
 ```json
 {
-  "_id": "ObjectId",
-  "MaSach": "S001",                   // [Bắt buộc, Duy nhất]
-  "TenSach": "Lập trình Web với Vue", // [Bắt buộc]
-  "DonGia": 85000,                    // [Bắt buộc, Số >= 0] Đơn giá bồi thường nếu làm mất
-  "SoQuyen": 10,                      // [Bắt buộc, Số >= 0] Số lượng sách còn trong kho
-  "NamXuatBan": 2024,                 // Năm xuất bản
-  "MaNXB": "NXB01",                   // [Tham chiếu MaNXB]
-  "TacGia": "Nguyễn Văn A",           // Tác giả / Nguồn gốc
-  "HinhAnh": "/images/books/s001.jpg",// Ảnh bìa sách
-  "MoTa": "Sách hướng dẫn..."
+  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
+  "MaSach": "SACH-000001",            // [Duy nhất] Mã định danh đầu sách (Tự sinh SACH-000001)
+  "TenSach": "Lập trình Web Vue.js",  // [Bắt buộc] Tên tựa sách
+  "DonGia": 85000,                    // [Bắt buộc, Double >= 0] Đơn giá sách (Dùng tính tiền phạt nếu làm mất)
+  "SoQuyen": 5,                       // [Bắt buộc, Integer >= 0] Số lượng sách thực tế còn trong kho
+  "NamXuatBan": 2024,                 // [Integer] Năm xuất bản sách
+  "MaNXB": "NXB-0001",                // [Khóa ngoại FK] Tham chiếu đến nhaxuatban.MaNXB
+  "TacGia": "Nguyễn Văn An",          // [Bắt buộc] Tên tác giả hoặc cơ quan biên soạn
+  "HinhAnh": "https://...",           // Đường dẫn ảnh bìa sách
+  "MoTa": "Giáo trình toàn diện..."  // Tóm tắt nội dung sách
+}
+```
+
+* **Ràng buộc toàn vẹn (Integrity Constraint)**: Không cho phép xóa đầu sách khỏi CSDL nếu sách đang có phiếu mượn chưa hoàn tất ở trạng thái `DangMuon` hoặc `ChoDuyet`.
+
+---
+
+### 2.4. Bảng Nhà Xuất Bản (`nhaxuatban`)
+Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho thư viện.
+
+```json
+{
+  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
+  "MaNXB": "NXB-0001",                // [Duy nhất] Mã định danh nhà xuất bản (Tự sinh NXB-0001)
+  "TENNXB": "NXB Giáo Dục Việt Nam", // [Bắt buộc] Tên nhà xuất bản (Chuẩn báo cáo CDM)
+  "TenNXB": "NXB Giáo Dục Việt Nam", // [Alias] Đồng bộ tương thích tầng hiển thị Frontend
+  "DiaChi": "81 Trần Hưng Đạo, HN"    // Địa chỉ trụ sở nhà xuất bản
+}
+```
+
+* **Ràng buộc toàn vẹn**: Không cho phép xóa Nhà xuất bản nếu vẫn còn sách trong kho tham chiếu đến `MaNXB` này.
+
+---
+
+### 2.5. Bảng Theo Dõi Mượn Sách (`theodoimuonsach`)
+Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữa `docgia` và `sach`, ghi nhận toàn bộ vòng đời của một phiếu mượn từ lúc gửi yêu cầu, duyệt giao sách, hẹn ngày trả, cho đến khi hoàn trả hoặc xử lý bồi thường mất sách.
+
+```json
+{
+  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
+  "MaDocGia": "DG-000001",            // [Khóa ngoại FK] Tham chiếu đến docgia.MaDocGia
+  "MaSach": "SACH-000004",            // [Khóa ngoại FK] Tham chiếu đến sach.MaSach
+  "NgayMuon": "2026-10-14",           // Ngày độc giả gửi yêu cầu hoặc bắt đầu nhận sách (YYYY-MM-DD)
+  "MSNV": "NV-0002",                  // [Khóa ngoại FK] Mã số nhân viên phụ trách duyệt (nhanvien.MSNV)
+  "NgayHenTra": "2026-10-28",         // Hạn trả sách dự kiến (Mặc định 14 ngày kể từ ngày duyệt)
+  "NgayTra": null,                    // Ngày thực tế mang trả sách tại quầy (null nếu chưa trả)
+  "TrangThai": "DangMuon",            // ["ChoDuyet" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi"]
+  "GiaTriBoiThuong": 0,               // [Double >= 0] Tiền bồi hoàn theo đơn giá nếu làm mất sách
+  "TienPhat": 0,                      // [Alias] Đồng bộ tương thích tầng hiển thị Frontend
+  "GhiChu": "Sách bìa cứng, mới"      // Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
 }
 ```
 
 ---
 
-### 2.3. Collection: `docgia`
-Lưu trữ thông tin người dùng và lịch sử vi phạm để đưa vào danh sách đen.
+## 3. Sơ Đồ Quan Hệ Dữ Liệu (Entity Relationship Diagram - ERD)
 
-```json
-{
-  "_id": "ObjectId",
-  "MaDocGia": "DG001",                // [Bắt buộc, Duy nhất]
-  "HoLot": "Trần Nguyễn",
-  "Ten": "An",
-  "NgaySinh": "2003-05-15",
-  "Phai": "Nam",
-  "DiaChi": "Ninh Kiều, Cần Thơ",
-  "DienThoai": "0912345678",          // [Bắt buộc, Duy nhất]
-  "Password": "hashed_password",
-  "Role": "USER",                     // [USER | MANAGER | ADMIN] Phân quyền
-  "SoLanViPham": 0,                   // Đếm số lần quá hạn hoặc vi phạm quy định
-  "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "Blacklist"]
-}
-```
+```mermaid
+erDiagram
+    DOCGIA ||--o{ THEODOIMUONSACH : "thuocvedocgia (1,n)"
+    NHANVIEN ||--o{ THEODOIMUONSACH : "chiutrachnhiem (1,n)"
+    SACH ||--o{ THEODOIMUONSACH : "cuasach (1,n)"
+    NHAXUATBAN ||--o{ SACH : "sachthuocnhaxuatban (1,n)"
 
-* **Quy tắc Blacklist**: Nếu `SoLanViPham >= 3`, hệ thống tự động hoặc quản lý cập nhật `TrangThaiThe = "Blacklist"` và từ chối mọi yêu cầu mượn sách.
+    DOCGIA {
+        ObjectId _id PK
+        string MaDocGia UK
+        string HoLot
+        string Ten
+        date NgaySinh
+        int Phai "1: Nam, 0: Nữ"
+        string DiaChi
+        string DienThoai UK
+        string MatKhau "Bcrypt"
+        string Role "USER/MANAGER/ADMIN"
+        int SoLanViPham
+        string TrangThaiThe "HoatDong/Khoa/Blacklist"
+    }
 
----
+    NHANVIEN {
+        ObjectId _id PK
+        string MSNV UK
+        string HoTenNV
+        string MatKhau "Bcrypt"
+        string ChucVu "THUTHU/ADMIN"
+        string SoDienThoai
+        string DiaChi
+    }
 
-### 2.4. Collection: `theodoimuonsach`
-Theo dõi quy trình từ lúc độc giả gửi yêu cầu mượn đến khi trả hoặc báo mất.
+    SACH {
+        ObjectId _id PK
+        string MaSach UK
+        string TenSach
+        double DonGia
+        int SoQuyen
+        int NamXuatBan
+        string MaNXB FK
+        string TacGia
+        string HinhAnh
+        string MoTa
+    }
 
-```json
-{
-  "_id": "ObjectId",
-  "MaDocGia": "DG001",                // [Tham chiếu MaDocGia]
-  "MaSach": "S001",                   // [Tham chiếu MaSach]
-  "NgayMuon": "2026-10-09",           // Ngày bắt đầu mượn (hoặc ngày nộp đơn)
-  "NgayHenTra": "2026-10-23",         // Hạn trả dự kiến (mặc định 14 ngày)
-  "NgayTra": null,                    // Ngày trả thực tế (null nếu chưa trả)
-  "TrangThai": "ChoDuyet",            // ["ChoDuyet" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi"]
-  "TienPhat": 0,                      // Tiền phạt quá hạn hoặc tiền đền bù mất sách
-  "GhiChu": "Sách bị mất trang hoặc tình trạng mượn"
-}
-```
+    NHAXUATBAN {
+        ObjectId _id PK
+        string MaNXB UK
+        string TENNXB
+        string DiaChi
+    }
 
----
-
-### 2.5. Collection: `nhanvien`
-Lưu tài khoản nhân viên thư viện và Admin tối cao.
-
-```json
-{
-  "_id": "ObjectId",
-  "MSNV": "NV01",                     // [Bắt buộc, Duy nhất]
-  "HoTenNV": "Lê Văn Quản",
-  "Password": "hashed_password",
-  "ChucVu": "ADMIN",                  // ["THUTHU" | "ADMIN"]
-  "DiaChi": "Ninh Kiều, Cần Thơ",
-  "SoDienThoai": "0987654321"
-}
+    THEODOIMUONSACH {
+        ObjectId _id PK
+        string MaDocGia FK
+        string MaSach FK
+        string MSNV FK
+        date NgayMuon
+        date NgayHenTra
+        date NgayTra
+        string TrangThai
+        double GiaTriBoiThuong
+        string GhiChu
+    }
 ```

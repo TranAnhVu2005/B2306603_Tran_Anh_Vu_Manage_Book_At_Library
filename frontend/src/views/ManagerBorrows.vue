@@ -3,40 +3,40 @@
     <!-- Header Page -->
     <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
       <div>
-        <span class="text-uppercase small font-weight-bold" style="color: var(--primary); letter-spacing: 0.05em;">
+        <span class="text-uppercase small fw-bold" style="color: var(--primary); letter-spacing: 0.05em;">
           Nghiệp Vụ Thủ Thư & Quản Trị
         </span>
-        <h2 class="font-serif-headline font-weight-bold text-dark mb-0">
+        <h2 class="font-serif-headline fw-bold text-dark mb-0">
           Quản Lý Mượn — Trả Sách & Phê Duyệt
         </h2>
       </div>
       <button class="ath-btn-outline" @click="fetchData">
-        <i class="fas fa-sync-alt mr-1"></i> Làm mới dữ liệu
+        <i class="fas fa-sync-alt me-1"></i> Làm mới dữ liệu
       </button>
     </div>
 
     <!-- Quick Stats Cards -->
     <div class="row mb-4">
       <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-        <div class="ath-card p-3 border-left border-warning" style="border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'pending'">
+        <div class="ath-card p-3 border-start border-warning" style="border-start-width: 4px !important; border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'pending'">
           <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Chờ xét duyệt</small>
           <strong class="font-mono-code h4 text-warning mb-0">{{ pendingList.length }}</strong> đơn
         </div>
       </div>
       <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-        <div class="ath-card p-3 border-left border-success" style="border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'borrowing'">
+        <div class="ath-card p-3 border-start border-success" style="border-start-width: 4px !important; border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'borrowing'">
           <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Đang lưu hành</small>
           <strong class="font-mono-code h4 text-success mb-0">{{ borrowingList.length }}</strong> cuốn
         </div>
       </div>
       <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-        <div class="ath-card p-3 border-left border-danger" style="border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'borrowing'; onlyOverdue = true">
+        <div class="ath-card p-3 border-start border-danger" style="border-start-width: 4px !important; border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'borrowing'; onlyOverdue = true">
           <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Quá hạn trả</small>
           <strong class="font-mono-code h4 text-danger mb-0">{{ overdueList.length }}</strong> cuốn
         </div>
       </div>
       <div class="col-md-3 col-sm-6">
-        <div class="ath-card p-3 border-left border-dark" style="border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'completed'">
+        <div class="ath-card p-3 border-start border-dark" style="border-start-width: 4px !important; border-left-width: 4px !important; cursor: pointer;" @click="activeTab = 'completed'">
           <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem;">Đã hoàn tất / Mất</small>
           <strong class="font-mono-code h4 text-dark mb-0">{{ completedList.length }}</strong> phiếu
         </div>
@@ -50,33 +50,33 @@
         <!-- Tabs Navigation -->
         <ul class="nav nav-pills mb-2 mb-md-0">
           <li class="nav-item">
-            <button class="btn btn-sm mr-2" 
+            <button class="btn btn-sm me-2" 
                     :class="activeTab === 'pending' ? 'ath-btn-primary' : 'ath-btn-outline'"
                     @click="activeTab = 'pending'; onlyOverdue = false">
-              <i class="fas fa-clock mr-1"></i> Chờ duyệt ({{ pendingList.length }})
+              <i class="fas fa-clock me-1"></i> Chờ duyệt ({{ pendingList.length }})
             </button>
           </li>
           <li class="nav-item">
-            <button class="btn btn-sm mr-2" 
+            <button class="btn btn-sm me-2" 
                     :class="activeTab === 'borrowing' ? 'ath-btn-primary' : 'ath-btn-outline'"
                     @click="activeTab = 'borrowing'">
-              <i class="fas fa-book-reader mr-1"></i> Đang mượn ({{ borrowingList.length }})
+              <i class="fas fa-book-reader me-1"></i> Đang mượn ({{ borrowingList.length }})
             </button>
           </li>
           <li class="nav-item">
             <button class="btn btn-sm" 
                     :class="activeTab === 'completed' ? 'ath-btn-primary' : 'ath-btn-outline'"
                     @click="activeTab = 'completed'; onlyOverdue = false">
-              <i class="fas fa-history mr-1"></i> Lịch sử ({{ completedList.length }})
+              <i class="fas fa-history me-1"></i> Lịch sử ({{ completedList.length }})
             </button>
           </li>
         </ul>
 
         <!-- Filter Search & Overdue Toggle -->
         <div class="d-flex align-items-center">
-          <div v-if="activeTab === 'borrowing'" class="custom-control custom-checkbox mr-3 select-none">
-            <input type="checkbox" class="custom-control-input" id="overdueCheck" v-model="onlyOverdue" />
-            <label class="custom-control-label small font-weight-bold text-danger cursor-pointer" for="overdueCheck">
+          <div v-if="activeTab === 'borrowing'" class="form-check me-3 select-none">
+            <input type="checkbox" class="form-check-input" id="overdueCheck" v-model="onlyOverdue" />
+            <label class="form-check-label small fw-bold text-danger cursor-pointer" for="overdueCheck">
               Chỉ trễ hạn
             </label>
           </div>
@@ -97,7 +97,7 @@
       <!-- Empty State -->
       <div v-else-if="filteredDisplayList.length === 0" class="text-center py-5">
         <i class="fas fa-clipboard-check text-muted mb-2" style="font-size: 2.5rem;"></i>
-        <h6 class="font-serif-headline font-weight-bold">Không có bản ghi nào phù hợp</h6>
+        <h6 class="font-serif-headline fw-bold">Không có bản ghi nào phù hợp</h6>
         <p class="text-muted small mb-0">Hệ thống đang ở trạng thái đồng bộ.</p>
       </div>
 
@@ -112,7 +112,7 @@
               <th>Hạn trả</th>
               <th>Trạng thái</th>
               <th>Ghi chú / Tiền phạt</th>
-              <th class="text-right">Hành động</th>
+              <th class="text-end">Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -145,11 +145,11 @@
               <!-- Dates -->
               <td class="font-mono-code small">{{ item.NgayMuon || '—' }}</td>
               <td class="font-mono-code small">
-                <span :class="isLate(item) ? 'text-danger font-weight-bold' : ''">
+                <span :class="isLate(item) ? 'text-danger fw-bold' : ''">
                   {{ item.NgayHenTra || '—' }}
                 </span>
                 <div v-if="isLate(item)">
-                  <span class="badge badge-danger" style="font-size: 0.65rem;">Quá hạn!</span>
+                  <span class="badge bg-danger" style="font-size: 0.65rem;">Quá hạn!</span>
                 </div>
               </td>
 
@@ -165,16 +165,19 @@
               <!-- Notes / Fine -->
               <td class="small text-muted">
                 {{ item.GhiChu || '—' }}
-                <div v-if="item.TienPhat > 0" class="text-danger font-weight-bold mt-1">
-                  Bồi hoàn: {{ item.TienPhat.toLocaleString('vi-VN') }} ₫
+                <div v-if="item.GiaTriBoiThuong > 0 || item.TienPhat > 0" class="text-danger fw-bold mt-1">
+                  Bồi hoàn: {{ (item.GiaTriBoiThuong || item.TienPhat).toLocaleString('vi-VN') }} ₫
+                </div>
+                <div v-if="item.MSNV" class="font-mono-code text-muted mt-1" style="font-size: 0.72rem;">
+                  <i class="fas fa-user-check me-1"></i>Thủ thư duyệt: {{ item.MSNV }}
                 </div>
               </td>
 
                 <!-- Actions -->
-              <td class="text-right">
+              <td class="text-end">
                 <!-- If Pending -->
                 <template v-if="item.TrangThai === 'ChoDuyet'">
-                  <button class="ath-action-btn ath-action-btn-success mr-1" 
+                  <button class="ath-action-btn ath-action-btn-success me-1" 
                           title="Duyệt đơn và trừ kho" 
                           @click="handleApprove(item)">
                     <i class="fas fa-check text-success"></i> Duyệt
@@ -188,7 +191,7 @@
 
                 <!-- If Borrowing -->
                 <template v-else-if="item.TrangThai === 'DangMuon'">
-                  <button class="ath-action-btn ath-action-btn-success mr-1" 
+                  <button class="ath-action-btn ath-action-btn-success me-1" 
                           title="Xác nhận trả sách và cộng kho" 
                           @click="handleReturn(item)">
                     <i class="fas fa-undo text-success"></i> Đã trả
@@ -219,16 +222,16 @@
     <div v-if="showRejectModal" class="ath-modal-overlay" @click.self="showRejectModal = false">
       <div class="ath-modal-content p-4">
         <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom" style="border-color: var(--paper-border) !important;">
-          <h5 class="font-serif-headline font-weight-bold text-danger mb-0">
-            <i class="fas fa-times-circle mr-1"></i> Từ Chối Yêu Cầu Mượn Sách
+          <h5 class="font-serif-headline fw-bold text-danger mb-0">
+            <i class="fas fa-times-circle me-1"></i> Từ Chối Yêu Cầu Mượn Sách
           </h5>
-          <button type="button" class="close text-muted" @click="showRejectModal = false">&times;</button>
+          <button type="button" class="btn-close" aria-label="Close" @click="showRejectModal = false"></button>
         </div>
         <p class="small text-muted mb-3" v-if="selectedRejectItem">
           Bạn đang từ chối yêu cầu mượn cuốn <strong>{{ selectedRejectItem.sachInfo?.TenSach || selectedRejectItem.MaSach }}</strong> của độc giả <strong>{{ selectedRejectItem.docGiaInfo ? `${selectedRejectItem.docGiaInfo.HoLot} ${selectedRejectItem.docGiaInfo.Ten}` : selectedRejectItem.MaDocGia }}</strong>.
         </p>
-        <div class="form-group mb-3">
-          <label class="small font-weight-bold mb-1">Lý do từ chối:</label>
+        <div class="mb-3">
+          <label class="small fw-bold mb-1">Lý do từ chối:</label>
           <select class="ath-input mb-2" v-model="rejectReason">
             <option value="Độc giả đã đạt định mức tối đa 3 cuốn đang mượn">Độc giả đã đạt định mức tối đa 3 cuốn đang mượn</option>
             <option value="Sách đang được thu hồi để kiểm kê / phục chế">Sách đang được thu hồi để kiểm kê / phục chế</option>
@@ -242,7 +245,7 @@
                  placeholder="Nhập lý do cụ thể..." />
         </div>
         <div class="d-flex justify-content-end align-items-center pt-2 border-top" style="border-color: var(--paper-border) !important;">
-          <button class="ath-btn-outline mr-2" @click="showRejectModal = false">Hủy</button>
+          <button class="ath-btn-outline me-2" @click="showRejectModal = false">Hủy</button>
           <button class="ath-btn-danger" @click="confirmReject">Xác nhận Từ chối</button>
         </div>
       </div>
@@ -252,20 +255,20 @@
     <div v-if="showLossModal" class="ath-modal-overlay" @click.self="showLossModal = false">
       <div class="ath-modal-content p-4">
         <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom" style="border-color: var(--paper-border) !important;">
-          <h5 class="font-serif-headline font-weight-bold text-danger mb-0">
-            <i class="fas fa-exclamation-triangle mr-2"></i> Xác Nhận Báo Mất Sách
+          <h5 class="font-serif-headline fw-bold text-danger mb-0">
+            <i class="fas fa-exclamation-triangle me-2"></i> Xác Nhận Báo Mất Sách
           </h5>
-          <button type="button" class="close text-muted" @click="showLossModal = false">&times;</button>
+          <button type="button" class="btn-close" aria-label="Close" @click="showLossModal = false"></button>
         </div>
         <p class="small text-muted mb-3">
           Khi báo mất, tồn kho sẽ <strong>không được cộng lại</strong>. Hệ thống sẽ tự động phạt độc giả số tiền bằng đúng đơn giá cuốn sách và tăng số lần vi phạm lên 1 (đạt 3 lần sẽ tự động khóa thẻ Blacklist).
         </p>
-        <div class="form-group mb-3">
-          <label class="small font-weight-bold mb-1">Lý do / Tình trạng ghi nhận:</label>
+        <div class="mb-3">
+          <label class="small fw-bold mb-1">Lý do / Tình trạng ghi nhận:</label>
           <input type="text" class="ath-input" v-model="lossReason" placeholder="VD: Độc giả làm rơi mất sách trong quá trình di chuyển..." />
         </div>
         <div class="d-flex justify-content-end align-items-center pt-2 border-top" style="border-color: var(--paper-border) !important;">
-          <button class="ath-btn-outline mr-2" @click="showLossModal = false">Hủy</button>
+          <button class="ath-btn-outline me-2" @click="showLossModal = false">Hủy</button>
           <button class="ath-btn-danger" @click="confirmLoss">Xác nhận Báo mất & Phạt</button>
         </div>
       </div>
@@ -383,7 +386,9 @@ export default {
     },
     async handleApprove(item) {
       try {
-        const res = await theoDoiService.duyet(item._id);
+        const staffUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const msnv = staffUser?.username || "NV-0002";
+        const res = await theoDoiService.duyet(item._id, msnv);
         this.$refs.toast.show(res.message || "Đã duyệt mượn và trừ 1 cuốn trong kho.");
         this.fetchData();
       } catch (err) {

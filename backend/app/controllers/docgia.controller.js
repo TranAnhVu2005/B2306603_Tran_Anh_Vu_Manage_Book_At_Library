@@ -7,7 +7,7 @@ exports.create = async (req, res, next) => {
         const service = new DocGiaService(MongoDB.client);
         const result = await service.create(req.body);
         return res.status(201).json({
-            message: "Đăng ký thẻ độc giả thành công.",
+            message: "Đăng ký thẻ bạn đọc trực tuyến thành công.",
             data: result,
         });
     } catch (error) {
@@ -58,7 +58,7 @@ exports.updateRole = async (req, res, next) => {
     try {
         const { role } = req.body;
         if (!role) {
-            return next(new ApiError(400, "Vui lòng chỉ định role mới (USER, MANAGER, ADMIN)."));
+            return next(new ApiError(400, "Vui lòng chỉ định vai trò mới (USER, MANAGER, ADMIN)."));
         }
         const service = new DocGiaService(MongoDB.client);
         const result = await service.updateRole(req.params.id, role);
@@ -66,7 +66,7 @@ exports.updateRole = async (req, res, next) => {
             return next(new ApiError(404, "Không tìm thấy người dùng để phân quyền."));
         }
         return res.json({
-            message: `Phân quyền thành công thành '${role}'.`,
+            message: `Phân quyền thành công vai trò '${role}'.`,
             data: result,
         });
     } catch (error) {
@@ -97,7 +97,7 @@ exports.delete = async (req, res, next) => {
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy độc giả để xóa."));
         }
-        return res.json({ message: "Xóa độc giả thành công." });
+        return res.json({ message: "Xóa hồ sơ độc giả thành công." });
     } catch (error) {
         return next(new ApiError(400, error.message));
     }

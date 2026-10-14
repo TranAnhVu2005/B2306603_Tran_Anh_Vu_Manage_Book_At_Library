@@ -11,11 +11,11 @@
             <img
               src="@/assets/library_logo.png"
               alt="Logo Thư Viện"
-              class="mr-2"
+              class="me-2"
               style="width: 36px; height: 36px; object-fit: contain; filter: brightness(1.05);"
             />
             <span
-              class="font-serif-headline h5 mb-0 text-white font-weight-bold"
+              class="font-serif-headline h5 mb-0 text-white fw-bold"
               >Library Book Management System</span
             >
           </div>
@@ -32,7 +32,7 @@
         <!-- Col 2: Nội quy -->
         <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
           <h6
-            class="text-uppercase font-weight-bold mb-3"
+            class="text-uppercase fw-bold mb-3"
             style="font-size: 0.75rem; letter-spacing: 0.1em; color: #fff"
           >
             Nội Quy Mượn Sách
@@ -54,20 +54,20 @@
         <!-- Col 4: Liên hệ -->
         <div class="col-lg-4 col-md-6">
           <h6
-            class="text-uppercase font-weight-bold mb-3"
+            class="text-uppercase fw-bold mb-3"
             style="font-size: 0.75rem; letter-spacing: 0.1em; color: #fff"
           >
             Thông Tin Liên Hệ
           </h6>
           <p class="small text-muted mb-1" style="color: #a8a29e !important">
-            <i class="fas fa-map-marker-alt mr-2"></i> Khu II, Đường 3/2, P.
+            <i class="fas fa-map-marker-alt me-2"></i> Khu II, Đường 3/2, P.
             Xuân Khánh, Q. Ninh Kiều, TP. Cần Thơ
           </p>
           <p class="small text-muted mb-1" style="color: #a8a29e !important">
-            <i class="fas fa-envelope mr-2"></i> trananhvu314159@gmail.com
+            <i class="fas fa-envelope me-2"></i> trananhvu314159@gmail.com
           </p>
           <p class="small text-muted mb-0" style="color: #a8a29e !important">
-            <i class="fas fa-phone-alt mr-2"></i> 0359906510
+            <i class="fas fa-phone-alt me-2"></i> 0359906510
           </p>
         </div>
       </div>

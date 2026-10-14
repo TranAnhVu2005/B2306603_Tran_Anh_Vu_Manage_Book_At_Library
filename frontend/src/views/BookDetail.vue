@@ -3,7 +3,7 @@
     <!-- Back button -->
     <div class="mb-3">
       <router-link to="/" class="ath-btn-outline text-decoration-none">
-        <i class="fas fa-arrow-left mr-1"></i> Quay lại mục lục
+        <i class="fas fa-arrow-left me-1"></i> Quay lại mục lục
       </router-link>
     </div>
 
@@ -33,7 +33,7 @@
         <!-- Book Meta & Actions -->
         <div class="col-md-8">
           <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-            <span class="font-mono-code text-muted font-weight-bold">
+            <span class="font-mono-code text-muted fw-bold">
               MÃ SÁCH LƯU TRỮ: <strong class="text-dark">{{ book.MaSach }}</strong>
             </span>
             <span v-if="book.SoQuyen > 0" class="ath-badge ath-badge-available">
@@ -44,10 +44,10 @@
             </span>
           </div>
 
-          <h1 class="font-serif-headline font-weight-bold text-dark mb-2" style="font-size: 2.1rem; line-height: 1.25;">
+          <h1 class="font-serif-headline fw-bold text-dark mb-2" style="font-size: 2.1rem; line-height: 1.25;">
             {{ book.TenSach }}
           </h1>
-          <p class="lead font-italic text-muted mb-4" style="font-family: var(--font-serif); font-size: 1.15rem;">
+          <p class="lead fst-italic text-muted mb-4" style="font-family: var(--font-serif); font-size: 1.15rem;">
             Tác giả: <strong class="text-dark">{{ book.TacGia }}</strong>
           </p>
 
@@ -57,7 +57,7 @@
               <div class="col-sm-6 mb-2">
                 <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.05em;">Nhà xuất bản:</small>
                 <strong class="text-dark">{{ publisherName }}</strong>
-                <span class="font-mono-code text-muted small ml-1">({{ book.MaNXB }})</span>
+                <span class="font-mono-code text-muted small ms-1">({{ book.MaNXB }})</span>
               </div>
               <div class="col-sm-6 mb-2">
                 <small class="text-muted text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.05em;">Năm xuất bản:</small>
@@ -76,8 +76,8 @@
 
           <!-- Description -->
           <div class="mb-4">
-            <h6 class="text-uppercase small font-weight-bold text-muted mb-2" style="letter-spacing: 0.05em;">
-              <i class="fas fa-align-left mr-1"></i> Tóm tắt nội dung
+            <h6 class="text-uppercase small fw-bold text-muted mb-2" style="letter-spacing: 0.05em;">
+              <i class="fas fa-align-left me-1"></i> Tóm tắt nội dung
             </h6>
             <p class="text-dark leading-relaxed" style="font-size: 0.95rem; line-height: 1.6;">
               {{ book.MoTa || 'Hiện chưa có tóm tắt chi tiết cho cuốn sách này.' }}
@@ -86,14 +86,14 @@
 
           <!-- CTA Buttons -->
           <div class="d-flex align-items-center pt-3 border-top flex-wrap gap-2" style="border-color: var(--paper-border) !important;">
-            <button v-if="book.SoQuyen > 0" class="ath-btn-primary mr-3 mb-2 mb-sm-0" @click="showBorrowModal = true">
-              <i class="fas fa-bookmark mr-1"></i> Đăng ký mượn cuốn này
+            <button v-if="book.SoQuyen > 0" class="ath-btn-primary me-3 mb-2 mb-sm-0" @click="handleOpenBorrow">
+              <i class="fas fa-bookmark me-1"></i> Đăng ký mượn cuốn này
             </button>
-            <button v-else class="ath-btn-outline mr-3 mb-2 mb-sm-0" disabled style="opacity: 0.55; cursor: not-allowed;">
-              <i class="fas fa-ban mr-1"></i> Tạm hết trong kho
+            <button v-else class="ath-btn-outline me-3 mb-2 mb-sm-0" disabled style="opacity: 0.55; cursor: not-allowed;">
+              <i class="fas fa-ban me-1"></i> Tạm hết trong kho
             </button>
             <small class="text-muted">
-              <i class="fas fa-shield-alt mr-1 text-success"></i> Hạn mức mượn: 14 ngày • Nhận sách tại Quầy Thủ Thư
+              <i class="fas fa-shield-alt me-1 text-success"></i> Hạn mức mượn: 14 ngày • Nhận sách tại Quầy Thủ Thư
             </small>
           </div>
         </div>
@@ -137,7 +137,7 @@ export default {
     publisherName() {
       if (!this.book || !this.book.MaNXB) return "—";
       const p = this.publishers.find(n => n.MaNXB === this.book.MaNXB);
-      return p ? p.TenNXB : this.book.MaNXB;
+      return p ? (p.TenNXB || p.TENNXB) : this.book.MaNXB;
     }
   },
   created() {
@@ -167,6 +167,22 @@ export default {
     onImageError(e) {
       e.target.src = this.defaultCover;
     },
+    handleOpenBorrow() {
+      const u = authService.getUser();
+      if (!u) {
+        this.$router.push(`/login?redirect=${this.$route.fullPath}`);
+        return;
+      }
+      if (u.trangThaiThe === "Blacklist") {
+        this.$refs.toast.show("Tài khoản của bạn đã bị đưa vào Danh sách đen (Blacklist). Vui lòng liên hệ quầy thủ thư!", "error", 5000);
+        return;
+      }
+      if (u.trangThaiThe === "Khoa") {
+        this.$refs.toast.show("Thẻ của bạn hiện đang bị khóa tạm thời. Vui lòng liên hệ thủ thư!", "error", 5000);
+        return;
+      }
+      this.showBorrowModal = true;
+    },
     async submitBorrowRequest(payload) {
       if (!authService.isLoggedIn()) {
         this.$router.push(`/login?redirect=${this.$route.fullPath}`);
@@ -180,7 +196,7 @@ export default {
         });
         this.showBorrowModal = false;
         this.$refs.toast.show(result.message || "Đăng ký mượn thành công!");
-        this.fetchBook();
+        this.fetchData();
       } catch (err) {
         const errMsg = err.response?.data?.message || err.message || "Không thể đăng ký mượn.";
         this.$refs.toast.show(errMsg, "error", 4500);

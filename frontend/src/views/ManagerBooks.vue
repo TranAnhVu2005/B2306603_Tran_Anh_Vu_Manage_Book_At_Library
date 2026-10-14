@@ -3,19 +3,19 @@
     <!-- Header Page -->
     <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
       <div>
-        <span class="text-uppercase small font-weight-bold" style="color: var(--primary); letter-spacing: 0.05em;">
+        <span class="text-uppercase small fw-bold" style="color: var(--primary); letter-spacing: 0.05em;">
           Quản Lý Kho Thư Viện
         </span>
-        <h2 class="font-serif-headline font-weight-bold text-dark mb-0">
+        <h2 class="font-serif-headline fw-bold text-dark mb-0">
           Danh Mục Đầu Sách & Tồn Kho
         </h2>
       </div>
       <div>
-        <button class="ath-btn-primary mr-2" @click="openCreateModal">
-          <i class="fas fa-plus mr-1"></i> Thêm sách mới
+        <button class="ath-btn-primary me-2" @click="openCreateModal">
+          <i class="fas fa-plus me-1"></i> Thêm sách mới
         </button>
         <button class="ath-btn-outline" @click="fetchData">
-          <i class="fas fa-sync-alt mr-1"></i> Làm mới
+          <i class="fas fa-sync-alt me-1"></i> Làm mới
         </button>
       </div>
     </div>
@@ -25,23 +25,19 @@
       <div class="row align-items-center">
         <div class="col-md-6 mb-2 mb-md-0">
           <div class="input-group">
-            <div class="input-group-prepend">
-              <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
-                <i class="fas fa-search text-muted"></i>
-              </span>
-            </div>
+            <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+              <i class="fas fa-search text-muted"></i>
+            </span>
             <input type="text" 
-                   class="form-control ath-input border-left-0" 
+                   class="form-control ath-input border-start-0" 
                    v-model="search" 
                    placeholder="Lọc theo tên sách, tác giả, mã sách, NXB..." />
-            <div class="input-group-append" v-if="search">
-              <button class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
+            <button v-if="search" class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
         </div>
-        <div class="col-md-6 text-md-right small text-muted">
+        <div class="col-md-6 text-md-end small text-muted">
           Tổng số đầu sách: <strong>{{ books.length }}</strong> • Tổng số lượng trong kho: <strong class="text-success">{{ totalQuantity }} quyển</strong>
         </div>
       </div>
@@ -56,7 +52,7 @@
 
       <div v-else-if="filteredBooks.length === 0" class="text-center py-5">
         <i class="fas fa-book-open text-muted mb-2" style="font-size: 2.5rem;"></i>
-        <h6 class="font-serif-headline font-weight-bold">Không tìm thấy sách nào phù hợp</h6>
+        <h6 class="font-serif-headline fw-bold">Không tìm thấy sách nào phù hợp</h6>
         <p class="text-muted small mb-0">Vui lòng thử lại với từ khóa khác.</p>
       </div>
 
@@ -71,7 +67,7 @@
               <th>Năm XB</th>
               <th style="min-width: 130px;">Tồn kho</th>
               <th>Đơn giá</th>
-              <th class="text-right" style="min-width: 140px;">Hành động</th>
+              <th class="text-end" style="min-width: 140px;">Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -89,26 +85,30 @@
                   </div>
                 </div>
               </td>
-              <td class="font-mono-code font-weight-bold text-dark">{{ book.MaSach }}</td>
+              <td class="font-mono-code fw-bold text-dark">{{ book.MaSach }}</td>
               <td>
                 <strong class="font-serif-headline text-dark d-block" style="font-size: 0.95rem;">{{ book.TenSach }}</strong>
-                <small class="text-muted font-italic">{{ book.TacGia }}</small>
+                <small class="text-muted fst-italic">{{ book.TacGia }}</small>
               </td>
-              <td><span class="badge badge-light border">{{ book.MaNXB }}</span></td>
+              <td>
+                <span class="badge bg-light text-dark border" :title="book.MaNXB">
+                  {{ getPublisherName(book.MaNXB) }}
+                </span>
+              </td>
               <td class="small">{{ book.NamXuatBan || '—' }}</td>
               <td>
                 <!-- Quick Adjust Quantity (+ / -) -->
                 <div class="d-flex align-items-center">
-                  <button class="ath-action-btn py-0 px-2 mr-1" 
+                  <button class="ath-action-btn py-0 px-2 me-1" 
                           :disabled="book.SoQuyen <= 0"
                           @click="quickAdjustStock(book, -1)" 
                           title="Bớt 1 cuốn">
                     -
                   </button>
-                  <span class="font-weight-bold font-mono-code mx-1" :class="book.SoQuyen > 0 ? 'text-success' : 'text-danger'">
+                  <span class="fw-bold font-mono-code mx-1" :class="book.SoQuyen > 0 ? 'text-success' : 'text-danger'">
                     {{ book.SoQuyen }}
                   </span>
-                  <button class="ath-action-btn py-0 px-2 ml-1" 
+                  <button class="ath-action-btn py-0 px-2 ms-1" 
                           @click="quickAdjustStock(book, 1)" 
                           title="Thêm 1 cuốn">
                     +
@@ -116,8 +116,8 @@
                 </div>
               </td>
               <td class="font-mono-code small">{{ formatCurrency(book.DonGia) }}</td>
-              <td class="text-right">
-                <button class="ath-action-btn mr-1" @click="openEditModal(book)" title="Chỉnh sửa">
+              <td class="text-end">
+                <button class="ath-action-btn me-1" @click="openEditModal(book)" title="Chỉnh sửa">
                   <i class="fas fa-edit text-secondary"></i> Sửa
                 </button>
                 <button class="ath-action-btn ath-action-btn-danger" @click="handleDelete(book)" title="Xóa sách">
@@ -134,39 +134,39 @@
     <div v-if="showModal" class="ath-modal-overlay" @click.self="showModal = false">
       <div class="ath-modal-content p-4" style="max-width: 620px;">
         <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
-          <h5 class="font-serif-headline font-weight-bold mb-0">
+          <h5 class="font-serif-headline fw-bold mb-0">
             {{ isEditing ? 'Chỉnh Sửa Thông Tin Sách' : 'Thêm Sách Mới Vào Kho' }}
           </h5>
-          <button type="button" class="close" @click="showModal = false">&times;</button>
+          <button type="button" class="btn-close" aria-label="Close" @click="showModal = false"></button>
         </div>
 
         <form @submit.prevent="saveBook">
           <div class="row">
-            <div class="col-md-4 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Mã sách:</label>
+            <div class="col-md-4 mb-2">
+              <label class="small fw-bold mb-1">Mã sách:</label>
               <!-- Edit mode: hiển thị mã hiện tại -->
               <div v-if="isEditing" class="ath-input d-flex align-items-center" style="background:var(--paper-50,#f5f4ef);cursor:not-allowed;">
-                <span class="badge badge-secondary font-mono-code mr-1">{{ form.MaSach }}</span>
+                <span class="badge bg-secondary font-mono-code me-1">{{ form.MaSach }}</span>
               </div>
               <!-- Create mode: thông báo sinh tự động -->
               <div v-else class="ath-input d-flex align-items-center" style="background:var(--paper-50,#f5f4ef);">
-                <i class="fas fa-magic mr-1 text-muted small"></i>
+                <i class="fas fa-magic me-1 text-muted small"></i>
                 <small class="text-muted">Tự động sinh (SACH-000001…)</small>
               </div>
             </div>
-            <div class="col-md-8 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Tên cuốn sách:</label>
+            <div class="col-md-8 mb-2">
+              <label class="small fw-bold mb-1">Tên cuốn sách:</label>
               <input type="text" class="ath-input" v-model="form.TenSach" placeholder="VD: Lập trình Vue 3..." required />
             </div>
           </div>
 
           <div class="row">
-            <div class="col-md-6 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Tác giả:</label>
+            <div class="col-md-6 mb-2">
+              <label class="small fw-bold mb-1">Tác giả:</label>
               <input type="text" class="ath-input" v-model="form.TacGia" placeholder="VD: Nguyễn Văn A" required />
             </div>
-            <div class="col-md-6 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Nhà xuất bản:</label>
+            <div class="col-md-6 mb-2">
+              <label class="small fw-bold mb-1">Nhà xuất bản:</label>
               <select class="ath-input" v-model="form.MaNXB" required>
                 <option v-for="nxb in publishers" :key="nxb.MaNXB" :value="nxb.MaNXB">
                   {{ nxb.TenNXB }} ({{ nxb.MaNXB }})
@@ -176,34 +176,34 @@
           </div>
 
           <div class="row">
-            <div class="col-md-4 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Số quyển tồn kho:</label>
+            <div class="col-md-4 mb-2">
+              <label class="small fw-bold mb-1">Số quyển tồn kho:</label>
               <input type="number" class="ath-input" min="0" v-model.number="form.SoQuyen" required />
             </div>
-            <div class="col-md-4 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Đơn giá (VND):</label>
+            <div class="col-md-4 mb-2">
+              <label class="small fw-bold mb-1">Đơn giá (VND):</label>
               <input type="number" class="ath-input" min="0" step="1000" v-model.number="form.DonGia" required />
             </div>
-            <div class="col-md-4 form-group mb-2">
-              <label class="small font-weight-bold mb-1">Năm XB:</label>
+            <div class="col-md-4 mb-2">
+              <label class="small fw-bold mb-1">Năm XB:</label>
               <input type="number" class="ath-input" min="1900" max="2030" v-model.number="form.NamXuatBan" />
             </div>
           </div>
 
-          <div class="form-group mb-2">
-            <label class="small font-weight-bold mb-1">Đường dẫn ảnh bìa (URL):</label>
+          <div class="mb-2">
+            <label class="small fw-bold mb-1">Đường dẫn ảnh bìa (URL):</label>
             <input type="url" class="ath-input" v-model="form.HinhAnh" placeholder="https://..." />
           </div>
 
-          <div class="form-group mb-3">
-            <label class="small font-weight-bold mb-1">Tóm tắt nội dung:</label>
+          <div class="mb-3">
+            <label class="small fw-bold mb-1">Tóm tắt nội dung:</label>
             <textarea class="ath-input" rows="2" v-model="form.MoTa" placeholder="Giới thiệu sơ lược..."></textarea>
           </div>
 
           <div class="d-flex justify-content-end align-items-center pt-2 border-top">
-            <button type="button" class="ath-btn-outline mr-2" @click="showModal = false">Hủy</button>
+            <button type="button" class="ath-btn-outline me-2" @click="showModal = false">Hủy</button>
             <button type="submit" class="ath-btn-primary" :disabled="saving">
-              <i v-if="saving" class="fas fa-spinner fa-spin mr-1"></i>
+              <i v-if="saving" class="fas fa-spinner fa-spin me-1"></i>
               {{ isEditing ? 'Cập Nhật' : 'Lưu Sách Mới' }}
             </button>
           </div>
@@ -304,6 +304,10 @@ export default {
     formatCurrency(val) {
       if (!val) return "0 ₫";
       return Number(val).toLocaleString("vi-VN") + " ₫";
+    },
+    getPublisherName(maNxb) {
+      const p = this.publishers.find(item => item.MaNXB === maNxb);
+      return p ? (p.TenNXB || p.TENNXB) : (maNxb || "—");
     },
     async quickAdjustStock(book, delta) {
       const newStock = (book.SoQuyen || 0) + delta;

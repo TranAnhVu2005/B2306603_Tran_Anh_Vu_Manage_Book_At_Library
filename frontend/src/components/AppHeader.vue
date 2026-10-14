@@ -15,12 +15,6 @@
             <i class="fas fa-university me-2.5 text-success-emphasis"></i>Library Book Management System
           </span>
         </div>
-        <!-- Thời gian hoạt động -->
-        <div class="d-none d-md-flex align-items-center banner-text-shadow fw-light text-nowrap" style="font-size: 0.88rem; opacity: 0.95;">
-          <span>
-            <i class="far fa-clock me-1.5 text-success-light"></i>Thư viện mở cửa: 07:00 - 22:00 (Trực tuyến 24/7)
-          </span>
-        </div>
       </div>
     </div>
 
@@ -83,7 +77,7 @@
             @click="toggleManagerMenu"
             aria-expanded="isManagerMenuOpen"
           >
-            <i class="fas fa-book-reader me-1.5 text-muted"></i> Nghiệp vụ Thủ thư
+            <i class="fas fa-book-reader me-1.5 text-muted"></i> Nghiệp vụ thủ thư
           </button>
           <div
             class="dropdown-menu shadow-lg border-0 mt-2 rounded-3 p-2 animate-fade"
@@ -126,7 +120,7 @@
             @click="toggleAdminMenu"
             aria-expanded="isAdminMenuOpen"
           >
-            <i class="fas fa-shield-alt me-1.5"></i> Quản trị Hệ thống
+            <i class="fas fa-shield-alt me-1.5"></i> Quản trị người dùng
           </button>
           <div
             class="dropdown-menu shadow-lg border-0 mt-2 rounded-3 p-2 animate-fade"
@@ -234,7 +228,7 @@
         <template v-else>
           <router-link
             to="/login"
-            class="mr-lg-2 btn btn-outline-secondary text-decoration-none py-1.5 px-3 rounded-pill d-inline-flex align-items-center"
+            class="me-lg-2 btn btn-outline-secondary text-decoration-none py-1.5 px-3 rounded-pill d-inline-flex align-items-center"
           >
             <i class="fas fa-sign-in-alt me-1.5"></i> Đăng nhập
           </router-link>
@@ -500,4 +494,5 @@ export default {
   background-color: #f8fafc;
   color: #0f172a;
 }
+
 </style>

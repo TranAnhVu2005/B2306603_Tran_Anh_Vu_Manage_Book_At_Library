@@ -39,12 +39,23 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Bootstrap 4 Overrides to keep Athenaeum Palette */
+/* Bootstrap 4/5 Overrides to keep Athenaeum Palette */
 .form-control:focus,
+.form-select:focus,
 .ath-input:focus {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 0.2rem rgba(20, 53, 41, 0.15) !important;
   outline: 0 !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.form-check-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(20, 53, 41, 0.15) !important;
 }
 
 .custom-control-input:checked ~ .custom-control-label::before {

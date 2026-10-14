@@ -1,7 +1,9 @@
 # 01. TỔNG QUAN ĐỀ TÀI & PHẠM VI NGHIÊN CỨU
 
-**Đề tài**: Xây dựng Hệ Thống Quản Lý Mượn Sách Thư Viện (Library Management System)  
+**Đề tài**: Xây dựng Website Quản Lý Mượn Sách Ở Thư Viện (Library Management System)  
 **Học phần**: CT449 - Phát Triển Ứng Dụng Web  
+**Sinh viên thực hiện**: Trần Anh Vũ (MSSV: B2306603)  
+**Giảng viên hướng dẫn**: Ths. Nguyễn Minh Trung  
 **Đơn vị**: Khoa Công nghệ Thông tin & Truyền thông - Đại học Cần Thơ  
 
 ---
@@ -9,44 +11,47 @@
 ## 1. Đặt Vấn Đề & Mục Tiêu
 
 Hệ thống được thiết kế theo tiêu chuẩn thực tế của một thư viện hiện đại:
-- Đảm bảo tính toàn vẹn dữ liệu và kiểm soát kho sách chính xác.
-- Quy trình mượn - trả sách chặt chẽ với cơ chế duyệt đơn, giới hạn mượn và chế tài vi phạm (Blacklist).
-- Phân quyền 3 cấp độ rõ ràng: **Độc giả (User)**, **Thủ thư/Quản lý (Staff/Manager)**, và **Quản trị viên hệ thống (Super Admin)**.
+- **Số hóa toàn diện**: Thay thế sổ sách thủ công bằng nền tảng ứng dụng web tập trung với ngăn xếp công nghệ MEVN Stack (MongoDB, Express.js 5, Vue.js 3, Node.js).
+- **Kiểm soát kho tồn theo thời gian thực**: Trừ kho tức thì khi duyệt mượn sách, cộng hoàn kho khi độc giả hoàn trả đúng hạn.
+- **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; kích hoạt chế tài đưa vào Danh sách đen (`Blacklist`) khi vi phạm đạt 3 lần.
+- **Bảo mật và an toàn dữ liệu**: Mật khẩu độc giả và nhân viên được mã hóa an toàn bằng thuật toán Bcrypt.
+- **Khả năng mở rộng**: Tích hợp module thanh toán trực tuyến tiền bồi hoàn sách mất qua MoMo và đăng nhập nhanh bằng tài khoản Google OAuth 2.0.
+- **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (MANAGER)**, và **Quản trị viên hệ thống (ADMIN)**.
 
 ---
 
 ## 2. Phân Quyền & Các Tác Nhân Hệ Thống (RBAC)
 
-### 2.1. Độc giả (Reader / User)
-- **Tài khoản**: Đăng ký thẻ thư viện trực tuyến (`MaDocGia`, `Password`).
+### 2.1. Độc giả (Reader / USER)
+- **Tài khoản**: Đăng ký thẻ thư viện trực tuyến hoặc đăng nhập bằng tài khoản Google. Mật khẩu được mã hóa an toàn.
 - **Quyền hạn**:
-  - Tìm kiếm, lọc và xem thông tin chi tiết từng đầu sách.
-  - Đăng ký mượn sách trực tuyến (tối đa **3 quyển** đang mượn cùng lúc).
-  - Xem lịch sử mượn trả cá nhân và trạng thái các đơn đăng ký (Chờ duyệt, Đang mượn, Đã trả, Báo mất).
-  - Xem trạng thái thẻ thư viện (Bình thường / Bị khóa / Danh sách đen).
+  - Tìm kiếm, lọc và xem thông tin chi tiết từng đầu sách, nhà xuất bản.
+  - Đăng ký mượn sách trực tuyến (giới hạn tối đa **3 quyển** đang lưu thông).
+  - Xem lịch sử mượn trả cá nhân và trạng thái các đơn đăng ký (`ChoDuyet`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`).
+  - Xem trạng thái thẻ thư viện và thanh toán tiền phạt / bồi thường bồi hoàn.
 
-### 2.2. Nhân viên Quản lý / Thủ thư (Staff / Librarian)
-- **Tài khoản**: Được cấp tài khoản nhân viên (`MSNV`, `ChucVu`).
+### 2.2. Nhân viên Quản lý / Thủ thư (Staff / MANAGER)
+- **Tài khoản**: Được cấp tài khoản nhân viên thư viện (`MSNV`, `ChucVu`).
 - **Quyền hạn**:
-  - Quản lý danh mục Sách (Thêm, Sửa, Xóa sách; kiểm kê số lượng tồn kho `SoQuyen`).
+  - Quản lý kho sách (Thêm, Sửa, Xóa sách; kiểm kê số lượng tồn kho `SoQuyen`).
   - Quản lý danh mục Nhà xuất bản (Thêm, Sửa, Xóa NXB).
   - Quản lý quy trình Mượn - Trả:
-    - **Duyệt phiếu mượn** (Chuyển từ `ChoDuyet` -> `DangMuon`, trừ kho).
-    - **Xác nhận trả sách** (Chuyển sang `DaTra`, cộng trả lại kho).
-    - **Xử lý sự cố mất sách**: Đánh dấu `MatSach`, ghi nhận đền bù hoặc phạt vi phạm, không cộng trả lại kho.
-    - **Quản lý Danh sách đen (Blacklist)**: Kiểm tra độc giả vi phạm quá hạn nhiều lần hoặc làm mất sách để khóa quyền mượn.
+    - **Duyệt phiếu mượn**: Chuyển `ChoDuyet` -> `DangMuon`, trừ kho 1 cuốn, gán hạn trả 14 ngày, ghi nhận `MSNV`.
+    - **Xác nhận trả sách**: Chuyển sang `DaTra`, hoàn lại kho 1 cuốn, tự động phát hiện trễ hạn.
+    - **Xử lý mất sách**: Chuyển sang `MatSach`, tự động tính tiền bồi thường `GiaTriBoiThuong = Sach.DonGia`, không hoàn kho, tăng số lần vi phạm độc giả.
 
-### 2.3. Quản trị viên Tối cao (Super Admin)
-- Có toàn bộ quyền hạn của Thủ thư.
-- **Quyền đặc quyền**:
-  - Quản lý toàn bộ danh sách tài khoản (Người dùng & Nhân viên).
-  - Phân quyền: **Nâng cấp** người dùng thông thường lên làm Quản lý (Thủ thư) hoặc **Hạ cấp** quản lý về người dùng thông thường.
-  - Mở khóa hoặc xóa vĩnh viễn tài khoản trong Danh sách đen.
+### 2.3. Quản trị viên Tối cao (Super Admin / ADMIN)
+- Kế thừa toàn bộ quyền hạn nghiệp vụ của Thủ thư.
+- **Đặc quyền phân quyền & nhân sự**:
+  - Quản lý toàn bộ danh sách tài khoản người dùng và nhân viên trong hệ thống.
+  - **Thăng cấp** Độc giả thông thường (`USER`) lên làm Thủ thư (`MANAGER`) hoặc **Hạ cấp** Thủ thư về lại Độc giả.
+  - Quản lý danh sách đen: **Mở khóa thẻ** cho độc giả vi phạm (reset số lần vi phạm về 0 và khôi phục trạng thái `HoatDong`).
+  - Quyền xóa vĩnh viễn các tài khoản vi phạm nghiêm trọng khỏi CSDL.
 
 ---
 
 ## 3. Kiến Trúc Kỹ Thuật (MEVN Stack)
 
-- **Backend**: Node.js, Express.js (v5), MongoDB Native Driver.
-- **Frontend**: Vue 3, Vite, Vue Router 4, Axios, Bootstrap 4 + FontAwesome.
-- **Thẩm mỹ UI**: Tuân thủ triệt để [SKILL.md](file:///d:/All/Information%20Technology%20%20-%20CTU/CurrentSemester/CT449%20-%20Web%20Application%20Development/Lab/baocao/manage_book_at_library/docs/SKILL.md) (Double-Bezel architecture, Soft Structuralism, Micro-motions).
+- **Backend**: Node.js v22+, Express.js (v5), MongoDB Native Driver v6+, BcryptJS, Dotenv.
+- **Frontend**: Vue 3, Vite, Vue Router 4, Axios, Bootstrap 4.6.2, FontAwesome 6 Free.
+- **Thẩm mỹ UI**: Phong cách thiết kế học thuật cổ điển **Athenaeum Editorial** (Newsreader, Work Sans, JetBrains Mono, Soft Structuralism, Micro-motions).

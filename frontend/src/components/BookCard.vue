@@ -9,21 +9,21 @@
         style="border-color: var(--paper-border) !important; font-size: 0.75rem"
       >
         <span v-if="book.SoQuyen > 2" class="ath-badge ath-badge-available">
-          <i class="fas fa-check-circle mr-1"></i> Sẵn sàng ({{ book.SoQuyen }})
+          <i class="fas fa-check-circle me-1"></i> Sẵn sàng ({{ book.SoQuyen }})
         </span>
         <span v-else-if="book.SoQuyen > 0" class="ath-badge ath-badge-scarce">
-          <i class="fas fa-exclamation-circle mr-1"></i> Còn
+          <i class="fas fa-exclamation-circle me-1"></i> Còn
           {{ book.SoQuyen }} cuốn
         </span>
         <span v-else class="ath-badge ath-badge-out">
-          <i class="fas fa-ban mr-1"></i> Tạm hết kho
+          <i class="fas fa-ban me-1"></i> Tạm hết kho
         </span>
       </div>
 
       <!-- Book Image & Main Info -->
-      <div class="row no-gutters mb-3">
+      <div class="row g-0 mb-3">
         <!-- Cover Image with Fallback Pattern -->
-        <div class="col-4 pr-3">
+        <div class="col-4 pe-3">
           <div
             class="position-relative overflow-hidden ath-book-spine"
             style="
@@ -53,7 +53,7 @@
                 style="font-size: 1.6rem; color: var(--primary); opacity: 0.85"
               ></i>
               <span
-                class="font-mono-code font-weight-bold"
+                class="font-mono-code fw-bold"
                 style="font-size: 0.65rem; letter-spacing: 0.05em"
                 >{{ book.MaSach }}</span
               >
@@ -69,7 +69,7 @@
               class="text-decoration-none"
             >
               <h6
-                class="font-serif-headline font-weight-bold mb-1 line-clamp-2 text-dark"
+                class="font-serif-headline fw-bold mb-1 line-clamp-2 text-dark"
                 :title="book.TenSach"
                 style="font-size: 1.025rem; line-height: 1.35"
               >
@@ -77,7 +77,7 @@
               </h6>
             </router-link>
             <p
-              class="font-italic text-muted small mb-2 text-truncate"
+              class="fst-italic text-muted small mb-2 text-truncate"
               :title="book.TacGia"
               style="font-family: var(--font-serif); max-width: 180px"
             >
@@ -95,7 +95,7 @@
           >
             <div class="d-flex justify-content-between mb-1">
               <span class="text-muted">NXB:</span>
-              <strong class="text-truncate ml-1" style="max-width: 100px">{{
+              <strong class="text-truncate ms-1" style="max-width: 100px">{{
                 book.MaNXB
               }}</strong>
             </div>
@@ -147,7 +147,7 @@
           class="ath-btn-primary py-1 px-3"
           @click="$emit('borrow', book)"
         >
-          <i class="fas fa-bookmark mr-1"></i> Mượn
+          <i class="fas fa-bookmark me-1"></i> Mượn
         </button>
         <button
           v-else
@@ -155,7 +155,7 @@
           disabled
           style="opacity: 0.55; cursor: not-allowed"
         >
-          <i class="fas fa-ban mr-1"></i> Hết
+          <i class="fas fa-ban me-1"></i> Hết
         </button>
       </div>
     </div>

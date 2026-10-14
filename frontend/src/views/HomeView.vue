@@ -11,17 +11,17 @@
             class="d-flex align-items-center mb-2 font-mono-code text-uppercase small"
             style="color: var(--primary); letter-spacing: 0.05em"
           >
-            <i class="fas fa-feather-alt mr-2"></i>
+            <i class="fas fa-feather-alt me-2"></i>
             <span>Tìm và mượn tài liệu chỉ qua vài click chuột</span>
           </div>
           <h1
-            class="font-serif-headline font-weight-bold mb-2 text-dark"
+            class="font-serif-headline fw-bold mb-2 text-dark"
             style="font-size: 2.4rem; letter-spacing: -0.01em"
           >
             NGUỒN HỌC LIỆU PHONG PHÚ BẬC NHẤT VÙNG ĐỒNG BẰNG SÔNG CỬU LONG
           </h1>
           <p
-            class="font-italic text-muted mb-0 lead"
+            class="fst-italic text-muted mb-0 lead"
             style="
               font-family: var(--font-serif);
               font-size: 1.15rem;
@@ -33,9 +33,9 @@
             mượn sách nhanh chóng.
           </p>
         </div>
-        <div class="col-lg-4 text-lg-right mt-3 mt-lg-0">
+        <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
           <div
-            class="p-3 border rounded d-inline-block text-left"
+            class="p-3 border rounded d-inline-block text-start"
             style="
               background-color: #fff;
               border-color: var(--paper-border) !important;
@@ -44,7 +44,7 @@
           >
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span
-                class="small text-muted font-weight-bold text-uppercase"
+                class="small text-muted fw-bold text-uppercase"
                 style="font-size: 0.7rem"
                 >Tổng số đầu sách:</span
               >
@@ -56,7 +56,7 @@
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span
-                class="small text-muted font-weight-bold text-uppercase"
+                class="small text-muted fw-bold text-uppercase"
                 style="font-size: 0.7rem"
                 >Sẵn sàng mượn:</span
               >
@@ -66,11 +66,11 @@
             </div>
             <div class="d-flex justify-content-between align-items-center">
               <span
-                class="small text-muted font-weight-bold text-uppercase"
+                class="small text-muted fw-bold text-uppercase"
                 style="font-size: 0.7rem"
                 >Hạn mức cá nhân:</span
               >
-              <span class="badge badge-light border font-mono-code"
+              <span class="badge bg-light text-dark border font-mono-code"
                 >03 cuốn</span
               >
             </div>
@@ -84,30 +84,27 @@
           <!-- Keyword Search -->
           <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
             <div class="input-group">
-              <div class="input-group-prepend">
-                <span
-                  class="input-group-text bg-white border-right-0"
-                  style="border-color: var(--paper-border)"
-                >
-                  <i class="fas fa-search text-muted"></i>
-                </span>
-              </div>
+              <span
+                class="input-group-text bg-white border-end-0"
+                style="border-color: var(--paper-border)"
+              >
+                <i class="fas fa-search text-muted"></i>
+              </span>
               <input
                 type="text"
-                class="form-control border-left-0 ath-input"
+                class="form-control border-start-0 ath-input"
                 v-model="searchKeyword"
                 placeholder="Tìm theo tên sách, tác giả hoặc mã sách..."
               />
-              <div class="input-group-append" v-if="searchKeyword">
-                <button
-                  class="btn btn-outline-secondary"
-                  type="button"
-                  @click="clearSearch"
-                  style="border-color: var(--paper-border)"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
+              <button
+                v-if="searchKeyword"
+                class="btn btn-outline-secondary"
+                type="button"
+                @click="clearSearch"
+                style="border-color: var(--paper-border)"
+              >
+                <i class="fas fa-times"></i>
+              </button>
             </div>
           </div>
 
@@ -133,16 +130,16 @@
           <div
             class="col-lg-3 col-md-6 d-flex align-items-center justify-content-lg-end"
           >
-            <div class="custom-control custom-checkbox select-none">
+            <div class="form-check select-none">
               <input
                 type="checkbox"
-                class="custom-control-input"
+                class="form-check-input"
                 id="availCheck"
                 v-model="availableOnly"
                 @change="fetchBooks"
               />
               <label
-                class="custom-control-label small font-weight-bold text-dark cursor-pointer"
+                class="form-check-label small fw-bold text-dark cursor-pointer"
                 for="availCheck"
               >
                 Chỉ hiện sách còn kho
@@ -158,18 +155,18 @@
           style="border-color: var(--paper-border) !important"
         >
           <div class="text-muted">
-            <i class="fas fa-filter mr-1 text-secondary"></i> Đang lọc:
+            <i class="fas fa-filter me-1 text-secondary"></i> Đang lọc:
             <span
               v-if="searchKeyword"
-              class="badge badge-light border mr-1 font-mono-code"
+              class="badge bg-light text-dark border me-1 font-mono-code"
               >"{{ searchKeyword }}"</span
             >
             <span
               v-if="selectedPublisher !== 'all'"
-              class="badge badge-light border mr-1"
+              class="badge bg-light text-dark border me-1"
               >{{ selectedPublisher }}</span
             >
-            <span v-if="availableOnly" class="badge badge-success mr-1"
+            <span v-if="availableOnly" class="badge bg-success me-1"
               >Còn kho</span
             >
             <span
@@ -178,10 +175,10 @@
             >
           </div>
           <button
-            class="btn btn-sm btn-link text-danger p-0 font-weight-bold"
+            class="btn btn-sm btn-link text-danger p-0 fw-bold"
             @click="resetFilters"
           >
-            <i class="fas fa-redo-alt mr-1"></i> Xóa bộ lọc
+            <i class="fas fa-redo-alt me-1"></i> Xóa bộ lọc
           </button>
         </div>
       </div>
@@ -191,7 +188,7 @@
     <section>
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h5 class="font-serif-headline font-weight-bold mb-0 text-dark">
+          <h5 class="font-serif-headline fw-bold mb-0 text-dark">
             Danh Mục Sách
           </h5>
           <small class="text-muted"
@@ -200,7 +197,7 @@
           >
         </div>
         <button class="ath-btn-outline" @click="fetchBooks">
-          <i class="fas fa-sync-alt mr-1"></i> Làm mới
+          <i class="fas fa-sync-alt me-1"></i> Làm mới
         </button>
       </div>
 
@@ -216,14 +213,14 @@
         class="ath-card text-center py-5 px-3"
       >
         <i class="fas fa-book-open text-muted mb-3" style="font-size: 3rem"></i>
-        <h6 class="font-serif-headline font-weight-bold">
+        <h6 class="font-serif-headline fw-bold">
           Không tìm thấy cuốn sách nào
         </h6>
         <p class="text-muted small mb-3">
           Vui lòng thử tìm kiếm bằng từ khóa khác hoặc bỏ chọn bộ lọc.
         </p>
         <button class="ath-btn-primary" @click="resetFilters">
-          <i class="fas fa-redo mr-1"></i> Đặt lại bộ lọc
+          <i class="fas fa-redo me-1"></i> Đặt lại bộ lọc
         </button>
       </div>
 

@@ -17,6 +17,14 @@ class AuthService {
         return (await this.api.post("/register", data)).data;
     }
 
+    async loginWithGoogle(idToken = "google_auth_token_default") {
+        const response = await this.api.post("/google", { idToken });
+        if (response.data && response.data.data) {
+            localStorage.setItem("user", JSON.stringify(response.data.data));
+        }
+        return response.data;
+    }
+
     logout() {
         localStorage.removeItem("user");
     }
