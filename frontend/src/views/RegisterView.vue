@@ -254,7 +254,7 @@ export default {
   width: 100%;
 
   /* Đồng bộ hiệu ứng gradient trong suốt, sang trọng với trang đăng nhập */
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(20, 83, 45, 0.45)), url('@/assets/background_1.jpg');
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(20, 83, 45, 0.45)), url('@/assets/background_login.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

@@ -292,7 +292,7 @@ export default {
   width: 100%;
   
   /* Tạo lớp phủ gradient mượt mà, trong suốt hơn để thấy rõ ảnh nền kệ sách */
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(20, 83, 45, 0.45)), url('@/assets/background_1.jpg');
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(20, 83, 45, 0.45)), url('@/assets/background_login.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
