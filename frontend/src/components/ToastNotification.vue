@@ -1,12 +1,33 @@
 <template>
-  <div v-if="visible" class="ath-toast-wrapper">
-    <div class="ath-toast d-flex align-items-center shadow-lg" :class="type === 'error' ? 'ath-toast-error' : 'ath-toast-success'">
-      <i v-if="type === 'error'" class="fas fa-exclamation-circle me-2" style="font-size: 1.1rem;"></i>
-      <i v-else class="fas fa-check-circle me-2" style="font-size: 1.1rem;"></i>
-      <span class="small fw-medium">{{ message }}</span>
-      <button type="button" class="btn-close btn-close-white ms-3" aria-label="Close" @click="visible = false"></button>
-    </div>
-  </div>
+  <Teleport to="body">
+    <Transition name="toast">
+      <div v-if="visible" class="toast-wrapper" role="alert" aria-live="assertive">
+        <div class="toast-shell">
+          <div class="toast-core" :class="type === 'error' ? 'is-error' : 'is-success'">
+            <!-- Icon -->
+            <span class="toast-icon" aria-hidden="true">
+              <svg v-if="type === 'error'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+              </svg>
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>
+              </svg>
+            </span>
+
+            <!-- Message -->
+            <span class="toast-message">{{ message }}</span>
+
+            <!-- Close -->
+            <button class="toast-close" type="button" @click="visible = false" aria-label="Đóng thông báo">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script>
@@ -25,51 +46,98 @@ export default {
       this.message = message;
       this.type = type;
       this.visible = true;
-
       if (this.timeoutId) clearTimeout(this.timeoutId);
-      this.timeoutId = setTimeout(() => {
-        this.visible = false;
-      }, duration);
+      this.timeoutId = setTimeout(() => { this.visible = false; }, duration);
     }
   }
 };
 </script>
 
 <style scoped>
-.ath-toast-wrapper {
+.toast-wrapper {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 1.75rem;
+  right: 1.75rem;
   z-index: 2000;
-  animation: athToastFadeIn 0.25s ease-out;
+  pointer-events: none;
 }
 
-.ath-toast {
-  padding: 0.75rem 1.25rem;
-  border-radius: 4px;
-  color: #ffffff;
-  min-width: 280px;
-  max-width: 420px;
+/* Double-Bezel Toast */
+.toast-shell {
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--tray, rgba(28,25,23,0.04));
+  box-shadow: inset 0 0 0 1px var(--hair, rgba(28,25,23,0.08));
+  pointer-events: auto;
 }
 
-.ath-toast-success {
-  background-color: var(--primary);
-  border: 1px solid var(--primary-dark);
+.toast-core {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.65rem 0.65rem 1rem;
+  border-radius: calc(999px - 4px);
+  min-width: 260px;
+  max-width: 400px;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), 0 12px 24px -8px rgba(0,0,0,0.3);
+}
+.toast-core.is-success {
+  background: var(--primary, #143529);
+  color: #FBF9F2;
+}
+.toast-core.is-error {
+  background: var(--accent, #8C3D28);
+  color: #FBF9F2;
 }
 
-.ath-toast-error {
-  background-color: var(--accent);
-  border: 1px solid #722e1c;
+.toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.14);
+  flex-shrink: 0;
 }
 
-@keyframes athToastFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.toast-message {
+  flex: 1;
+  font-size: 0.84rem;
+  font-weight: 500;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  line-height: 1.4;
+}
+
+.toast-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.25s;
+}
+.toast-close:hover { background: rgba(255,255,255,0.24); }
+
+/* Transition */
+.toast-enter-active {
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+}
+.toast-leave-active {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 1, 1), opacity 0.35s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(16px) scale(0.94);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
 }
 </style>
