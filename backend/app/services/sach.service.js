@@ -1,5 +1,18 @@
 const { ObjectId } = require("mongodb");
 
+const publicFields = {
+    _id: 1,
+    MaSach: 1,
+    TenSach: 1,
+    DonGia: 1,
+    SoQuyen: 1,
+    NamXuatBan: 1,
+    MaNXB: 1,
+    TacGia: 1,
+    HinhAnh: 1,
+    MoTa: 1,
+};
+
 /**
  * =========================================================================================
  * SERVICE QUẢN LÝ KHO SÁCH (SACH SERVICE)
@@ -135,7 +148,7 @@ class SachService {
             query.$or = [{ TenSach: regex }, { TacGia: regex }, { MaSach: regex }];
         }
 
-        const cursor = await this.Sach.find(query).sort({ CreatedAt: -1, _id: -1 });
+        const cursor = await this.Sach.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
         return await cursor.toArray();
     }
 
@@ -149,7 +162,7 @@ class SachService {
         } else {
             query = { MaSach: id };
         }
-        return await this.Sach.findOne(query);
+        return await this.Sach.findOne(query, { projection: publicFields });
     }
 
     /**
@@ -187,7 +200,7 @@ class SachService {
             { $set: data },
             { returnDocument: "after" }
         );
-        return result;
+        return result ? this.findById(id) : null;
     }
 
     /**

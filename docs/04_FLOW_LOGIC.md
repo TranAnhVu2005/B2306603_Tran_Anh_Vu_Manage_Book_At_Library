@@ -76,6 +76,6 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 3. **Quản trị viên tối cao (`ADMIN`)**:
    - Kế thừa toàn bộ quyền hạn nghiệp vụ của Thủ thư.
    - Quản lý danh sách toàn bộ tài khoản người dùng và nhân viên.
-   - Đặc quyền phân quyền: Thăng cấp Độc giả lên Thủ thư (`Role: MANAGER`) hoặc hạ cấp Thủ thư về lại Độc giả (`Role: USER`).
+   - Đặc quyền phân quyền: Thăng cấp Độc giả lên Thủ thư (`VaiTro: MANAGER`) hoặc hạ cấp Thủ thư về lại Độc giả (`VaiTro: USER`).
    - Mở khóa Blacklist: Xóa lịch sử vi phạm (`SoLanViPham = 0`) và khôi phục trạng thái hoạt động (`TrangThaiThe = "HoatDong"`).
    - Quyền xóa tài khoản vi phạm vĩnh viễn khỏi CSDL.

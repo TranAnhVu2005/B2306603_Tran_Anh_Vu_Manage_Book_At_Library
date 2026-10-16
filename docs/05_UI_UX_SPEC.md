@@ -4,6 +4,8 @@ Dự án áp dụng **Skill thiết kế Vanguard UI/UX Architect (Awwwards-Tier
 
 > **Lưu ý quan trọng:** Header (`AppHeader.vue`), Footer (`AppFooter.vue`), trang đăng nhập (`LoginView.vue`) và đăng ký (`RegisterView.vue`) đã được người dùng tùy chỉnh riêng và **KHÔNG được phép thay đổi thiết kế**. Agent chỉ áp dụng skill thiết kế mới cho tất cả các màn hình/component còn lại chưa hoàn thiện.
 
+Frontend sử dụng đúng tên trường CDM từ API (`VaiTro`, `ChucVu`, `TENNXB`, `GiaTriBoiThuong`, ...). Các phiếu mượn chỉ chứa `MaDocGia` và `MaSach`; màn hình cần tên hoặc thông tin tham chiếu phải tra cứu collection độc giả/sách ở phía frontend, không kỳ vọng API trả object lồng ghép.
+
 ---
 
 ## 1. Quy Chuẩn Thiết Kế Áp Dụng (Design System)

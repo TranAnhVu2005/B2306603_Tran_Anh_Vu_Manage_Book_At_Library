@@ -100,8 +100,7 @@ class MoMoPaymentService {
             payUrl: `https://test-payment.momo.vn/v2/gateway/pay?orderId=${orderId}&amount=${amount}&demo=true`,
             deeplink: `momo://app?action=payWithApp&orderId=${orderId}&amount=${amount}`,
             qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=momo_demo_${orderId}`,
-            mockMode: true,
-            rawRequestBody: requestBody
+            mockMode: true
         };
     }
 

@@ -84,7 +84,7 @@
                 <select class="search-select" v-model="selectedPublisher" @change="fetchBooks">
                   <option value="all">Tất cả NXB</option>
                   <option v-for="nxb in publishers" :key="nxb.MaNXB" :value="nxb.MaNXB">
-                    {{ nxb.TenNXB || nxb.TENNXB }}
+                    {{ nxb.TENNXB }}
                   </option>
                 </select>
               </div>
@@ -175,7 +175,7 @@
             :class="`reveal-d${Math.min(idx % 6 + 1, 4)}`"
             data-reveal
           >
-            <BookCard :book="book" @borrow="openBorrowModal" />
+            <BookCard :book="book" :publisher-name="getPublisherName(book.MaNXB)" @borrow="openBorrowModal" />
           </div>
         </div>
       </div>
@@ -250,7 +250,11 @@ export default {
     if (this.revealObserver) this.revealObserver.disconnect();
   },
   methods: {
+    getPublisherName(maNxb) {
+      return this.publishers.find((publisher) => publisher.MaNXB === maNxb)?.TENNXB || "";
+    },
     initReveal() {
+      if (this.revealObserver) this.revealObserver.disconnect();
       this.revealObserver = new IntersectionObserver(
         (entries) => {
           entries.forEach((e) => {
@@ -301,13 +305,17 @@ export default {
         this.$router.push("/login?redirect=/");
         return;
       }
+      if (!authService.isReader()) {
+        this.$refs.toast.show("Chỉ độc giả mới có thể đăng ký mượn sách.", "error");
+        return;
+      }
       this.selectedBook = book;
       this.showBorrowModal = true;
     },
     async submitBorrowRequest(payload) {
       try {
         const result = await theoDoiService.dangKyMuon({
-          MaDocGia: payload.maDocGia,
+          MaDocGia: authService.getUser()?.MaDocGia,
           MaSach: payload.maSach,
           GhiChu: payload.ghiChu,
         });

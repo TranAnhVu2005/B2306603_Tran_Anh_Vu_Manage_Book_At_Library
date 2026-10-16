@@ -12,10 +12,10 @@ const commonConfig = {
  * Token được đọc từ localStorage mỗi lần gửi request (request interceptor).
  */
 export default (baseURL = "") => {
-    const targetApiUrl = "http://localhost:3000";
+    const targetApiUrl = import.meta.env.VITE_API_URL?.trim();
 
     const base = targetApiUrl
-        ? `${targetApiUrl.replace(/\/$/, "")}${baseURL}`
+        ? `${targetApiUrl.replace(/\/+$/, "")}/${baseURL.replace(/^\/+/, "")}`
         : baseURL;
 
     const instance = axios.create({

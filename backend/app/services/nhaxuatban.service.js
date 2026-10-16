@@ -1,5 +1,12 @@
 const { ObjectId } = require("mongodb");
 
+const publicFields = {
+    _id: 1,
+    MaNXB: 1,
+    TENNXB: 1,
+    DiaChi: 1,
+};
+
 /**
  * =========================================================================================
  * SERVICE QUẢN LÝ NHÀ XUẤT BẢN (NHAXUATBAN SERVICE)
@@ -10,7 +17,6 @@ const { ObjectId } = require("mongodb");
  *   + _id: ObjectId
  *   + MaNXB: String (Mã định danh nhà xuất bản, tự sinh NXB-0001)
  *   + TENNXB: String (Tên nhà xuất bản - CDM)
- *   + TenNXB: String (Alias tương thích giao diện Frontend)
  *   + DiaChi: String (Địa chỉ trụ sở nhà xuất bản)
  * =========================================================================================
  */
@@ -45,11 +51,10 @@ class NhaXuatBanService {
     extractData(payload) {
         const data = {};
         
-        // Hỗ trợ cả 2 chuẩn TENNXB (Báo cáo CDM) và TenNXB (Frontend)
+        // Chấp nhận tên trường cũ từ request nhưng chỉ lưu theo lược đồ báo cáo.
         const name = payload.TENNXB || payload.TenNXB;
         if (name !== undefined) {
             data.TENNXB = String(name).trim();
-            data.TenNXB = data.TENNXB; // Lưu cả hai trường để không bao giờ bị lệch dữ liệu
         }
 
         if (payload.DiaChi !== undefined) {
@@ -103,7 +108,7 @@ class NhaXuatBanService {
             query.MaNXB = filter.maNxb;
         }
 
-        const cursor = await this.NhaXuatBan.find(query).sort({ CreatedAt: -1, _id: -1 });
+        const cursor = await this.NhaXuatBan.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
         return await cursor.toArray();
     }
 
@@ -117,7 +122,7 @@ class NhaXuatBanService {
         } else {
             query = { MaNXB: id };
         }
-        return await this.NhaXuatBan.findOne(query);
+        return await this.NhaXuatBan.findOne(query, { projection: publicFields });
     }
 
     /**
@@ -140,7 +145,7 @@ class NhaXuatBanService {
             { $set: data },
             { returnDocument: "after" }
         );
-        return result;
+        return result ? this.findById(id) : null;
     }
 
     /**

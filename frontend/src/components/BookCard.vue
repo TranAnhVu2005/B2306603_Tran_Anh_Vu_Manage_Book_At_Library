@@ -42,11 +42,11 @@
 
           <p class="bk-author" :title="book.TacGia">{{ book.TacGia }}</p>
 
-          <p class="bk-publisher" v-if="book.TenNXB || book.MaNXB">
+          <p class="bk-publisher" v-if="publisherName || book.MaNXB">
             <svg class="bk-ico" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 20.5h16M6 20.5V9.5l6-4 6 4v11M10 20.5v-5h4v5" />
             </svg>
-            <span>{{ book.TenNXB || book.MaNXB }}</span>
+            <span>{{ publisherName || book.MaNXB }}</span>
           </p>
 
           <span class="bk-code">{{ book.MaSach }}</span>
@@ -105,6 +105,10 @@ export default {
     book: {
       type: Object,
       required: true,
+    },
+    publisherName: {
+      type: String,
+      default: "",
     },
   },
   emits: ["borrow"],

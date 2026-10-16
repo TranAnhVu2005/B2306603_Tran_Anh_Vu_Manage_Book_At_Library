@@ -1,52 +1,66 @@
 const { ObjectId } = require("mongodb");
 const PasswordUtil = require("../utils/password.util");
 
+const publicFields = {
+    _id: 1,
+    MaDocGia: 1,
+    HoLot: 1,
+    Ten: 1,
+    NgaySinh: 1,
+    Phai: 1,
+    DiaChi: 1,
+    DienThoai: 1,
+    VaiTro: 1,
+    SoLanViPham: 1,
+    TrangThaiThe: 1,
+};
+
 /**
  * =========================================================================================
- * SERVICE QUẢN LÝ ĐỘC GIẢ (DOCGIA SERVICE)
+ * SCHEMA MÔ TẢ DỮ LIỆU: ĐỘC GIẢ (DOCGIA COLLECTION)
  * =========================================================================================
- * - Collection: 'docgia'
- * - Cấu trúc trường:
- *   + _id: ObjectId
- *   + MaDocGia: String (Mã số định danh độc giả)
- *   + HoLot: String (Họ và tên đệm)
- *   + Ten: String (Tên độc giả)
- *   + NgaySinh: String / Date (Ngày tháng năm sinh)
- *   + Phai: Integer (Giới tính: 1: Nam, 0: Nữ, 2: Khác)
- *   + DiaChi: String (Địa chỉ cư trú)
- *   + DienThoai: String (Số điện thoại liên hệ - Duy nhất, dùng để đăng nhập)
- *   + MatKhau: String (Mật khẩu đã mã hóa an toàn bằng Bcrypt)
- *   + VaiTro: String (Vai trò người dùng: USER, MANAGER, ADMIN)
- *   + SoLanViPham: Number (Số lần vi phạm nội quy: trả trễ hạn, làm mất sách)
- *   + TrangThaiThe: String (Trạng thái thẻ: HoatDong, Khoa, DanhSachDen)
+ * | Thuộc tính     | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả                                       |
+ * | :--------------| :----------- | :--------: | :--------: | :------------------------------------------ |
+ * | `_id`          | ObjectId     |     x      |            | Định danh duy nhất tự sinh bởi MongoDB      |
+ * | `MaDocGia`     | String       |            |            | Mã số định danh độc giả                     |
+ * | `HoLot`        | String       |            |            | Họ và tên đệm của độc giả                   |
+ * | `Ten`          | String       |            |            | Tên của độc giả                             |
+ * | `NgaySinh`     | Date         |            |            | Ngày tháng năm sinh                         |
+ * | `Phai`         | Integer      |            |            | Giới tính (Nam / Nữ)                        |
+ * | `DiaChi`       | String       |            |            | Địa chỉ cư trú của độc giả                  |
+ * | `DienThoai`    | String       |            |            | Số điện thoại liên hệ (Dùng để đăng nhập)   |
+ * | `MatKhau`      | String       |            |            | Mật khẩu tài khoản (Đã mã hóa an toàn)      |
+ * | `VaiTro`       | String       |            |            | Vai trò người dùng (USER, MANAGER, ADMIN)   |
+ * | `SoLanViPham`  | Number       |            |            | Số lần vi phạm nội quy (trả trễ, mất sách)  |
+ * | `TrangThaiThe` | String       |            |            | Trạng thái thẻ (HoatDong, Khoa, DanhSachDen)|
  * =========================================================================================
  */
 class DocGiaService {
+
+    //Trong service này có cả bảng docgia và theodoimuonsach - Completed
     constructor(client) {
         this.DocGia = client.db().collection("docgia");
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
-    /**
-     * Tự động sinh mã độc giả theo định dạng chuẩn hóa: DG-000001, DG-000002,...
-     */
+    // Tự động tạo ra mã độc giả khi create, số thứ tự sẽ tăng lên - Completed
     async generateMaDocGia() {
         const last = await this.DocGia.find(
-            { MaDocGia: { $regex: /^DG-\d{6}$/ } },
-            { projection: { MaDocGia: 1 } }
-        ).sort({ MaDocGia: -1 }).limit(1).toArray();
+            { MaDocGia: { $regex: /^DG-\d{6}$/ } }, //Đúng mẫu
+            { projection: { MaDocGia: 1 } } //Chỉ 1 trường, tăng tốc truy vấn
+        ).sort({ MaDocGia: -1 }).limit(1).toArray(); //Sắp xếp ngược
 
-        let nextNum = 1;
+        let nextNum = 1; //Mặc định không có last thì là số 1
         if (last.length > 0) {
-            const lastNum = parseInt(last[0].MaDocGia.replace("DG-", ""), 10);
-            if (!isNaN(lastNum)) {
+            const lastNum = parseInt(last[0].MaDocGia.replace("DG-", ""), 10); //Bỏ DG-, chuyển về số
+            if (!isNaN(lastNum)) { //Bắt buộc là số
                 nextNum = lastNum + 1;
             }
         }
-        return `DG-${String(nextNum).padStart(6, "0")}`;
+        return `DG-${String(nextNum).padStart(6, "0")}`; //Thêm padding cho đủ theo mẫu
     }
 
-    // Chuẩn hóa giới tính: 1 - Nam, 0 - Nữ, 2 - Khác
+    // Chuẩn hóa giới tính: 1 - Nam, 0 - Nữ, 2 - Khác - Completed
     // Chuẩn hóa + xử lý thêm nếu 1 thằng nào đó dùng postman nhập giới tính = 99 lên thì nổ cơ sở dữ liệu à! :<<
     normalizePhai(val) {
         if (val === undefined || val === null) return 1; // Mặc định Nam
@@ -62,12 +76,9 @@ class DocGiaService {
         throw new Error("Giới tính không hợp lệ (chỉ chấp nhận Nam/Nữ/Khác.");
     }
 
-    /**
-     * Lọc và chuẩn hóa dữ liệu đầu vào theo đúng cấu trúc CDM Báo cáo
-     */
+    // Lọc và chuẩn hóa dữ liệu đầu vào - Completed
     async extractData(payload, isCreating = false) {
         const data = {};
-
         if (payload.HoLot !== undefined) data.HoLot = String(payload.HoLot).trim();
         if (payload.Ten !== undefined) data.Ten = String(payload.Ten).trim();
         if (payload.NgaySinh !== undefined) data.NgaySinh = String(payload.NgaySinh).trim();
@@ -92,20 +103,17 @@ class DocGiaService {
             if (data.TrangThaiThe === undefined) data.TrangThaiThe = "HoatDong";
             if (data.DiaChi === undefined) data.DiaChi = "";
         }
-
         return data;
     }
 
-    /**
-     * Đăng ký thẻ độc giả mới trực tuyến
-     */
+    // Đăng ký thẻ bạn đọc - Completed
     async create(payload) {
         const data = await this.extractData(payload, true);
         if (!data.HoLot || !data.Ten || !data.DienThoai || !data.MatKhau) {
             throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc: Họ lót, Tên, Số điện thoại và Mật khẩu.");
         }
 
-        // Kiểm tra định dạng số điện thoại
+        // Kiểm tra định dạng số điện thoại và không phải đăng nhập bằng google
         const phoneRegex = /^(0[3|5|7|8|9])([0-9]{8})$/;
         if (!phoneRegex.test(data.DienThoai) && !data.DienThoai.startsWith("GG_")) {
             throw new Error("Số điện thoại không đúng định dạng chuẩn và không phải đăng nhập bằng Google.");
@@ -125,6 +133,8 @@ class DocGiaService {
         data.UpdatedAt = new Date();
 
         const result = await this.DocGia.insertOne(data);
+
+        //Trả về dữ liệu vừa thêm mới
         return await this.findById(result.insertedId);
     }
 
@@ -141,19 +151,13 @@ class DocGiaService {
             query.TrangThaiThe = filter.trangThai;
         }
         if (filter.role && filter.role !== "all") {
-            query.Role = filter.role;
+            query.VaiTro = filter.role;
         }
 
-        const cursor = await this.DocGia.find(query).sort({ CreatedAt: -1, _id: -1 });
+        const cursor = await this.DocGia.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
         const list = await cursor.toArray();
 
-        // Ẩn mật khẩu khi trả kết quả danh sách
-        return list.map(user => {
-            const safe = { ...user };
-            delete safe.MatKhau;
-            delete safe.Password;
-            return safe;
-        });
+        return list;
     }
 
     /**
@@ -167,30 +171,22 @@ class DocGiaService {
             query = { $or: [{ MaDocGia: id }, { DienThoai: id }] };
         }
 
-        const user = await this.DocGia.findOne(query);
-        if (user) {
-            delete user.MatKhau;
-            delete user.Password;
-        }
-        return user;
+        return await this.DocGia.findOne(query, { projection: publicFields });
     }
 
-    /**
-     * Đăng nhập độc giả bằng Số điện thoại hoặc Mã độc giả kèm mật khẩu
-     */
+    //Đăng nhập của độc giả - Completed
     async login(identifier, password) {
-        const idStr = String(identifier || "").trim();
+        const accountIdentifier = String(identifier || "").trim();
         const user = await this.DocGia.findOne({
-            $or: [{ MaDocGia: idStr }, { DienThoai: idStr }]
+            $or: [{ DienThoai: accountIdentifier }, { MaDocGia: accountIdentifier }]
         });
 
-        if (!user) return null;
+        if (!user) return null; // Không thấy user :<<, trả về null thôi
 
         // Xác thực mật khẩu thông qua Bcrypt
-        const passwordHash = user.MatKhau || user.Password;
+        const passwordHash = user.MatKhau;
         const isValid = await PasswordUtil.compare(password, passwordHash);
         if (!isValid) return null;
-
         return user;
     }
 
@@ -200,7 +196,7 @@ class DocGiaService {
     async update(id, payload) {
         const data = await this.extractData(payload, false);
         delete data.MaDocGia; // Không cho phép đổi mã định danh
-        delete data.Role;     // Không cập nhật quyền qua hàm thông thường
+        delete data.VaiTro;   // Không cập nhật quyền qua hàm thông thường
 
         data.UpdatedAt = new Date();
 
@@ -216,12 +212,7 @@ class DocGiaService {
             { $set: data },
             { returnDocument: "after" }
         );
-
-        if (result) {
-            delete result.MatKhau;
-            delete result.Password;
-        }
-        return result;
+        return result ? this.findById(id) : null;
     }
 
     /**
@@ -241,15 +232,10 @@ class DocGiaService {
 
         const result = await this.DocGia.findOneAndUpdate(
             filter,
-            { $set: { Role: newRole, UpdatedAt: new Date() } },
+            { $set: { VaiTro: newRole, UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
-
-        if (result) {
-            delete result.MatKhau;
-            delete result.Password;
-        }
-        return result;
+        return result ? this.findById(id) : null;
     }
 
     /**
@@ -275,11 +261,7 @@ class DocGiaService {
             { returnDocument: "after" }
         );
 
-        if (result) {
-            delete result.MatKhau;
-            delete result.Password;
-        }
-        return result;
+        return result ? this.findById(id) : null;
     }
 
     /**

@@ -4,6 +4,13 @@
 * **Format**: JSON (`Content-Type: application/json`)
 * **Kiến trúc**: Phân lớp chuẩn mực (Routes -> Controllers -> Services -> MongoDB Native Driver).
 
+## Quy Ước Dữ Liệu Response
+
+- Dữ liệu của 5 collection chỉ trả các trường được định nghĩa trong sơ đồ CDM của báo cáo; không thêm alias, tên trường tự đặt hoặc metadata ngoài sơ đồ.
+- Không trả trường `MatKhau` trong response vì đây là dữ liệu xác thực nhạy cảm.
+- Các lớp bao giao thức như `message`, `data`, `token` và response do MoMo quy định không phải trường collection, nên giữ nguyên.
+- Response phiếu mượn chỉ gồm trường của collection `theodoimuonsach`, không nhúng thông tin sách, độc giả hoặc nhân viên.
+
 ---
 
 ## 1. Phân Hệ Xác Thực & Tài Khoản (`/api/auth`)
@@ -21,14 +28,19 @@
   ```json
   {
     "message": "Đăng nhập thành công với vai trò Độc giả.",
+    "token": "<JWT>",
     "data": {
       "_id": "670...",
-      "username": "DG-000001",
-      "fullName": "Trần Minh Triết",
-      "role": "USER",
-      "phone": "0912345678",
-      "trangThaiThe": "HoatDong",
-      "soLanViPham": 0
+      "MaDocGia": "DG-000001",
+      "HoLot": "Trần Minh",
+      "Ten": "Triết",
+      "NgaySinh": "2003-09-15",
+      "Phai": 1,
+      "DiaChi": "Ninh Kiều, Cần Thơ",
+      "DienThoai": "0912345678",
+      "VaiTro": "USER",
+      "TrangThaiThe": "HoatDong",
+      "SoLanViPham": 0
     }
   }
   ```
@@ -51,7 +63,10 @@
 ### 📌 `POST /api/auth/google` (Đăng nhập / Đăng ký nhanh qua tài khoản Google)
 * **Mô tả**: Tiếp nhận Google ID Token từ Client, xác thực thông qua `GoogleAuthService`, tự động liên kết hoặc tạo tài khoản mới.
 * **Request Body**: `{ "idToken": "google_jwt_token_here" }`
-* **Response (200 OK)**: Trả về thông tin phiên làm việc của độc giả.
+* **Response (200 OK)**: Trả về `{ "message": "...", "token": "...", "data": { ... } }`. `data` chỉ gồm các trường độc giả trong sơ đồ CDM, không bao gồm `MatKhau`.
+
+### 📌 `GET /api/auth/me` (Thông tin người dùng hiện tại)
+* **Response (200 OK)**: `{ "data": { ... } }`; dữ liệu `data` chỉ gồm các trường của collection tương ứng trong sơ đồ CDM. Hồ sơ nhân viên chỉ có `ChucVu`, không thêm trường `VaiTro`.
 
 ---
 
@@ -90,7 +105,7 @@
 ## 5. Quản Lý Mượn - Trả & Xử Lý Sự Cố (`/api/theodoimuonsach`)
 
 ### 📌 `GET /api/theodoimuonsach`
-* **Mô tả**: Lấy danh sách phiếu mượn (Lookup liên kết chi tiết `sachInfo`, `docGiaInfo`, `nhanVienInfo`).
+* **Mô tả**: Lấy danh sách phiếu mượn với các trường được định nghĩa trong collection `theodoimuonsach`; không trả object lồng ghép từ các collection khác.
 * **Query Params**: `?maDocGia=DG-000001&trangThai=DangMuon`
 
 ### 📌 `POST /api/theodoimuonsach` (Độc giả đăng ký mượn)
@@ -131,7 +146,7 @@
 
 ### 📌 `POST /api/payment/momo/create` (Khởi tạo phiên thanh toán bồi thường)
 * **Request Body**: `{ "borrowId": "670...", "amount": 85000, "orderInfo": "Bồi hoàn mất sách" }`
-* **Response (200 OK)**: Trả về `payUrl` để độc giả thanh toán qua ví MoMo.
+* **Response (200 OK)**: Trả về `data.payUrl` để độc giả thanh toán qua ví MoMo. Các tên trường trong dữ liệu tích hợp MoMo giữ theo giao thức của cổng thanh toán.
 
 ### 📌 `POST /api/payment/momo/ipn` (Webhook IPN MoMo Callback)
 * **Mô tả**: Máy chủ MoMo thông báo trạng thái thanh toán, hệ thống tự động xác thực chữ ký HMAC-SHA256 và cập nhật trạng thái đã thanh toán cho phiếu mượn.

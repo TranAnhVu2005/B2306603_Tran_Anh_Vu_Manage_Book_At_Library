@@ -67,7 +67,7 @@
             <tr v-for="nxb in filteredPublishers" :key="nxb._id">
               <td class="font-mono-code fw-bold text-dark">{{ nxb.MaNXB }}</td>
               <td>
-                <strong class="text-dark d-block" style="font-size: 0.95rem;">{{ nxb.TenNXB || nxb.TENNXB }}</strong>
+                <strong class="text-dark d-block" style="font-size: 0.95rem;">{{ nxb.TENNXB }}</strong>
               </td>
               <td class="text-muted small">{{ nxb.DiaChi || '—' }}</td>
               <td class="text-end">
@@ -113,7 +113,7 @@
           </div>
           <div class="mb-3">
             <label class="small fw-bold mb-1">Tên Nhà Xuất Bản:</label>
-            <input type="text" class="ath-input" v-model="form.TenNXB" placeholder="VD: NXB Kim Đồng" required />
+            <input type="text" class="ath-input" v-model="form.TENNXB" placeholder="VD: NXB Kim Đồng" required />
           </div>
           <div class="mb-4">
             <label class="small fw-bold mb-1">Địa Chỉ Trụ Sở:</label>
@@ -153,7 +153,7 @@ export default {
       isEditing: false,
       saving: false,
       form: {
-        TenNXB: "",
+        TENNXB: "",
         DiaChi: "",
       }
     };
@@ -164,7 +164,7 @@ export default {
       const q = this.search.toLowerCase();
       return this.publishers.filter(p => 
         p.MaNXB.toLowerCase().includes(q) ||
-        p.TenNXB.toLowerCase().includes(q) ||
+        p.TENNXB.toLowerCase().includes(q) ||
         (p.DiaChi && p.DiaChi.toLowerCase().includes(q))
       );
     }
@@ -206,7 +206,7 @@ export default {
     openCreateModal() {
       this.isEditing = false;
       this.form = {
-        TenNXB: "",
+        TENNXB: "",
         DiaChi: "",
       };
       this.showModal = true;
@@ -236,7 +236,7 @@ export default {
       }
     },
     async handleDelete(nxb) {
-      if (!confirm(`Xác nhận xóa NXB '${nxb.TenNXB}' (${nxb.MaNXB})?`)) return;
+      if (!confirm(`Xác nhận xóa NXB '${nxb.TENNXB}' (${nxb.MaNXB})?`)) return;
       try {
         await nxbService.delete(nxb._id || nxb.MaNXB);
         this.$refs.toast.show("Đã xóa Nhà xuất bản.");

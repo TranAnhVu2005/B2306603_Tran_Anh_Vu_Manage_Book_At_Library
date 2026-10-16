@@ -26,7 +26,7 @@ class PaymentController {
             }
 
             // Số tiền cần thanh toán lấy từ GiaTriBoiThuong hoặc param gửi lên
-            const paymentAmount = amount || borrow.GiaTriBoiThuong || borrow.TienPhat || 0;
+            const paymentAmount = amount || borrow.GiaTriBoiThuong || 0;
             if (paymentAmount <= 0) {
                 return next(new ApiError(400, "Phiếu mượn này hiện không có khoản bồi thường hoặc tiền phạt phát sinh."));
             }

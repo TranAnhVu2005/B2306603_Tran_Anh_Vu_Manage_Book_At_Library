@@ -56,7 +56,7 @@
 
         <!-- Sách đang mượn -->
         <router-link
-          v-if="user"
+          v-if="user && authService.isReader(user)"
           to="/profile"
           class="ath-nav-link text-nowrap d-inline-flex align-items-center"
           active-class="active fw-semibold text-primary bg-light"
@@ -158,9 +158,9 @@
               @click="toggleMenu"
             >
               <i class="fas fa-user-circle me-2 text-secondary fs-5"></i>
-              <span class="fw-bold text-truncate" style="max-width: 120px;">{{ user.fullName || user.username }}</span>
-              <span v-if="user.role === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1" style="font-size: 0.65rem;">ADMIN</span>
-              <span v-else-if="user.role === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1" style="font-size: 0.65rem;">THỦ THƯ</span>
+              <span class="fw-bold text-truncate" style="max-width: 120px;">{{ authService.getDisplayName(user) || authService.getIdentifier(user) }}</span>
+              <span v-if="authService.getRole(user) === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1" style="font-size: 0.65rem;">ADMIN</span>
+              <span v-else-if="authService.getRole(user) === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1" style="font-size: 0.65rem;">THỦ THƯ</span>
               <span v-else class="badge bg-light text-dark border ms-2 d-none d-sm-inline px-2 py-1" style="font-size: 0.65rem;">ĐỌC GIẢ</span>
             </button>
             <div
@@ -170,8 +170,8 @@
             >
               <div class="px-3 py-2.5 mb-1 rounded-2 bg-light border-0">
                 <small class="text-muted d-block" style="font-size: 0.68rem">Đang đăng nhập với tư cách:</small>
-                <strong class="d-block text-dark text-truncate">{{ user.fullName || user.username }}</strong>
-                <small class="font-monospace text-muted" style="font-size: 0.72rem;">{{ user.username }}</small>
+                <strong class="d-block text-dark text-truncate">{{ authService.getDisplayName(user) || authService.getIdentifier(user) }}</strong>
+                <small class="font-monospace text-muted" style="font-size: 0.72rem;">{{ authService.getIdentifier(user) }}</small>
               </div>
               <router-link
                 to="/profile"
@@ -277,7 +277,7 @@
         </router-link>
 
         <router-link
-          v-if="user"
+          v-if="user && authService.isReader(user)"
           to="/profile"
           class="nav-link text-dark py-2.5 px-3 rounded-2"
           @click="isMobileNavOpen = false"
@@ -344,6 +344,7 @@ export default {
   name: "AppHeader",
   data() {
     return {
+      authService,
       user: null,
       isMenuOpen: false,
       isManagerMenuOpen: false,
@@ -353,13 +354,10 @@ export default {
   },
   computed: {
     isStaffOrAdmin() {
-      return (
-        this.user &&
-        (this.user.role === "MANAGER" || this.user.role === "ADMIN")
-      );
+      return authService.isStaffOrAdmin(this.user);
     },
     isAdmin() {
-      return this.user && this.user.role === "ADMIN";
+      return authService.getRole(this.user) === "ADMIN";
     },
     isManagerActive() {
       return (

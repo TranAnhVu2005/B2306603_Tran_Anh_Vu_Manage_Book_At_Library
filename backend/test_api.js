@@ -5,6 +5,10 @@ const MongoDB = require("./app/utils/mongodb.util");
 
 let server = null;
 
+function hasOnlyFields(value, allowedFields) {
+    return value && Object.keys(value).every(field => allowedFields.includes(field));
+}
+
 function request(method, path, body = null) {
     return new Promise((resolve, reject) => {
         const dataString = body ? JSON.stringify(body) : null;
@@ -56,6 +60,9 @@ async function runTests() {
 
     let passed = 0;
     let failed = 0;
+    let temporaryReaderId = null;
+    let temporaryStaffId = null;
+    let temporaryStaffCode = null;
 
     async function assert(name, fn) {
         try {
@@ -68,17 +75,32 @@ async function runTests() {
         }
     }
 
-    // TC-AUTH-01: Đăng nhập Super Admin thành công
-    await assert("TC-AUTH-01: Đăng nhập Super Admin thành công", async () => {
-        const res = await request("POST", "/api/auth/login", { identifier: "NV-0001", password: "admin123" });
-        if (res.status !== 200 || res.data.data.role !== "ADMIN") {
-            throw new Error(`Kỳ vọng HTTP 200 & Role ADMIN, nhận status=${res.status}, role=${res.data?.data?.role}`);
+    // TC-AUTH-01: Đăng nhập nhân viên thành công
+    await assert("TC-AUTH-01: Đăng nhập nhân viên thành công", async () => {
+        const staff = await request("POST", "/api/nhanvien", {
+            HoTenNV: "Nhân viên kiểm thử",
+            ChucVu: "THUTHU",
+            MatKhau: "staff_test_password"
+        });
+        if (staff.status !== 201) {
+            throw new Error(`Không tạo được nhân viên kiểm thử, nhận status=${staff.status}`);
+        }
+        temporaryStaffId = staff.data.data.MSNV;
+        temporaryStaffCode = staff.data.data.MSNV;
+
+        const res = await request("POST", "/api/auth/login", { identifier: temporaryStaffCode, password: "staff_test_password" });
+        if (
+            res.status !== 200 ||
+            res.data.data.ChucVu !== "THUTHU" ||
+            !hasOnlyFields(res.data.data, ["_id", "MSNV", "HoTenNV", "ChucVu", "SoDienThoai", "DiaChi"])
+        ) {
+            throw new Error(`Kỳ vọng HTTP 200, chỉ trả trường ChucVu theo lược đồ nhân viên, nhận status=${res.status}`);
         }
     });
 
     // TC-AUTH-02: Đăng nhập sai mật khẩu bị chặn
     await assert("TC-AUTH-02: Đăng nhập sai mật khẩu (Báo lỗi 401)", async () => {
-        const res = await request("POST", "/api/auth/login", { identifier: "NV-0001", password: "wrong_password" });
+        const res = await request("POST", "/api/auth/login", { identifier: temporaryStaffCode, password: "wrong_password" });
         if (res.status !== 401) {
             throw new Error(`Kỳ vọng HTTP 401, nhận status=${res.status}`);
         }
@@ -86,17 +108,38 @@ async function runTests() {
 
     // TC-AUTH-03: Đăng nhập Độc giả bằng số điện thoại
     await assert("TC-AUTH-03: Độc giả đăng nhập bằng SĐT", async () => {
-        const res = await request("POST", "/api/auth/login", { identifier: "0912345678", password: "123456" });
-        if (res.status !== 200 || res.data.data.username !== "DG-000001") {
-            throw new Error(`Kỳ vọng HTTP 200 & MaDocGia DG-000001, nhận status=${res.status}`);
+        const reader = await request("POST", "/api/docgia", {
+            HoLot: "Kiểm thử",
+            Ten: "Đăng nhập",
+            NgaySinh: "2000-01-01",
+            Phai: 1,
+            DienThoai: `09${String(Date.now()).slice(-8)}`,
+            MatKhau: "reader_test_password"
+        });
+        if (reader.status !== 201) {
+            throw new Error(`Không tạo được độc giả kiểm thử, nhận status=${reader.status}`);
+        }
+        temporaryReaderId = reader.data.data.MaDocGia;
+
+        const res = await request("POST", "/api/auth/login", {
+            identifier: reader.data.data.DienThoai,
+            password: "reader_test_password"
+        });
+        if (
+            res.status !== 200 ||
+            res.data.data.MaDocGia !== temporaryReaderId ||
+            res.data.data.VaiTro !== "USER" ||
+            !hasOnlyFields(res.data.data, ["_id", "MaDocGia", "HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "VaiTro", "SoLanViPham", "TrangThaiThe"])
+        ) {
+            throw new Error(`Kỳ vọng HTTP 200, MaDocGia và VaiTro USER, nhận status=${res.status}`);
         }
     });
 
-    // TC-AUTH-04: Đăng nhập bằng Google
-    await assert("TC-AUTH-04: Đăng nhập / Xác thực qua tài khoản Google", async () => {
+    // TC-AUTH-04: Từ chối Google ID Token không hợp lệ
+    await assert("TC-AUTH-04: Từ chối Google ID Token không hợp lệ", async () => {
         const res = await request("POST", "/api/auth/google", { idToken: "sample_mock_google_id_token" });
-        if (res.status !== 200 || !res.data.data.isGoogleAccount) {
-            throw new Error(`Kỳ vọng HTTP 200 & isGoogleAccount=true, nhận status=${res.status}`);
+        if (res.status !== 401) {
+            throw new Error(`Kỳ vọng HTTP 401 với Google ID Token không hợp lệ, nhận status=${res.status}`);
         }
     });
 
@@ -113,8 +156,20 @@ async function runTests() {
             MoTa: "Tài liệu phục vụ kiểm thử hệ thống"
         };
         const res = await request("POST", "/api/sach", newBook);
-        if (res.status !== 201 || res.data.data.MaSach !== "TEST_SACH_99") {
+        if (
+            res.status !== 201 ||
+            res.data.data.MaSach !== "TEST_SACH_99" ||
+            !hasOnlyFields(res.data.data, ["_id", "MaSach", "TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"])
+        ) {
             throw new Error(`Kỳ vọng HTTP 201, nhận status=${res.status}`);
+        }
+
+        const publisher = await request("GET", "/api/nhaxuatban/NXB-0001");
+        if (
+            publisher.status !== 200 ||
+            !hasOnlyFields(publisher.data, ["_id", "MaNXB", "TENNXB", "DiaChi"])
+        ) {
+            throw new Error(`Kỳ vọng response nhà xuất bản chỉ gồm trường trong CDM, nhận status=${publisher.status}`);
         }
     });
 
@@ -138,10 +193,14 @@ async function runTests() {
     let borrowId = null;
     await assert("TC-BORROW-01: Độc giả gửi phiếu mượn (Trạng thái ChoDuyet)", async () => {
         const res = await request("POST", "/api/theodoimuonsach", {
-            MaDocGia: "DG-000001",
+            MaDocGia: temporaryReaderId,
             MaSach: "TEST_SACH_99"
         });
-        if (res.status !== 201 || res.data.data.TrangThai !== "ChoDuyet") {
+        if (
+            res.status !== 201 ||
+            res.data.data.TrangThai !== "ChoDuyet" ||
+            !hasOnlyFields(res.data.data, ["_id", "MaDocGia", "MaSach", "NgayMuon", "MSNV", "NgayHenTra", "NgayTra", "TrangThai", "GiaTriBoiThuong", "GhiChu"])
+        ) {
             throw new Error(`Kỳ vọng HTTP 201 & ChoDuyet, nhận status=${res.status}`);
         }
         borrowId = res.data.data._id;
@@ -150,7 +209,7 @@ async function runTests() {
     // TC-BORROW-02: Chặn mượn sách khi đã hết tồn kho (SACH-000003 SoQuyen = 0)
     await assert("TC-BORROW-02: Chặn mượn sách khi đã hết trong kho (SoQuyen == 0)", async () => {
         const res = await request("POST", "/api/theodoimuonsach", {
-            MaDocGia: "DG-000001",
+            MaDocGia: temporaryReaderId,
             MaSach: "SACH-000003"
         });
         if (res.status !== 400) {
@@ -158,15 +217,28 @@ async function runTests() {
         }
     });
 
-    // TC-BORROW-04: Chặn độc giả thuộc Blacklist mượn sách (DG-000002)
+    // TC-BORROW-04: Chặn độc giả thuộc Blacklist mượn sách
     await assert("TC-BORROW-04: Chặn độc giả Blacklist mượn sách (HTTP 403 Forbidden)", async () => {
+        const update = await request("PUT", `/api/docgia/${temporaryReaderId}`, {
+            TrangThaiThe: "Blacklist",
+            SoLanViPham: 3
+        });
+        if (update.status !== 200) {
+            throw new Error(`Không cập nhật được trạng thái độc giả kiểm thử, nhận status=${update.status}`);
+        }
+
         const res = await request("POST", "/api/theodoimuonsach", {
-            MaDocGia: "DG-000002",
+            MaDocGia: temporaryReaderId,
             MaSach: "TEST_SACH_99"
         });
         if (res.status !== 403) {
             throw new Error(`Kỳ vọng HTTP 403 từ chối mượn, nhận status=${res.status}`);
         }
+
+        await request("PUT", `/api/docgia/${temporaryReaderId}`, {
+            TrangThaiThe: "HoatDong",
+            SoLanViPham: 0
+        });
     });
 
     // TC-BORROW-05: Thủ thư duyệt đơn mượn (Kho giảm từ 10 xuống 9, gán MSNV và hạn trả 14 ngày)
@@ -200,9 +272,12 @@ async function runTests() {
     await assert("TC-LOSS-01: Báo mất sách, tính GiaTriBoiThuong và không hoàn kho", async () => {
         // Tạo đơn mượn mới
         const borrowRes = await request("POST", "/api/theodoimuonsach", {
-            MaDocGia: "DG-000001",
+            MaDocGia: temporaryReaderId,
             MaSach: "TEST_SACH_99"
         });
+        if (borrowRes.status !== 201) {
+            throw new Error(`Không tạo được phiếu mượn kiểm thử mất sách, nhận status=${borrowRes.status}`);
+        }
         lossBorrowId = borrowRes.data.data._id;
         // Duyệt mượn -> kho còn 9
         await request("PUT", `/api/theodoimuonsach/${lossBorrowId}/duyet`);
@@ -237,17 +312,21 @@ async function runTests() {
         }
     });
 
-    // TC-ADMIN-01: Admin nâng cấp quyền người dùng (Role: MANAGER)
+    // TC-ADMIN-01: Admin nâng cấp quyền người dùng (VaiTro: MANAGER)
     await assert("TC-ADMIN-01: Admin nâng cấp quyền độc giả lên Thủ thư (MANAGER)", async () => {
-        const res = await request("PUT", "/api/docgia/DG-000001/role", { role: "MANAGER" });
-        if (res.status !== 200 || res.data.data.Role !== "MANAGER") {
-            throw new Error(`Kỳ vọng HTTP 200 & Role MANAGER, nhận status=${res.status}`);
+        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/role`, { role: "MANAGER" });
+        if (res.status !== 200 || res.data.data.VaiTro !== "MANAGER" || "Role" in res.data.data) {
+            throw new Error(`Kỳ vọng HTTP 200 & VaiTro MANAGER, nhận status=${res.status}`);
         }
     });
 
     // TC-ADMIN-02: Admin mở khóa Blacklist cho độc giả bị phạt
     await assert("TC-ADMIN-02: Admin mở khóa Blacklist (TrangThaiThe HoatDong & SoLanViPham=0)", async () => {
-        const res = await request("PUT", "/api/docgia/DG-000002/unblock");
+        await request("PUT", `/api/docgia/${temporaryReaderId}`, {
+            TrangThaiThe: "Blacklist",
+            SoLanViPham: 3
+        });
+        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/unblock`);
         if (res.status !== 200 || res.data.data.TrangThaiThe !== "HoatDong" || res.data.data.SoLanViPham !== 0) {
             throw new Error(`Kỳ vọng HTTP 200, TrangThaiThe HoatDong, SoLanViPham=0, nhận status=${res.status}`);
         }
@@ -257,6 +336,12 @@ async function runTests() {
     await request("DELETE", `/api/theodoimuonsach/${borrowId}`);
     await request("DELETE", `/api/theodoimuonsach/${lossBorrowId}`);
     await request("DELETE", "/api/sach/TEST_SACH_99");
+    if (temporaryReaderId) {
+        await request("DELETE", `/api/docgia/${temporaryReaderId}`);
+    }
+    if (temporaryStaffId) {
+        await request("DELETE", `/api/nhanvien/${temporaryStaffId}`);
+    }
 
     console.log("\n=========================================================================");
     console.log(`TỔNG KẾT BỘ KIỂM THỬ: ${passed} PASSED, ${failed} FAILED`);

@@ -80,6 +80,33 @@ class AuthService {
         }
     }
 
+    getDisplayName(user = this.getUser()) {
+        if (!user) return "";
+        return user.HoTenNV ||
+            [user.HoLot, user.Ten].filter(Boolean).join(" ") ||
+            user.MSNV ||
+            user.MaDocGia ||
+            "";
+    }
+
+    getIdentifier(user = this.getUser()) {
+        return user?.MSNV || user?.MaDocGia || user?.DienThoai || user?.SoDienThoai || "";
+    }
+
+    getRole(user = this.getUser()) {
+        if (!user) return null;
+        if (user.ChucVu) return user.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER";
+        return user.VaiTro || "USER";
+    }
+
+    getPhone(user = this.getUser()) {
+        return user?.DienThoai || user?.SoDienThoai || "";
+    }
+
+    isReader(user = this.getUser()) {
+        return Boolean(user?.MaDocGia);
+    }
+
     /**
      * Lấy JWT token hiện tại từ localStorage.
      * @returns {string|null}
@@ -98,17 +125,16 @@ class AuthService {
     /**
      * Kiểm tra người dùng có phải Nhân viên hoặc Admin không.
      */
-    isStaffOrAdmin() {
-        const user = this.getUser();
-        return user && (user.role === "MANAGER" || user.role === "ADMIN");
+    isStaffOrAdmin(user = this.getUser()) {
+        const role = this.getRole(user);
+        return role === "MANAGER" || role === "ADMIN";
     }
 
     /**
      * Kiểm tra người dùng có phải Admin không.
      */
-    isAdmin() {
-        const user = this.getUser();
-        return user && user.role === "ADMIN";
+    isAdmin(user = this.getUser()) {
+        return this.getRole(user) === "ADMIN";
     }
 
     /**

@@ -2,7 +2,9 @@
 
 * **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
 * **Tên Database**: `quanlymuonsach`
-* **Quy chuẩn**: Bám sát 100% Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25). Toàn bộ 5 collections đều chuẩn hóa tên trường, kiểu dữ liệu, ràng buộc toàn vẹn và cơ chế mã hóa mật khẩu bảo mật.
+* **Quy chuẩn**: Các trường nghiệp vụ của 5 collections bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25).
+
+Các trường liệt kê trong tài liệu là lược đồ nghiệp vụ CDM. Backend có thể lưu thêm metadata kỹ thuật (`CreatedAt`, `UpdatedAt`) và dữ liệu phục vụ tích hợp Google OAuth/MoMo; đây không phải trường CDM và không được đưa vào response của API tài nguyên. Response chỉ gồm trường CDM của collection tương ứng, đồng thời loại trừ `MatKhau`.
 
 ---
 
@@ -34,7 +36,7 @@ Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mư�
   "DiaChi": "Xuân Khánh, Cần Thơ",   // Địa chỉ cư trú của độc giả
   "DienThoai": "0912345678",          // [Bắt buộc, Duy nhất] Số điện thoại liên hệ (Dùng để đăng nhập)
   "MatKhau": "$2a$10$e7...",          // [Bắt buộc, String] Mật khẩu tài khoản (Đã mã hóa Bcrypt an toàn)
-  "Role": "USER",                     // [USER | MANAGER | ADMIN] Vai trò người dùng trong hệ thống
+  "VaiTro": "USER",                   // [USER | MANAGER | ADMIN] Vai trò người dùng trong hệ thống
   "SoLanViPham": 0,                   // [Number >= 0] Số lần vi phạm nội quy (trả trễ hạn, làm mất sách)
   "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "Blacklist"] Trạng thái thẻ thư viện
 }
@@ -91,7 +93,6 @@ Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho th
   "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
   "MaNXB": "NXB-0001",                // [Duy nhất] Mã định danh nhà xuất bản (Tự sinh NXB-0001)
   "TENNXB": "NXB Giáo Dục Việt Nam", // [Bắt buộc] Tên nhà xuất bản (Chuẩn báo cáo CDM)
-  "TenNXB": "NXB Giáo Dục Việt Nam", // [Alias] Đồng bộ tương thích tầng hiển thị Frontend
   "DiaChi": "81 Trần Hưng Đạo, HN"    // Địa chỉ trụ sở nhà xuất bản
 }
 ```
@@ -114,7 +115,6 @@ Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữ
   "NgayTra": null,                    // Ngày thực tế mang trả sách tại quầy (null nếu chưa trả)
   "TrangThai": "DangMuon",            // ["ChoDuyet" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi"]
   "GiaTriBoiThuong": 0,               // [Double >= 0] Tiền bồi hoàn theo đơn giá nếu làm mất sách
-  "TienPhat": 0,                      // [Alias] Đồng bộ tương thích tầng hiển thị Frontend
   "GhiChu": "Sách bìa cứng, mới"      // Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
 }
 ```
@@ -140,7 +140,7 @@ erDiagram
         string DiaChi
         string DienThoai UK
         string MatKhau "Bcrypt"
-        string Role "USER/MANAGER/ADMIN"
+        string VaiTro "USER/MANAGER/ADMIN"
         int SoLanViPham
         string TrangThaiThe "HoatDong/Khoa/Blacklist"
     }

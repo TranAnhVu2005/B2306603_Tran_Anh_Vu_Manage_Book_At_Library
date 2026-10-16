@@ -97,9 +97,9 @@
                       <i class="fas fa-venus-mars text-muted"></i>
                     </span>
                     <select class="form-select ath-input border-start-0" v-model="form.Phai">
-                      <option value="Nam">Nam</option>
-                      <option value="Nữ">Nữ</option>
-                      <option value="Khác">Khác</option>
+                      <option :value="1">Nam</option>
+                      <option :value="0">Nữ</option>
+                      <option :value="2">Khác</option>
                     </select>
                   </div>
                 </div>
@@ -131,7 +131,7 @@
                   <input
                     type="password"
                     class="form-control ath-input border-start-0"
-                    v-model="form.Password"
+                    v-model="form.MatKhau"
                     placeholder="Nhập mật khẩu..."
                     required
                   />
@@ -202,10 +202,9 @@ export default {
         HoLot: "",
         Ten: "",
         NgaySinh: "2003-01-01",
-        Phai: "Nam",
+        Phai: 1,
         DiaChi: "",
         DienThoai: "",
-        Password: "",
         MatKhau: "",
       },
       loading: false,
@@ -215,7 +214,6 @@ export default {
   methods: {
     async handleRegister() {
       this.loading = true;
-      this.form.MatKhau = this.form.Password;
       try {
         const res = await authService.register(this.form);
         const assignedCode = res.data?.MaDocGia ? ` (Mã thẻ: ${res.data.MaDocGia})` : "";
@@ -231,18 +229,7 @@ export default {
       }
     },
     async handleGoogleRegister() {
-      this.googleLoading = true;
-      try {
-        const res = await authService.loginWithGoogle();
-        this.$refs.toast.show("Cấp thẻ thành công thông qua tài khoản Google!");
-        setTimeout(() => {
-          this.$router.push("/");
-        }, 800);
-      } catch (err) {
-        this.$refs.toast.show("Đăng ký qua Google không thành công.", "error");
-      } finally {
-        this.googleLoading = false;
-      }
+      this.$router.push({ name: "login", query: { redirect: "/" } });
     }
   }
 };

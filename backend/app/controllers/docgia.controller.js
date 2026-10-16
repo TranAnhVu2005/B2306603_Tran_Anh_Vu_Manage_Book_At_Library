@@ -2,6 +2,7 @@ const DocGiaService = require("../services/docgia.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
+// Thêm một độc giả mới - Completed
 exports.create = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);
@@ -15,6 +16,7 @@ exports.create = async (req, res, next) => {
     }
 };
 
+// Tìm danh sách tất cả độc giả
 exports.findAll = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);

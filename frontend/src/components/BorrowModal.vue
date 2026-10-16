@@ -42,7 +42,7 @@
               </p>
               <div class="bm-book-tags">
                 <span class="bm-code">Mã: {{ book.MaSach }}</span>
-                <span class="bm-code" v-if="book.TenNXB || book.MaNXB">{{ book.TenNXB || book.MaNXB }}</span>
+                <span class="bm-code" v-if="book.MaNXB">{{ book.MaNXB }}</span>
               </div>
             </div>
           </div>
@@ -99,12 +99,12 @@
                   </div>
                   <div class="bm-reader-info">
                     <strong class="bm-reader-name">
-                      {{ loggedInUser ? (loggedInUser.fullName || loggedInUser.username) : 'Đang tải thông tin...' }}
+                      {{ loggedInUser ? authService.getDisplayName(loggedInUser) : 'Đang tải thông tin...' }}
                     </strong>
                     <small class="bm-reader-sub">
-                      Mã thẻ: <b class="bm-code-strong">{{ loggedInUser ? loggedInUser.username : '—' }}</b>
+                      Mã thẻ: <b class="bm-code-strong">{{ loggedInUser ? authService.getIdentifier(loggedInUser) : '—' }}</b>
                       <span class="bm-dot">•</span>
-                      SĐT: {{ loggedInUser ? (loggedInUser.phone || '—') : '—' }}
+                      SĐT: {{ loggedInUser ? (authService.getPhone(loggedInUser) || '—') : '—' }}
                     </small>
                   </div>
                 </div>
@@ -181,6 +181,15 @@ import authService from "../services/auth.service";
 
 export default {
   name: "BorrowModal",
+  data() {
+    return {
+      authService,
+      readerCode: "",
+      note: "Đăng ký mượn trực tuyến",
+      submitting: false,
+      loggedInUser: null,
+    };
+  },
   props: {
     show: {
       type: Boolean,
@@ -192,14 +201,6 @@ export default {
     }
   },
   emits: ["close", "confirm"],
-  data() {
-    return {
-      readerCode: "",
-      note: "Đăng ký mượn trực tuyến",
-      submitting: false,
-      loggedInUser: null,
-    };
-  },
   watch: {
     show(val) {
       if (val) {
@@ -208,7 +209,7 @@ export default {
         this.submitting = false;
         this.loggedInUser = authService.getUser();
         if (this.loggedInUser) {
-          this.readerCode = this.loggedInUser.username || this.loggedInUser.phone || "";
+          this.readerCode = authService.getIdentifier(this.loggedInUser);
         }
       } else {
         document.body.style.overflow = "";
@@ -229,7 +230,7 @@ export default {
     handleConfirm() {
       // Tự động lấy mã độc giả từ session đăng nhập hiện tại
       if (!this.readerCode.trim() && this.loggedInUser) {
-        this.readerCode = this.loggedInUser.username || this.loggedInUser.phone || "";
+        this.readerCode = authService.getIdentifier(this.loggedInUser);
       }
 
       if (!this.readerCode.trim()) {

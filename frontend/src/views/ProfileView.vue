@@ -39,8 +39,8 @@
                 <div class="vg-avatar" style="width: 72px; height: 72px; font-size: 1.7rem;">
                   {{ userInitials }}
                 </div>
-                <h2 class="reader-name">{{ currentUser.fullName }}</h2>
-                <span class="reader-code">Mã thẻ: {{ currentUser.username }}</span>
+                <h2 class="reader-name">{{ displayName }}</h2>
+                <span class="reader-code">Mã thẻ: {{ currentUser.MaDocGia }}</span>
 
                 <!-- Status badge -->
                 <span v-if="readerInfo?.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist" style="margin-top: 0.75rem;">
@@ -76,7 +76,7 @@
 
                 <div class="reader-info-row">
                   <span class="reader-info-label">Số điện thoại</span>
-                  <span class="reader-info-val font-mono-code">{{ readerInfo?.DienThoai || currentUser.phone || '—' }}</span>
+                  <span class="reader-info-val font-mono-code">{{ readerInfo?.DienThoai || '—' }}</span>
                 </div>
                 <div class="reader-info-row">
                   <span class="reader-info-label">Giới tính</span>
@@ -88,8 +88,8 @@
                 </div>
                 <div class="reader-info-row" style="border: none;">
                   <span class="reader-info-label">Vai trò</span>
-                  <span v-if="currentUser.role === 'ADMIN'" class="ath-badge ath-badge-out">SUPER ADMIN</span>
-                  <span v-else-if="currentUser.role === 'MANAGER'" class="ath-badge ath-badge-available">THỦ THƯ</span>
+                  <span v-if="readerInfo?.VaiTro === 'ADMIN'" class="ath-badge ath-badge-out">SUPER ADMIN</span>
+                  <span v-else-if="readerInfo?.VaiTro === 'MANAGER'" class="ath-badge ath-badge-available">THỦ THƯ</span>
                   <span v-else class="ath-badge ath-badge-neutral">ĐỘC GIẢ</span>
                 </div>
               </div>
@@ -153,7 +153,7 @@
                     <tr v-for="item in currentTabList" :key="item._id">
                       <td>
                         <router-link :to="`/books/${item.MaSach}`" class="book-link">
-                          <strong>{{ item.sachInfo?.TenSach || item.MaSach }}</strong>
+                          <strong>{{ bookName(item.MaSach) }}</strong>
                         </router-link>
                         <span class="font-mono-code" style="display: block; font-size: 0.7rem; color: var(--ink-muted);">{{ item.MaSach }}</span>
                       </td>
@@ -173,9 +173,9 @@
                       </td>
                       <td style="font-size: 0.82rem; color: var(--ink-muted);">
                         {{ item.GhiChu || '—' }}
-                        <template v-if="item.GiaTriBoiThuong > 0 || item.TienPhat > 0">
+                        <template v-if="item.GiaTriBoiThuong > 0">
                           <div class="boi-thuong">
-                            <strong>{{ (item.GiaTriBoiThuong || item.TienPhat).toLocaleString('vi-VN') }} ₫</strong>
+                            <strong>{{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫</strong>
                           </div>
                           <button class="ath-action-btn ath-action-btn-danger" @click="openMoMoPayment(item)" type="button" style="margin-top: 0.35rem;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
@@ -235,7 +235,7 @@
 import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
 import theoDoiService from "../services/theodoimuon.service";
-import docGiaService from "../services/docgia.service";
+import sachService from "../services/sach.service";
 import paymentService from "../services/payment.service";
 
 export default {
@@ -246,6 +246,7 @@ export default {
       currentUser: null,
       readerInfo: null,
       borrows: [],
+      books: [],
       loading: false,
       activeTab: "active",
       showPaymentModal: false,
@@ -254,21 +255,24 @@ export default {
     };
   },
   computed: {
+    displayName() {
+      return authService.getDisplayName(this.readerInfo || this.currentUser);
+    },
     userInitials() {
       if (!this.currentUser) return "DG";
-      const name = this.currentUser.fullName || this.currentUser.username || "";
+      const name = this.displayName || this.currentUser.MaDocGia || "";
       const parts = name.trim().split(" ");
       if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
       return name.slice(0, 2).toUpperCase();
     },
     genderText() {
-      const phai = this.readerInfo?.Phai ?? this.currentUser?.phai;
+      const phai = this.readerInfo?.Phai ?? this.currentUser?.Phai;
       if (phai === 1 || phai === "Nam") return "Nam";
       if (phai === 0 || phai === "Nữ") return "Nữ";
       return "Khác";
     },
     viPhamCount() {
-      return this.readerInfo?.SoLanViPham || this.currentUser?.soLanViPham || 0;
+      return this.readerInfo?.SoLanViPham || this.currentUser?.SoLanViPham || 0;
     },
     activeBorrows() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
     pendingBorrows() { return this.borrows.filter(b => b.TrangThai === "ChoDuyet"); },
@@ -277,7 +281,7 @@ export default {
       if (this.activeTab === "active") return this.activeBorrows;
       if (this.activeTab === "pending") return this.pendingBorrows;
       return this.historyBorrows;
-    }
+    },
   },
   created() {
     this.currentUser = authService.getUser();
@@ -287,6 +291,7 @@ export default {
   beforeUnmount() { if (this.revealObserver) this.revealObserver.disconnect(); },
   methods: {
     initReveal() {
+      if (this.revealObserver) this.revealObserver.disconnect();
       this.revealObserver = new IntersectionObserver(
         (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("is-visible"); this.revealObserver.unobserve(e.target); } }),
         { threshold: 0.08 }
@@ -296,14 +301,17 @@ export default {
     async fetchData() {
       this.loading = true;
       try {
-        const [readerRes, borrowsRes] = await Promise.all([
-          docGiaService.get(this.currentUser.username).catch(() => null),
-          theoDoiService.getAll({ maDocGia: this.currentUser.username }),
+        const [readerRes, borrowsRes, booksRes] = await Promise.all([
+          authService.fetchMe(),
+          theoDoiService.getAll({ maDocGia: this.currentUser.MaDocGia }),
+          sachService.getAll(),
         ]);
-        if (readerRes) this.readerInfo = readerRes;
+        this.readerInfo = readerRes;
+        this.currentUser = readerRes;
         this.borrows = borrowsRes;
-      } catch {
-        this.$refs.toast?.show("Lỗi khi tải thông tin độc giả.", "error");
+        this.books = booksRes;
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải thông tin độc giả.", "error");
       } finally {
         this.loading = false;
         this.$nextTick(() => this.initReveal());
@@ -313,9 +321,12 @@ export default {
       if (item.TrangThai !== "DangMuon" || !item.NgayHenTra) return false;
       return new Date().toISOString().split("T")[0] > item.NgayHenTra;
     },
+    bookName(maSach) {
+      return this.books.find((book) => book.MaSach === maSach)?.TenSach || maSach;
+    },
     async openMoMoPayment(item) {
       try {
-        const amount = item.GiaTriBoiThuong || item.TienPhat || 0;
+        const amount = item.GiaTriBoiThuong || 0;
         const res = await paymentService.createMoMoPayment({
           borrowId: item._id,
           amount,
@@ -323,8 +334,8 @@ export default {
         });
         this.paymentInfo = res.data;
         this.showPaymentModal = true;
-      } catch {
-        this.$refs.toast?.show("Không thể khởi tạo cổng thanh toán MoMo.", "error");
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || "Không thể khởi tạo cổng thanh toán MoMo.", "error");
       }
     }
   }

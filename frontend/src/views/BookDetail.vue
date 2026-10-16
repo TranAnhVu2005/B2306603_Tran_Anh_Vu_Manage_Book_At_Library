@@ -88,10 +88,6 @@
                   <dd>{{ book.NamXuatBan || '—' }}</dd>
                 </div>
                 <div class="spec-item">
-                  <dt>Nguồn gốc / Xuất xứ</dt>
-                  <dd>{{ book.NguonGoc || 'Việt Nam' }}</dd>
-                </div>
-                <div class="spec-item">
                   <dt>Đơn giá bảo lưu (đền bù)</dt>
                   <dd class="font-mono-code" style="font-weight: 700; color: var(--ink-primary);">{{ formatCurrency(book.DonGia) }}</dd>
                 </div>
@@ -167,14 +163,20 @@ export default {
     publisherName() {
       if (!this.book || !this.book.MaNXB) return "—";
       const p = this.publishers.find(n => n.MaNXB === this.book.MaNXB);
-      return p ? (p.TenNXB || p.TENNXB) : this.book.MaNXB;
+      return p ? p.TENNXB : this.book.MaNXB;
     }
+  },
+  watch: {
+    "$route.params.id"() {
+      this.fetchData();
+    },
   },
   created() { this.fetchData(); },
   mounted() { this.initReveal(); },
   beforeUnmount() { if (this.revealObserver) this.revealObserver.disconnect(); },
   methods: {
     initReveal() {
+      if (this.revealObserver) this.revealObserver.disconnect();
       this.revealObserver = new IntersectionObserver(
         (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("is-visible"); this.revealObserver.unobserve(e.target); } }),
         { threshold: 0.06 }
@@ -183,13 +185,18 @@ export default {
     },
     async fetchData() {
       this.loading = true;
+      this.book = null;
       try {
         const id = this.$route.params.id;
-        const [bookRes, nxbRes] = await Promise.all([sachService.get(id), nxbService.getAll().catch(() => [])]);
-        this.book = bookRes;
-        this.publishers = nxbRes;
-      } catch {
-        this.$refs.toast.show("Không tìm thấy thông tin cuốn sách.", "error");
+        this.book = await sachService.get(id);
+        try {
+          this.publishers = await nxbService.getAll();
+        } catch (error) {
+          this.publishers = [];
+          this.$refs.toast.show(error.response?.data?.message || "Không thể tải danh mục nhà xuất bản.", "error");
+        }
+      } catch (error) {
+        this.$refs.toast.show(error.response?.data?.message || "Không tìm thấy thông tin cuốn sách.", "error");
       } finally {
         this.loading = false;
         this.$nextTick(() => this.initReveal());
@@ -203,10 +210,14 @@ export default {
     handleOpenBorrow() {
       const u = authService.getUser();
       if (!u) { this.$router.push(`/login?redirect=${this.$route.fullPath}`); return; }
-      if (u.trangThaiThe === "Blacklist") {
+      if (!authService.isReader(u)) {
+        this.$refs.toast.show("Chỉ độc giả mới có thể đăng ký mượn sách.", "error");
+        return;
+      }
+      if (u.TrangThaiThe === "Blacklist") {
         this.$refs.toast.show("Tài khoản của bạn đã bị đưa vào Danh sách đen (Blacklist). Vui lòng liên hệ quầy thủ thư!", "error", 5000); return;
       }
-      if (u.trangThaiThe === "Khoa") {
+      if (u.TrangThaiThe === "Khoa") {
         this.$refs.toast.show("Thẻ của bạn hiện đang bị khóa tạm thời. Vui lòng liên hệ thủ thư!", "error", 5000); return;
       }
       this.showBorrowModal = true;
@@ -214,7 +225,7 @@ export default {
     async submitBorrowRequest(payload) {
       if (!authService.isLoggedIn()) { this.$router.push(`/login?redirect=${this.$route.fullPath}`); return; }
       try {
-        const result = await theoDoiService.dangKyMuon({ MaDocGia: payload.maDocGia, MaSach: payload.maSach, GhiChu: payload.ghiChu });
+        const result = await theoDoiService.dangKyMuon({ MaDocGia: authService.getUser()?.MaDocGia, MaSach: payload.maSach, GhiChu: payload.ghiChu });
         this.showBorrowModal = false;
         this.$refs.toast.show(result.message || "Đăng ký mượn thành công!");
         this.fetchData();

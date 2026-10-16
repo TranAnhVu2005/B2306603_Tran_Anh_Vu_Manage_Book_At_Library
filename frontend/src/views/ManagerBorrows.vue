@@ -106,22 +106,22 @@
                   <th>Ngày mượn</th>
                   <th>Hạn trả</th>
                   <th>Trạng thái</th>
-                  <th>Ghi chú / Tiền phạt</th>
+                  <th>Ghi chú / Bồi thường</th>
                   <th style="text-align: right;">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="item in filteredDisplayList" :key="item._id">
                   <td>
-                    <strong class="row-name">{{ item.docGiaInfo ? `${item.docGiaInfo.HoLot} ${item.docGiaInfo.Ten}` : item.MaDocGia }}</strong>
-                    <span class="row-sub font-mono-code">{{ item.MaDocGia }} · {{ item.docGiaInfo?.DienThoai || '—' }}</span>
-                    <span v-if="item.docGiaInfo?.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist" style="margin-top: 4px; font-size: 0.6rem;">
-                      Blacklist ({{ item.docGiaInfo.SoLanViPham }} lỗi)
+                    <strong class="row-name">{{ readerName(item.MaDocGia) }}</strong>
+                    <span class="row-sub font-mono-code">{{ item.MaDocGia }} · {{ readerPhone(item.MaDocGia) || '—' }}</span>
+                    <span v-if="readerFor(item.MaDocGia)?.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist" style="margin-top: 4px; font-size: 0.6rem;">
+                      Blacklist ({{ readerFor(item.MaDocGia).SoLanViPham }} lỗi)
                     </span>
                   </td>
                   <td>
-                    <strong class="row-book font-serif-headline">{{ item.sachInfo?.TenSach || item.MaSach }}</strong>
-                    <span class="row-sub font-mono-code">{{ item.MaSach }} · {{ (item.sachInfo?.DonGia || 0).toLocaleString('vi-VN') }} ₫</span>
+                    <strong class="row-book font-serif-headline">{{ bookName(item.MaSach) }}</strong>
+                    <span class="row-sub font-mono-code">{{ item.MaSach }} · {{ bookPrice(item.MaSach).toLocaleString('vi-VN') }} ₫</span>
                   </td>
                   <td class="font-mono-code row-date">{{ item.NgayMuon || '—' }}</td>
                   <td>
@@ -137,7 +137,7 @@
                   </td>
                   <td class="row-sub">
                     {{ item.GhiChu || '—' }}
-                    <div v-if="item.GiaTriBoiThuong > 0 || item.TienPhat > 0" class="boi-thuong">{{ (item.GiaTriBoiThuong || item.TienPhat).toLocaleString('vi-VN') }} ₫</div>
+                    <div v-if="item.GiaTriBoiThuong > 0" class="boi-thuong">{{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫</div>
                     <div v-if="item.MSNV" class="font-mono-code" style="font-size: 0.7rem; color: var(--ink-muted); margin-top: 2px;">Duyệt bởi: {{ item.MSNV }}</div>
                   </td>
                   <td style="text-align: right;">
@@ -190,7 +190,7 @@
             </div>
             <div class="modal-body">
               <p class="modal-sub" v-if="selectedRejectItem">
-                Từ chối yêu cầu mượn <strong>{{ selectedRejectItem.sachInfo?.TenSach || selectedRejectItem.MaSach }}</strong> của độc giả <strong>{{ selectedRejectItem.docGiaInfo ? `${selectedRejectItem.docGiaInfo.HoLot} ${selectedRejectItem.docGiaInfo.Ten}` : selectedRejectItem.MaDocGia }}</strong>.
+                Từ chối yêu cầu mượn <strong>{{ bookName(selectedRejectItem.MaSach) }}</strong> của độc giả <strong>{{ readerName(selectedRejectItem.MaDocGia) }}</strong>.
               </p>
               <div class="mb-3">
                 <label class="form-label-sm">Lý do từ chối:</label>
@@ -250,6 +250,8 @@
 <script>
 import ToastNotification from "../components/ToastNotification.vue";
 import theoDoiService from "../services/theodoimuon.service";
+import sachService from "../services/sach.service";
+import docGiaService from "../services/docgia.service";
 
 export default {
   name: "ManagerBorrows",
@@ -257,6 +259,8 @@ export default {
   data() {
     return {
       borrows: [],
+      books: [],
+      readers: [],
       loading: false,
       activeTab: "pending",
       search: "",
@@ -288,8 +292,8 @@ export default {
       if (!this.search.trim()) return this.currentDisplayList;
       const q = this.search.toLowerCase();
       return this.currentDisplayList.filter(item => {
-        const rn = item.docGiaInfo ? `${item.docGiaInfo.HoLot} ${item.docGiaInfo.Ten}`.toLowerCase() : "";
-        const bn = item.sachInfo ? item.sachInfo.TenSach.toLowerCase() : "";
+        const rn = this.readerName(item.MaDocGia).toLowerCase();
+        const bn = this.bookName(item.MaSach).toLowerCase();
         return item.MaDocGia.toLowerCase().includes(q) || item.MaSach.toLowerCase().includes(q) || rn.includes(q) || bn.includes(q);
       });
     }
@@ -307,6 +311,7 @@ export default {
   mounted() { this.initReveal(); },
   methods: {
     initReveal() {
+      if (this.revealObserver) this.revealObserver.disconnect();
       this.revealObserver = new IntersectionObserver(
         (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("is-visible"); this.revealObserver.unobserve(e.target); } }),
         { threshold: 0.05 }
@@ -322,9 +327,37 @@ export default {
     },
     async fetchData() {
       this.loading = true;
-      try { this.borrows = await theoDoiService.getAll(); }
-      catch { this.$refs.toast?.show("Lỗi khi tải danh sách phiếu mượn.", "error"); }
+      try {
+        const [borrows, books, readers] = await Promise.all([
+          theoDoiService.getAll(),
+          sachService.getAll(),
+          docGiaService.getAll(),
+        ]);
+        this.borrows = borrows;
+        this.books = books;
+        this.readers = readers;
+      }
+      catch (err) { this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải danh sách phiếu mượn.", "error"); }
       finally { this.loading = false; this.$nextTick(() => this.initReveal()); }
+    },
+    readerFor(maDocGia) {
+      return this.readers.find((reader) => reader.MaDocGia === maDocGia) || null;
+    },
+    readerName(maDocGia) {
+      const reader = this.readerFor(maDocGia);
+      return reader ? `${reader.HoLot} ${reader.Ten}`.trim() : maDocGia;
+    },
+    readerPhone(maDocGia) {
+      return this.readerFor(maDocGia)?.DienThoai || "";
+    },
+    bookFor(maSach) {
+      return this.books.find((book) => book.MaSach === maSach) || null;
+    },
+    bookName(maSach) {
+      return this.bookFor(maSach)?.TenSach || maSach;
+    },
+    bookPrice(maSach) {
+      return this.bookFor(maSach)?.DonGia || 0;
     },
     isLate(item) {
       if (item.TrangThai !== "DangMuon" || !item.NgayHenTra) return false;
@@ -333,7 +366,11 @@ export default {
     async handleApprove(item) {
       try {
         const staffUser = JSON.parse(localStorage.getItem("user") || "{}");
-        const msnv = staffUser?.username || "NV-0002";
+        if (!staffUser.MSNV) {
+          this.$refs.toast.show("Không xác định được mã nhân viên đang đăng nhập.", "error");
+          return;
+        }
+        const msnv = staffUser.MSNV;
         const res = await theoDoiService.duyet(item._id, msnv);
         this.$refs.toast.show(res.message || "Đã duyệt mượn và trừ 1 cuốn trong kho.");
         this.fetchData();
@@ -347,7 +384,7 @@ export default {
       catch { this.$refs.toast.show("Lỗi khi từ chối yêu cầu.", "error"); }
     },
     async handleReturn(item) {
-      if (!confirm(`Xác nhận độc giả đã trả cuốn sách '${item.sachInfo?.TenSach || item.MaSach}'?`)) return;
+      if (!confirm(`Xác nhận độc giả đã trả cuốn sách '${this.bookName(item.MaSach)}'?`)) return;
       try { const res = await theoDoiService.xacNhanTra(item._id); this.$refs.toast.show(res.message || "Đã xác nhận trả sách và hoàn lại kho."); this.fetchData(); }
       catch (err) { this.$refs.toast.show(err.response?.data?.message || "Không thể xác nhận trả sách.", "error"); }
     },

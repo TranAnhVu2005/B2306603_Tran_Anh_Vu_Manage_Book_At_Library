@@ -7,11 +7,11 @@ const PasswordUtil = require("./app/utils/password.util");
  * SCRIPT KHỞI TẠO DỮ LIỆU MẪU CSDL CHUẨN BÁO CÁO CT449 (SEED DATA)
  * =========================================================================================
  * Khởi tạo 5 collections cốt lõi:
- * 1. nhaxuatban: MaNXB, TENNXB, TenNXB, DiaChi
+ * 1. nhaxuatban: MaNXB, TENNXB, DiaChi
  * 2. sach: MaSach, TenSach, DonGia, SoQuyen, NamXuatBan, MaNXB, TacGia, HinhAnh, MoTa
- * 3. docgia: MaDocGia, HoLot, Ten, NgaySinh, Phai (Integer: 1:Nam, 0:Nữ), DiaChi, DienThoai, MatKhau (Bcrypt), Role, SoLanViPham, TrangThaiThe
+ * 3. docgia: MaDocGia, HoLot, Ten, NgaySinh, Phai (Integer: 1:Nam, 0:Nữ), DiaChi, DienThoai, MatKhau (Bcrypt), VaiTro, SoLanViPham, TrangThaiThe
  * 4. nhanvien: MSNV, HoTenNV, MatKhau (Bcrypt), ChucVu, SoDienThoai, DiaChi
- * 5. theodoimuonsach: MaDocGia, MaSach, NgayMuon, MSNV, NgayHenTra, NgayTra, TrangThai, GiaTriBoiThuong, TienPhat, GhiChu
+ * 5. theodoimuonsach: MaDocGia, MaSach, NgayMuon, MSNV, NgayHenTra, NgayTra, TrangThai, GiaTriBoiThuong, GhiChu
  * =========================================================================================
  */
 async function seedData() {
@@ -35,7 +35,6 @@ async function seedData() {
             {
                 MaNXB: "NXB-0001",
                 TENNXB: "NXB Giáo Dục Việt Nam",
-                TenNXB: "NXB Giáo Dục Việt Nam",
                 DiaChi: "81 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội",
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
@@ -43,7 +42,6 @@ async function seedData() {
             {
                 MaNXB: "NXB-0002",
                 TENNXB: "NXB Trẻ",
-                TenNXB: "NXB Trẻ",
                 DiaChi: "161B Lý Chính Thắng, Phường Võ Thị Sáu, Quận 3, TP.HCM",
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
@@ -51,7 +49,6 @@ async function seedData() {
             {
                 MaNXB: "NXB-0003",
                 TENNXB: "NXB Khoa Học Kỹ Thuật",
-                TenNXB: "NXB Khoa Học Kỹ Thuật",
                 DiaChi: "70 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội",
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
@@ -59,7 +56,6 @@ async function seedData() {
             {
                 MaNXB: "NXB-0004",
                 TENNXB: "NXB Tri Thức",
-                TenNXB: "NXB Tri Thức",
                 DiaChi: "53 Nguyễn Du, Hai Bà Trưng, Hà Nội",
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
@@ -67,7 +63,6 @@ async function seedData() {
             {
                 MaNXB: "NXB-0005",
                 TENNXB: "NXB Lao Động",
-                TenNXB: "NXB Lao Động",
                 DiaChi: "175 Giảng Võ, Đống Đa, Hà Nội",
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
@@ -211,7 +206,7 @@ async function seedData() {
                 DienThoai: "0912345678",
                 MatKhau: hashedUserPass,
                 Password: hashedUserPass,
-                Role: "USER",
+                VaiTro: "USER",
                 SoLanViPham: 0,
                 TrangThaiThe: "HoatDong",
                 CreatedAt: new Date(),
@@ -227,7 +222,7 @@ async function seedData() {
                 DienThoai: "0987654321",
                 MatKhau: hashedUserPass,
                 Password: hashedUserPass,
-                Role: "USER",
+                VaiTro: "USER",
                 SoLanViPham: 3,
                 TrangThaiThe: "Blacklist", // Đã vi phạm 3 lần -> Bị Blacklist
                 CreatedAt: new Date(),
@@ -243,7 +238,7 @@ async function seedData() {
                 DienThoai: "0939112233",
                 MatKhau: hashedUserPass,
                 Password: hashedUserPass,
-                Role: "USER",
+                VaiTro: "USER",
                 SoLanViPham: 1,
                 TrangThaiThe: "HoatDong",
                 CreatedAt: new Date(),
@@ -267,7 +262,6 @@ async function seedData() {
                 NgayTra: null,
                 TrangThai: "DangMuon",
                 GiaTriBoiThuong: 0,
-                TienPhat: 0,
                 GhiChu: "Sách bìa cứng, độc giả nhận tại quầy",
                 CreatedAt: new Date(Date.now() - 2 * 86400000),
                 UpdatedAt: new Date()
@@ -281,7 +275,6 @@ async function seedData() {
                 NgayTra: null,
                 TrangThai: "ChoDuyet",
                 GiaTriBoiThuong: 0,
-                TienPhat: 0,
                 GhiChu: "Độc giả đăng ký trực tuyến qua website",
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
@@ -295,7 +288,6 @@ async function seedData() {
                 NgayTra: "2026-09-22",
                 TrangThai: "DaTra",
                 GiaTriBoiThuong: 0,
-                TienPhat: 0,
                 GhiChu: "Đã hoàn trả đúng hạn, sách nguyên vẹn",
                 CreatedAt: new Date(Date.now() - 30 * 86400000),
                 UpdatedAt: new Date()

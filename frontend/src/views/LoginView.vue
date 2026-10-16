@@ -22,7 +22,7 @@
             <form @submit.prevent="handleLogin">
               <div class="mb-3">
                 <label class="small fw-bold text-dark mb-1">
-                  Số điện thoại:
+                  Số điện thoại, mã độc giả hoặc mã nhân viên:
                 </label>
                 <div class="input-group">
                   <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
@@ -31,7 +31,7 @@
                   <input type="text" 
                          class="form-control ath-input border-start-0" 
                          v-model="identifier" 
-                         placeholder="Nhập số điện thoại" 
+                         placeholder="VD: 0912345678, DG-000001 hoặc NV-0001"
                          required />
                 </div>
               </div>

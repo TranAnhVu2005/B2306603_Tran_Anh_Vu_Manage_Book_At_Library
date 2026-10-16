@@ -1,20 +1,28 @@
 const { ObjectId } = require("mongodb");
 const PasswordUtil = require("../utils/password.util");
 
+const publicFields = {
+    _id: 1,
+    MSNV: 1,
+    HoTenNV: 1,
+    ChucVu: 1,
+    SoDienThoai: 1,
+    DiaChi: 1,
+};
+
 /**
  * =========================================================================================
- * SERVICE QUẢN LÝ NHÂN VIÊN (NHANVIEN SERVICE)
+ * SCHEMA MÔ TẢ DỮ LIỆU: NHÂN VIÊN (NHANVIEN COLLECTION)
  * =========================================================================================
- * Căn cứ thiết kế Cơ sở dữ liệu Báo cáo CT449 (Mục 2.3, Trang 24):
- * - Collection: 'nhanvien'
- * - Cấu trúc trường:
- *   + _id: ObjectId
- *   + MSNV: String (Mã số nhân viên, tự sinh chuẩn hóa NV-0001)
- *   + HoTenNV: String (Họ và tên đầy đủ của nhân viên)
- *   + MatKhau: String (Mật khẩu đăng nhập hệ thống - Đã mã hóa an toàn)
- *   + ChucVu: String (Chức danh công tác: THUTHU, ADMIN)
- *   + SoDienThoai: String (Số điện thoại nhân viên)
- *   + DiaChi: String (Địa chỉ liên hệ)
+ * | Thuộc tính   | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả                                  |
+ * | :------------| :----------- | :--------: | :--------: | :------------------------------------- |
+ * | `_id`        | ObjectId     |     x      |            | Định danh duy nhất tự sinh bởi MongoDB |
+ * | `MSNV`       | String       |            |            | Mã số nhân viên                        |
+ * | `HoTenNV`    | String       |            |            | Họ và tên đầy đủ của nhân viên         |
+ * | `MatKhau`    | String       |            |            | Mật khẩu đăng nhập hệ thống            |
+ * | `ChucVu`     | String       |            |            | Chức danh công tác                     |
+ * | `SoDienThoai`| String       |            |            | Số điện thoại nhân viên                |
+ * | `DiaChi`     | String       |            |            | Địa chỉ liên hệ của nhân viên          |
  * =========================================================================================
  */
 class NhanVienService {
@@ -110,15 +118,8 @@ class NhanVienService {
             query.ChucVu = filter.chucVu;
         }
 
-        const cursor = await this.NhanVien.find(query).sort({ CreatedAt: -1, _id: -1 });
-        const list = await cursor.toArray();
-
-        return list.map(item => {
-            const safe = { ...item };
-            delete safe.MatKhau;
-            delete safe.Password;
-            return safe;
-        });
+        const cursor = await this.NhanVien.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
+        return await cursor.toArray();
     }
 
     /**
@@ -132,29 +133,21 @@ class NhanVienService {
             query = { MSNV: id };
         }
 
-        const staff = await this.NhanVien.findOne(query);
-        if (staff) {
-            delete staff.MatKhau;
-            delete staff.Password;
-        }
-        return staff;
+        return await this.NhanVien.findOne(query, { projection: publicFields });
     }
 
-    /**
-     * Xác thực đăng nhập nhân viên / quản trị viên
-     */
-    async login(msnv, password) {
-        const idStr = String(msnv || "").trim();
+    //Xác thực đăng nhập cho nhân viên thủ thư/ quản trị viên - Completed
+    async login(identifier, password) {
+        const accountIdentifier = String(identifier || "").trim();
         const staff = await this.NhanVien.findOne({
-            $or: [{ MSNV: idStr }, { SoDienThoai: idStr }]
+            $or: [{ MSNV: accountIdentifier }, { SoDienThoai: accountIdentifier }]
         });
 
-        if (!staff) return null;
+        if (!staff) return null; //Không tìm thấy
 
-        const passwordHash = staff.MatKhau || staff.Password;
+        const passwordHash = staff.MatKhau;
         const isValid = await PasswordUtil.compare(password, passwordHash);
         if (!isValid) return null;
-
         return staff;
     }
 
@@ -180,11 +173,7 @@ class NhanVienService {
             { returnDocument: "after" }
         );
 
-        if (result) {
-            delete result.MatKhau;
-            delete result.Password;
-        }
-        return result;
+        return result ? this.findById(id) : null;
     }
 
     /**

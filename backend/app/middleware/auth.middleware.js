@@ -1,27 +1,18 @@
 const JwtUtil = require("../utils/jwt.util");
 const ApiError = require("../api-error");
 
-/**
- * =========================================================================================
- * MIDDLEWARE XÁC THỰC JWT
- * =========================================================================================
- * authenticate  : Bắt buộc phải có Bearer token hợp lệ (dùng cho route cần đăng nhập)
- * authorize(...roles) : Kiểm tra role sau khi đã authenticate
- * optionalAuth  : Gắn thông tin user nếu có token, không báo lỗi nếu không có
- * =========================================================================================
- */
-
-/**
- * Middleware bắt buộc xác thực JWT.
- * Lấy token từ header: Authorization: Bearer <token>
- */
 function authenticate(req, res, next) {
     const authHeader = req.headers["authorization"];
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return next(new ApiError(401, "Yêu cầu đăng nhập. Vui lòng cung cấp token xác thực."));
     }
 
-    const token = authHeader.split(" ")[1];
+    //Cắt chuỗi từ vị trí thứ 7 trở đi, bỏ "Bearer " 
+    const token = authHeader.substring(7).trim();
+    if (!token) {
+        return next(new ApiError(401, "Token xác thực bị thiếu."));
+    }
+
     try {
         const decoded = JwtUtil.verify(token);
         req.user = decoded; // Gắn thông tin user vào request để các middleware sau sử dụng
@@ -34,11 +25,7 @@ function authenticate(req, res, next) {
     }
 }
 
-/**
- * Middleware phân quyền theo Role.
- * Phải dùng sau authenticate.
- * @param {...string} roles - Danh sách role được phép ("USER", "MANAGER", "ADMIN")
- */
+// Phân quyền, roles được truyền trong lúc gọi các hàm xử lý, nếu không có quyền trả về 403
 function authorize(...roles) {
     return (req, res, next) => {
         if (!req.user) {
@@ -51,14 +38,11 @@ function authorize(...roles) {
     };
 }
 
-/**
- * Middleware xác thực không bắt buộc.
- * Nếu có token hợp lệ → gắn req.user, nếu không có hoặc sai → bỏ qua, không báo lỗi.
- */
+// Hàm xác thực cho các chức năng khách vãng lai có thể truy cập, không có token thì bỏ qua, không lỗi.
 function optionalAuth(req, res, next) {
     const authHeader = req.headers["authorization"];
     if (authHeader && authHeader.startsWith("Bearer ")) {
-        const token = authHeader.split(" ")[1];
+        const token = authHeader.substring(7).trim();
         try {
             req.user = JwtUtil.verify(token);
         } catch (_) {

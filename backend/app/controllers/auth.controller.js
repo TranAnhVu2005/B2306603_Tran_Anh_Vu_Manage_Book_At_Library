@@ -6,25 +6,19 @@ const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
 /**
- * =========================================================================================
- * CONTROLLER XÁC THỰC TÀI KHOẢN (AUTH CONTROLLER)
- * =========================================================================================
- * POST /api/auth/login    - Đăng nhập (Độc giả, Thủ thư, Admin) → trả JWT
+ * POST /api/auth/login    - Đăng nhập => trả JWT
  * POST /api/auth/register - Đăng ký thẻ độc giả mới
- * POST /api/auth/google   - Đăng nhập / Đăng ký qua Google OAuth 2.0 → trả JWT
+ * POST /api/auth/google   - Đăng nhập / Đăng ký qua Google OAuth 2.0 => trả JWT
  * GET  /api/auth/me       - Lấy thông tin người dùng hiện tại từ JWT (yêu cầu authenticate)
- * =========================================================================================
  */
 class AuthController {
-    /**
-     * Đăng nhập hợp nhất cho toàn bộ hệ thống (Độc giả, Thủ thư, Quản trị viên)
-     * POST /api/auth/login
-     */
+
+    // Xử lý đăng nhập - Completed
     async login(req, res, next) {
         try {
             const { identifier, password } = req.body;
             if (!identifier || !password) {
-                return next(new ApiError(400, "Vui lòng nhập số điện thoại/tài khoản và mật khẩu."));
+                return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu."));
             }
 
             const nhanVienService = new NhanVienService(MongoDB.client);
@@ -33,26 +27,25 @@ class AuthController {
             // 1. Kiểm tra tài khoản Nhân viên / Quản trị viên trước
             const staff = await nhanVienService.login(identifier, password);
             if (staff) {
-                const role = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
+                const vaiTro = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
                 const userData = {
                     _id: String(staff._id),
-                    username: staff.MSNV,
-                    fullName: staff.HoTenNV,
-                    role: role,
-                    chucVu: staff.ChucVu,
-                    phone: staff.SoDienThoai,
+                    MSNV: staff.MSNV,
+                    HoTenNV: staff.HoTenNV,
+                    ChucVu: staff.ChucVu,
+                    SoDienThoai: staff.SoDienThoai,
+                    DiaChi: staff.DiaChi,
                 };
 
-                // Ký JWT với thông tin nhân viên
                 const token = JwtUtil.sign({
                     id: String(staff._id),
                     username: staff.MSNV,
-                    role: role,
+                    role: vaiTro,
                     type: "staff",
                 });
 
                 return res.json({
-                    message: `Đăng nhập thành công với vai trò ${role === "ADMIN" ? "Quản trị viên (Super Admin)" : "Thủ thư (Manager)"}.`,
+                    message: `Đăng nhập thành công với vai trò ${vaiTro === "ADMIN" ? "Quản trị viên" : "Thủ thư"}.`,
                     token,
                     data: userData,
                 });
@@ -63,21 +56,22 @@ class AuthController {
             if (reader) {
                 const userData = {
                     _id: String(reader._id),
-                    username: reader.MaDocGia,
-                    fullName: `${reader.HoLot} ${reader.Ten}`.trim(),
-                    role: reader.Role || "USER",
-                    phone: reader.DienThoai,
-                    diaChi: reader.DiaChi,
-                    phai: reader.Phai,
-                    trangThaiThe: reader.TrangThaiThe,
-                    soLanViPham: reader.SoLanViPham || 0,
+                    MaDocGia: reader.MaDocGia,
+                    HoLot: reader.HoLot,
+                    Ten: reader.Ten,
+                    Phai: reader.Phai,
+                    NgaySinh: reader.NgaySinh,
+                    DiaChi: reader.DiaChi,
+                    DienThoai: reader.DienThoai,
+                    VaiTro: reader.VaiTro || "USER",
+                    SoLanViPham: reader.SoLanViPham || 0,
+                    TrangThaiThe: reader.TrangThaiThe,
                 };
 
-                // Ký JWT với thông tin độc giả
                 const token = JwtUtil.sign({
                     id: String(reader._id),
                     username: reader.MaDocGia,
-                    role: reader.Role || "USER",
+                    role: reader.VaiTro || "USER",
                     type: "reader",
                 });
 
@@ -88,17 +82,13 @@ class AuthController {
                 });
             }
 
-            // Không tìm thấy hoặc sai mật khẩu
             return next(new ApiError(401, "Tài khoản hoặc mật khẩu không chính xác."));
         } catch (error) {
             return next(new ApiError(500, "Lỗi xảy ra trong quá trình xác thực đăng nhập."));
         }
     }
 
-    /**
-     * Đăng ký thẻ độc giả mới trực tuyến
-     * POST /api/auth/register
-     */
+    // Xử lý đăng ký thẻ độc giả - Completed
     async registerDocGia(req, res, next) {
         try {
             const service = new DocGiaService(MongoDB.client);
@@ -112,26 +102,21 @@ class AuthController {
         }
     }
 
-    /**
-     * Đăng nhập hoặc Đăng ký nhanh thông qua tài khoản Google OAuth 2.0
-     * POST /api/auth/google
-     */
+    // Xử lý đăng nhập bằng google - Completed
     async loginWithGoogle(req, res, next) {
         try {
-            const { idToken, credential } = req.body;
-            const token = idToken || credential;
+            const { idToken } = req.body;
+            const token = idToken;
 
             if (!token) {
-                return next(new ApiError(400, "Thiếu Google ID Token hoặc thông tin chứng thực."));
+                return next(new ApiError(400, "Thiếu Google ID Token."));
             }
 
-            // 1. Xác thực Google Token thông qua GoogleAuthService
             const googleProfile = await googleAuthService.verifyIdToken(token);
 
             const docGiaService = new DocGiaService(MongoDB.client);
             const db = MongoDB.client.db();
 
-            // 2. Tìm tài khoản độc giả liên kết với Email hoặc GoogleId này
             let reader = await db.collection("docgia").findOne({
                 $or: [
                     { GoogleId: googleProfile.googleId },
@@ -140,7 +125,7 @@ class AuthController {
                 ]
             });
 
-            // 3. Nếu chưa có → Tự động đăng ký thẻ độc giả mới
+            // Chưa đăng nhập bằng tài khoản google thì tạo cái mới
             if (!reader) {
                 const newReaderData = googleAuthService.formatReaderFromGoogleProfile(googleProfile);
                 newReaderData.MaDocGia = await docGiaService.generateMaDocGia();
@@ -153,21 +138,22 @@ class AuthController {
 
             const userData = {
                 _id: String(reader._id),
-                username: reader.MaDocGia,
-                fullName: `${reader.HoLot} ${reader.Ten}`.trim(),
-                role: reader.Role || "USER",
-                phone: reader.DienThoai,
-                email: reader.Email || googleProfile.email,
-                trangThaiThe: reader.TrangThaiThe,
-                soLanViPham: reader.SoLanViPham || 0,
-                isGoogleAccount: true,
+                MaDocGia: reader.MaDocGia,
+                HoLot: reader.HoLot || "",
+                Ten: reader.Ten,
+                Phai: reader.Phai,
+                NgaySinh: reader.NgaySinh,
+                DiaChi: reader.DiaChi,
+                DienThoai: reader.DienThoai,
+                VaiTro: reader.VaiTro || "USER",
+                SoLanViPham: reader.SoLanViPham || 0,
+                TrangThaiThe: reader.TrangThaiThe,
             };
 
-            // 4. Ký JWT cho phiên đăng nhập Google
             const jwtToken = JwtUtil.sign({
                 id: String(reader._id),
                 username: reader.MaDocGia,
-                role: reader.Role || "USER",
+                role: reader.VaiTro || "USER",
                 type: "reader",
                 isGoogleAccount: true,
             });
@@ -182,40 +168,44 @@ class AuthController {
         }
     }
 
-    /**
-     * Lấy thông tin người dùng hiện tại từ JWT đã xác thực
-     * GET /api/auth/me  (yêu cầu middleware authenticate)
-     */
+    // Lấy thông tin người dùng hiện tại từ JWT - Completed
     async getMe(req, res, next) {
         try {
-            const { id, type } = req.user;
+            const { id, type } = req.user; // Lúc đăng nhập thành công, trong token có lưu thông tin về id và type
             let userData = null;
 
             if (type === "staff") {
                 const nhanVienService = new NhanVienService(MongoDB.client);
                 const staff = await nhanVienService.findById(id);
                 if (!staff) return next(new ApiError(404, "Không tìm thấy tài khoản nhân viên."));
-                const role = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
+                const vaiTro = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
+
                 userData = {
                     _id: String(staff._id),
-                    username: staff.MSNV,
-                    fullName: staff.HoTenNV,
-                    role,
-                    chucVu: staff.ChucVu,
-                    phone: staff.SoDienThoai,
+                    MSNV: staff.MSNV,
+                    HoTenNV: staff.HoTenNV,
+                    ChucVu: staff.ChucVu,
+                    SoDienThoai: staff.SoDienThoai,
+                    DiaChi: staff.DiaChi,
+                    VaiTro: vaiTro,
                 };
             } else {
                 const docGiaService = new DocGiaService(MongoDB.client);
                 const reader = await docGiaService.findById(id);
                 if (!reader) return next(new ApiError(404, "Không tìm thấy tài khoản độc giả."));
+
                 userData = {
                     _id: String(reader._id),
-                    username: reader.MaDocGia,
-                    fullName: `${reader.HoLot} ${reader.Ten}`.trim(),
-                    role: reader.Role || "USER",
-                    phone: reader.DienThoai,
-                    trangThaiThe: reader.TrangThaiThe,
-                    soLanViPham: reader.SoLanViPham || 0,
+                    MaDocGia: reader.MaDocGia,
+                    HoLot: reader.HoLot,
+                    Ten: reader.Ten,
+                    Phai: reader.Phai,
+                    NgaySinh: reader.NgaySinh,
+                    DiaChi: reader.DiaChi,
+                    DienThoai: reader.DienThoai,
+                    VaiTro: reader.VaiTro || "USER",
+                    SoLanViPham: reader.SoLanViPham || 0,
+                    TrangThaiThe: reader.TrangThaiThe,
                 };
             }
 

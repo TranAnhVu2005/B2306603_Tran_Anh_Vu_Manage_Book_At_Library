@@ -72,7 +72,7 @@
               <th>Mã độc giả</th>
               <th>Họ và Tên</th>
               <th>Số điện thoại</th>
-              <th>Vai trò (Role)</th>
+              <th>Vai trò</th>
               <th>Trạng thái thẻ</th>
               <th>Vi phạm</th>
               <th class="text-end">Thao tác Quản trị</th>
@@ -87,8 +87,8 @@
               </td>
               <td class="font-mono-code small">{{ u.DienThoai }}</td>
               <td>
-                <span v-if="u.Role === 'ADMIN'" class="badge bg-danger">ADMIN</span>
-                <span v-else-if="u.Role === 'MANAGER'" class="badge bg-success">QUẢN LÝ / THỦ THƯ</span>
+                <span v-if="u.VaiTro === 'ADMIN'" class="badge bg-danger">ADMIN</span>
+                <span v-else-if="u.VaiTro === 'MANAGER'" class="badge bg-success">QUẢN LÝ / THỦ THƯ</span>
                 <span v-else class="badge bg-light text-dark border">ĐỘC GIẢ (USER)</span>
               </td>
               <td>
@@ -106,13 +106,13 @@
               </td>
               <td class="text-end">
                 <!-- Nâng cấp / Hạ cấp Role -->
-                <button v-if="u.Role === 'USER'" 
+                <button v-if="u.VaiTro === 'USER'"
                         class="ath-action-btn ath-action-btn-success me-1"
                         @click="changeRole(u, 'MANAGER')"
                         title="Nâng cấp lên Quản lý / Thủ thư">
                   <i class="fas fa-arrow-up text-success"></i> Thăng cấp
                 </button>
-                <button v-else-if="u.Role === 'MANAGER'" 
+                <button v-else-if="u.VaiTro === 'MANAGER'"
                         class="ath-action-btn me-1"
                         @click="changeRole(u, 'USER')"
                         title="Hạ cấp về Độc giả thường">
@@ -173,7 +173,7 @@ export default {
           u.DienThoai.includes(this.search);
 
         let matchesRole = true;
-        if (this.filterRole === "MANAGER") matchesRole = u.Role === "MANAGER";
+        if (this.filterRole === "MANAGER") matchesRole = u.VaiTro === "MANAGER";
         if (this.filterRole === "Blacklist") matchesRole = u.TrangThaiThe === "Blacklist";
 
         return matchesSearch && matchesRole;
@@ -181,7 +181,13 @@ export default {
     }
   },
   created() {
+    if (this.$route.query.filter === "blacklist") this.filterRole = "Blacklist";
     this.fetchData();
+  },
+  watch: {
+    "$route.query.filter"(filter) {
+      this.filterRole = filter === "blacklist" ? "Blacklist" : "all";
+    },
   },
   methods: {
     async fetchData() {
@@ -189,14 +195,14 @@ export default {
       try {
         this.users = await docGiaService.getAll();
       } catch (err) {
-        this.$refs.toast?.show("Lỗi khi tải danh sách độc giả.", "error");
+        this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải danh sách độc giả.", "error");
       } finally {
         this.loading = false;
       }
     },
     async changeRole(u, newRole) {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      if (currentUser.username === u.MaDocGia && newRole !== "ADMIN") {
+      if (currentUser._id === u._id && newRole !== "ADMIN") {
         this.$refs.toast.show("Bạn không thể tự hạ cấp quyền quản trị của chính mình!", "error");
         return;
       }
@@ -209,7 +215,7 @@ export default {
         this.$refs.toast.show(`Đã cập nhật vai trò thành công: ${newRole}`);
         this.fetchData();
       } catch (err) {
-        this.$refs.toast.show("Lỗi khi cập nhật vai trò.", "error");
+        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi cập nhật vai trò.", "error");
       }
     },
     async unblockUser(u) {
@@ -219,12 +225,12 @@ export default {
         this.$refs.toast.show("Đã mở khóa thẻ và đặt lại số lần vi phạm về 0!");
         this.fetchData();
       } catch (err) {
-        this.$refs.toast.show("Lỗi khi mở khóa tài khoản.", "error");
+        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi mở khóa tài khoản.", "error");
       }
     },
     async deleteUser(u) {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      if (currentUser.username === u.MaDocGia) {
+      if (currentUser._id === u._id) {
         this.$refs.toast.show("Bạn không thể tự xóa tài khoản của chính mình!", "error");
         return;
       }

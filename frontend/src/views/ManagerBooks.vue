@@ -169,7 +169,7 @@
               <label class="small fw-bold mb-1">Nhà xuất bản:</label>
               <select class="ath-input" v-model="form.MaNXB" required>
                 <option v-for="nxb in publishers" :key="nxb.MaNXB" :value="nxb.MaNXB">
-                  {{ nxb.TenNXB }} ({{ nxb.MaNXB }})
+                  {{ nxb.TENNXB }} ({{ nxb.MaNXB }})
                 </option>
               </select>
             </div>
@@ -307,7 +307,7 @@ export default {
     },
     getPublisherName(maNxb) {
       const p = this.publishers.find(item => item.MaNXB === maNxb);
-      return p ? (p.TenNXB || p.TENNXB) : (maNxb || "—");
+      return p ? p.TENNXB : (maNxb || "—");
     },
     async quickAdjustStock(book, delta) {
       const newStock = (book.SoQuyen || 0) + delta;

@@ -1,5 +1,18 @@
 const { ObjectId } = require("mongodb");
 
+const publicFields = {
+    _id: 1,
+    MaDocGia: 1,
+    MaSach: 1,
+    NgayMuon: 1,
+    MSNV: 1,
+    NgayHenTra: 1,
+    NgayTra: 1,
+    TrangThai: 1,
+    GiaTriBoiThuong: 1,
+    GhiChu: 1,
+};
+
 /**
  * =========================================================================================
  * SERVICE QUẢN LÝ THEO DÕI MƯỢN SÁCH (THEODOIMUONSACH SERVICE)
@@ -16,7 +29,6 @@ const { ObjectId } = require("mongodb");
  *   + NgayTra: String / Date (Ngày thực tế mang sách trả tại quầy - null nếu chưa trả)
  *   + TrangThai: String (ChoDuyet, DangMuon, DaTra, MatSach, TuChoi)
  *   + GiaTriBoiThuong: Double (Tiền bồi hoàn theo đơn giá nếu làm mất sách)
- *   + TienPhat: Double (Alias tương thích giao diện Frontend)
  *   + GhiChu: String (Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả)
  * =========================================================================================
  */
@@ -112,7 +124,6 @@ class TheoDoiMuonSachService {
             NgayTra: null,
             TrangThai: "ChoDuyet",
             GiaTriBoiThuong: 0,
-            TienPhat: 0, // Đồng bộ alias
             GhiChu: payload.GhiChu ? String(payload.GhiChu).trim() : "Độc giả đăng ký mượn trực tuyến",
             CreatedAt: new Date(),
             UpdatedAt: new Date(),
@@ -164,7 +175,7 @@ class TheoDoiMuonSachService {
             },
             { returnDocument: "after" }
         );
-        return result;
+        return result ? this.findById(String(record._id)) : null;
     }
 
     /**
@@ -191,7 +202,7 @@ class TheoDoiMuonSachService {
             },
             { returnDocument: "after" }
         );
-        return result;
+        return result ? this.findById(String(record._id)) : null;
     }
 
     /**
@@ -240,7 +251,7 @@ class TheoDoiMuonSachService {
             }
         }
 
-        return result;
+        return result ? this.findById(String(record._id)) : null;
     }
 
     /**
@@ -268,7 +279,6 @@ class TheoDoiMuonSachService {
                     TrangThai: "MatSach",
                     NgayTra: new Date().toISOString().split("T")[0],
                     GiaTriBoiThuong: giaTriBoiThuong,
-                    TienPhat: giaTriBoiThuong, // Đồng bộ alias
                     GhiChu: `${ghiChu} (Tiền bồi thường: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫)`,
                     UpdatedAt: new Date()
                 }
@@ -287,7 +297,7 @@ class TheoDoiMuonSachService {
             );
         }
 
-        return result;
+        return result ? this.findById(String(record._id)) : null;
     }
 
     /**
@@ -305,73 +315,7 @@ class TheoDoiMuonSachService {
             query.TrangThai = filter.trangThai;
         }
 
-        const pipeline = [
-            { $match: query },
-            { $sort: { CreatedAt: -1, _id: -1 } },
-            {
-                $lookup: {
-                    from: "sach",
-                    localField: "MaSach",
-                    foreignField: "MaSach",
-                    as: "sachInfo"
-                }
-            },
-            {
-                $lookup: {
-                    from: "docgia",
-                    localField: "MaDocGia",
-                    foreignField: "MaDocGia",
-                    as: "docGiaInfo"
-                }
-            },
-            {
-                $lookup: {
-                    from: "nhanvien",
-                    localField: "MSNV",
-                    foreignField: "MSNV",
-                    as: "nhanVienInfo"
-                }
-            },
-            {
-                $unwind: {
-                    path: "$sachInfo",
-                    preserveNullAndEmptyArrays: true
-                }
-            },
-            {
-                $unwind: {
-                    path: "$docGiaInfo",
-                    preserveNullAndEmptyArrays: true
-                }
-            },
-            {
-                $unwind: {
-                    path: "$nhanVienInfo",
-                    preserveNullAndEmptyArrays: true
-                }
-            }
-        ];
-
-        const list = await this.TheoDoi.aggregate(pipeline).toArray();
-
-        // Ẩn mật khẩu của độc giả & nhân viên trong kết quả join
-        return list.map(item => {
-            if (item.docGiaInfo) {
-                delete item.docGiaInfo.MatKhau;
-                delete item.docGiaInfo.Password;
-            }
-            if (item.nhanVienInfo) {
-                delete item.nhanVienInfo.MatKhau;
-                delete item.nhanVienInfo.Password;
-            }
-            // Đảm bảo tương thích cả GiaTriBoiThuong và TienPhat
-            if (item.GiaTriBoiThuong !== undefined && item.TienPhat === undefined) {
-                item.TienPhat = item.GiaTriBoiThuong;
-            } else if (item.TienPhat !== undefined && item.GiaTriBoiThuong === undefined) {
-                item.GiaTriBoiThuong = item.TienPhat;
-            }
-            return item;
-        });
+        return await this.TheoDoi.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 }).toArray();
     }
 
     /**
@@ -379,7 +323,7 @@ class TheoDoiMuonSachService {
      */
     async findById(id) {
         if (!ObjectId.isValid(id)) return null;
-        return await this.TheoDoi.findOne({ _id: new ObjectId(id) });
+        return await this.TheoDoi.findOne({ _id: new ObjectId(id) }, { projection: publicFields });
     }
 
     /**
