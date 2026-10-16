@@ -1,6 +1,6 @@
 <template>
   <div class="vg-page">
-    <div class="container-fluid" style="max-width: 1400px;">
+    <div class="manager-borrows-page">
       <!-- ===== PAGE HEADER ===== -->
       <div class="vg-page-header d-flex justify-content-between align-items-center flex-wrap gap-3 reveal" data-reveal>
         <div>
@@ -115,8 +115,8 @@
                   <td>
                     <strong class="row-name">{{ readerName(item.MaDocGia) }}</strong>
                     <span class="row-sub font-mono-code">{{ item.MaDocGia }} · {{ readerPhone(item.MaDocGia) || '—' }}</span>
-                    <span v-if="readerFor(item.MaDocGia)?.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist" style="margin-top: 4px; font-size: 0.6rem;">
-                      Blacklist ({{ readerFor(item.MaDocGia).SoLanViPham }} lỗi)
+                    <span v-if="readerFor(item.MaDocGia)?.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den" style="margin-top: 4px; font-size: 0.6rem;">
+                      Danh sách đen ({{ readerFor(item.MaDocGia).SoLanViPham }} lỗi)
                     </span>
                   </td>
                   <td>
@@ -227,7 +227,7 @@
             <div class="modal-body">
               <div class="warning-box">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
-                Khi báo mất, tồn kho sẽ <strong>không được cộng lại</strong>. Hệ thống sẽ tự động phạt độc giả số tiền bằng đúng đơn giá cuốn sách và tăng số lần vi phạm lên 1 (đạt 3 lần → tự động khóa Blacklist).
+                Khi báo mất, tồn kho sẽ <strong>không được cộng lại</strong>. Hệ thống sẽ tự động phạt độc giả số tiền bằng đúng đơn giá cuốn sách và tăng số lần vi phạm lên 1 (đạt 3 lần → tự động đưa vào Danh sách đen).
               </div>
               <div class="mb-3">
                 <label class="form-label-sm">Lý do / Tình trạng ghi nhận:</label>
@@ -480,7 +480,12 @@ export default {
   text-align: center;
 }
 .state-text { font-size: 0.88rem; color: var(--ink-muted); margin: 0; }
-.table-wrap { overflow-x: auto; }
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.table-wrap .ath-table { min-width: 900px; }
+.manager-borrows-page { min-width: 0; }
 
 .row-name { font-size: 0.88rem; color: var(--ink-primary); display: block; }
 .row-book { font-size: 0.9rem; color: var(--ink-primary); display: block; }

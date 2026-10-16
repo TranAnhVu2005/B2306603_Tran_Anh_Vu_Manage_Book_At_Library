@@ -4,7 +4,7 @@
     <section class="hero-section">
       <div class="hero-bg" aria-hidden="true"></div>
 
-      <div class="container hero-inner">
+      <div class="hero-inner">
         <!-- Eyebrow -->
         <div class="reveal" data-reveal>
           <span class="eyebrow">
@@ -17,9 +17,9 @@
 
         <!-- Headline -->
         <h1 class="hero-title reveal reveal-d1" data-reveal>
-          Nguồn Học Liệu<br/>
-          <em>Phong Phú Bậc Nhất</em><br/>
-          Đồng Bằng Sông Cửu Long
+          <span class="hero-title-main">Nguồn học liệu</span>
+          <em>phong phú bậc nhất</em>
+          <span class="hero-title-region">Đồng bằng sông Cửu Long</span>
         </h1>
 
         <p class="hero-sub reveal reveal-d2" data-reveal>
@@ -49,7 +49,7 @@
 
     <!-- ===== SEARCH & FILTER SECTION ===== -->
     <section class="search-section">
-      <div class="container">
+      <div>
         <div class="vg-shell reveal" data-reveal>
           <div class="vg-core">
             <div class="search-bar-wrap">
@@ -126,7 +126,7 @@
 
     <!-- ===== BOOKS CATALOG SECTION ===== -->
     <section class="catalog-section">
-      <div class="container">
+      <div>
         <!-- Section header -->
         <div class="catalog-header reveal" data-reveal>
           <div>
@@ -367,27 +367,44 @@ export default {
 .hero-inner {
   position: relative;
   z-index: 1;
-  max-width: 820px;
+  max-width: 900px;
 }
 .hero-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   font-family: var(--font-serif);
-  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-size: clamp(2.4rem, 5.2vw, 4.25rem);
   font-weight: 700;
-  line-height: 1.12;
-  letter-spacing: -0.02em;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
   color: var(--ink-primary);
-  margin: 1.25rem 0 1.5rem;
+  margin: 1.5rem 0 1.4rem;
+}
+.hero-title-main {
+  max-width: 100%;
 }
 .hero-title em {
   font-style: italic;
   color: var(--primary);
+  font-weight: 600;
+}
+.hero-title-region {
+  margin-top: 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.24em;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }
 .hero-sub {
   font-size: 1.05rem;
   color: var(--ink-secondary);
   line-height: 1.7;
-  max-width: 560px;
-  margin-bottom: 2.5rem;
+  max-width: 510px;
+  margin-bottom: 2rem;
 }
 .hero-stats {
   display: flex;
@@ -651,7 +668,15 @@ export default {
 /* ===== MOBILE ===== */
 @media (max-width: 767.98px) {
   .hero-section { padding: 3rem 0 2.5rem; }
-  .hero-title { font-size: 2rem; }
+  .hero-title {
+    font-size: clamp(2.25rem, 9vw, 3rem);
+    margin-top: 1.25rem;
+  }
+  .hero-title-region {
+    font-size: 0.27em;
+    letter-spacing: 0.12em;
+  }
+  .hero-sub { font-size: 0.96rem; margin-bottom: 1.5rem; }
   .hero-stats { flex-wrap: wrap; border-radius: 1.25rem; }
   .hero-stat { flex: 1; min-width: 100px; }
   .hero-stat-divider { display: none; }

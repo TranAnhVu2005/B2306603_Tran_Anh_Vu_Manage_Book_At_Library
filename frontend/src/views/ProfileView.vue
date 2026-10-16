@@ -1,11 +1,11 @@
 <template>
   <div class="vg-page">
-    <div class="container">
+    <div>
       <!-- ===== PAGE HEADER ===== -->
       <div class="vg-page-header d-flex justify-content-between align-items-center flex-wrap gap-3 reveal" data-reveal>
         <div>
-          <span class="vg-section-label">Hồ Sơ Độc Giả</span>
-          <h1 class="page-title">Thẻ Thư Viện &amp; Sách Đang Mượn</h1>
+          <span class="vg-section-label">{{ isReader ? "Hồ Sơ Độc Giả" : "Hồ Sơ Nhân Viên" }}</span>
+          <h1 class="page-title">{{ isReader ? "Thẻ Thư Viện &amp; Sách Đang Mượn" : "Thông Tin Tài Khoản" }}</h1>
         </div>
         <router-link to="/" class="ath-btn-outline text-decoration-none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -18,7 +18,7 @@
         <div class="vg-core empty-state">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-muted);" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <h2 class="empty-title">Vui lòng đăng nhập</h2>
-          <p class="empty-sub">Bạn cần đăng nhập để xem thông tin thẻ độc giả và lịch sử mượn sách.</p>
+          <p class="empty-sub">Bạn cần đăng nhập để xem thông tin hồ sơ của mình.</p>
           <router-link to="/login" class="ath-btn-primary text-decoration-none">
             Đăng nhập ngay
             <span class="btn-island" aria-hidden="true">
@@ -32,7 +32,7 @@
       <div v-else class="profile-layout">
         <!-- ===== LEFT: Reader Card ===== -->
         <aside class="reveal" data-reveal>
-          <div class="vg-shell reader-card-shell">
+          <div v-if="isReader" class="vg-shell reader-card-shell">
             <div class="vg-core reader-card">
               <!-- Avatar & name -->
               <div class="reader-card-top">
@@ -43,9 +43,9 @@
                 <span class="reader-code">Mã thẻ: {{ currentUser.MaDocGia }}</span>
 
                 <!-- Status badge -->
-                <span v-if="readerInfo?.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist" style="margin-top: 0.75rem;">
+                <span v-if="readerInfo?.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den" style="margin-top: 0.75rem;">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
-                  Bị Khóa (Blacklist)
+                  Danh sách đen
                 </span>
                 <span v-else-if="readerInfo?.TrangThaiThe === 'Khoa'" class="ath-badge ath-badge-out" style="margin-top: 0.75rem;">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -94,17 +94,66 @@
                 </div>
               </div>
 
-              <!-- Blacklist warning -->
-              <div v-if="readerInfo?.TrangThaiThe === 'Blacklist'" class="blacklist-warning">
+              <button
+                v-if="readerInfo?.MaDocGia"
+                class="ath-btn-outline profile-edit-button"
+                type="button"
+                @click="openProfileEditor"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+                </svg>
+                Chỉnh sửa hồ sơ
+              </button>
+
+              <!-- Cảnh báo trạng thái danh sách đen -->
+              <div v-if="readerInfo?.TrangThaiThe === 'DanhSachDen'" class="danh-sach-den-warning">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
                 Thẻ bị khóa do đạt 3 lần vi phạm. Vui lòng liên hệ quầy thủ thư để mở khóa.
               </div>
             </div>
           </div>
+          <div v-else class="vg-shell reader-card-shell">
+            <div class="vg-core reader-card">
+              <div class="reader-card-top">
+                <div class="vg-avatar" style="width: 72px; height: 72px; font-size: 1.7rem;">
+                  {{ userInitials }}
+                </div>
+                <h2 class="reader-name">{{ displayName }}</h2>
+                <span class="reader-code">Mã nhân viên: {{ staffInfo?.MSNV || currentUser.MSNV }}</span>
+                <span class="ath-badge" :class="isAdmin ? 'ath-badge-out' : 'ath-badge-available'" style="margin-top: 0.75rem;">
+                  {{ isAdmin ? "QUẢN TRỊ VIÊN" : "THỦ THƯ" }}
+                </span>
+              </div>
+
+              <div class="reader-info-list">
+                <div class="reader-info-row">
+                  <span class="reader-info-label">Số điện thoại</span>
+                  <span class="reader-info-val font-mono-code">{{ staffInfo?.SoDienThoai || "—" }}</span>
+                </div>
+                <div class="reader-info-row" style="border: none;">
+                  <span class="reader-info-label">Địa chỉ</span>
+                  <span class="reader-info-val" style="text-align: right; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ staffInfo?.DiaChi || "—" }}</span>
+                </div>
+              </div>
+
+              <button
+                v-if="staffInfo?._id"
+                class="ath-btn-outline profile-edit-button"
+                type="button"
+                @click="openProfileEditor"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+                </svg>
+                Chỉnh sửa hồ sơ
+              </button>
+            </div>
+          </div>
         </aside>
 
         <!-- ===== RIGHT: Borrow History ===== -->
-        <div class="borrows-panel reveal reveal-d1" data-reveal>
+        <div v-if="isReader" class="borrows-panel reveal reveal-d1" data-reveal>
           <div class="vg-shell">
             <div class="vg-core">
               <!-- Tab bar -->
@@ -190,6 +239,107 @@
             </div>
           </div>
         </div>
+        <div v-else class="borrows-panel reveal reveal-d1" data-reveal>
+          <div class="vg-shell">
+            <div class="vg-core">
+              <span class="vg-section-label">Tài khoản nhân viên</span>
+              <h2 class="panel-title">Thông tin cơ bản</h2>
+              <p class="empty-sub">
+                Bạn có thể tự cập nhật họ tên, số điện thoại và địa chỉ. Mã nhân viên và chức vụ được quản lý riêng, không thể thay đổi tại trang cá nhân.
+              </p>
+              <div class="reader-info-list">
+                <div class="reader-info-row">
+                  <span class="reader-info-label">Mã nhân viên</span>
+                  <span class="reader-info-val font-mono-code">{{ staffInfo?.MSNV || "—" }}</span>
+                </div>
+                <div class="reader-info-row" style="border: none;">
+                  <span class="reader-info-label">Chức vụ</span>
+                  <span class="reader-info-val">{{ staffInfo?.ChucVu === "ADMIN" ? "Quản trị viên" : "Thủ thư" }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile editor -->
+    <div
+      v-if="showEditProfileModal"
+      class="ath-modal-overlay"
+      @click.self="closeProfileEditor"
+    >
+      <div class="ath-modal-content profile-editor-modal" role="dialog" aria-modal="true" aria-labelledby="profile-editor-title">
+        <div class="ath-modal-inner">
+          <div class="modal-head">
+            <div>
+              <span class="vg-section-label">Thông tin cá nhân</span>
+              <h2 id="profile-editor-title" class="modal-title">Chỉnh sửa hồ sơ</h2>
+            </div>
+            <button type="button" class="modal-close" @click="closeProfileEditor" aria-label="Đóng">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <form class="modal-body profile-editor-form" @submit.prevent="saveProfile">
+            <div class="profile-form-grid">
+              <template v-if="isReader">
+                <label class="profile-form-field">
+                  <span>Họ và tên đệm</span>
+                  <input v-model.trim="profileForm.HoLot" class="ath-input" type="text" autocomplete="family-name" required maxlength="100" />
+                </label>
+                <label class="profile-form-field">
+                  <span>Tên</span>
+                  <input v-model.trim="profileForm.Ten" class="ath-input" type="text" autocomplete="given-name" required maxlength="50" />
+                </label>
+                <label class="profile-form-field">
+                  <span>Ngày sinh</span>
+                  <input v-model="profileForm.NgaySinh" class="ath-input" type="date" />
+                </label>
+                <label class="profile-form-field">
+                  <span>Giới tính</span>
+                  <select v-model.number="profileForm.Phai" class="ath-input">
+                    <option :value="1">Nam</option>
+                    <option :value="0">Nữ</option>
+                    <option :value="2">Khác</option>
+                  </select>
+                </label>
+                <label class="profile-form-field profile-form-field-wide">
+                  <span>Số điện thoại đăng nhập</span>
+                  <input v-model.trim="profileForm.DienThoai" class="ath-input" type="tel" autocomplete="tel" required maxlength="20" />
+                </label>
+                <label class="profile-form-field profile-form-field-wide">
+                  <span>Địa chỉ</span>
+                  <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address" maxlength="250" />
+                </label>
+              </template>
+              <template v-else>
+                <label class="profile-form-field profile-form-field-wide">
+                  <span>Họ và tên</span>
+                  <input v-model.trim="profileForm.HoTenNV" class="ath-input" type="text" autocomplete="name" required maxlength="150" />
+                </label>
+                <label class="profile-form-field profile-form-field-wide">
+                  <span>Số điện thoại</span>
+                  <input v-model.trim="profileForm.SoDienThoai" class="ath-input" type="tel" autocomplete="tel" maxlength="20" />
+                </label>
+                <label class="profile-form-field profile-form-field-wide">
+                  <span>Địa chỉ</span>
+                  <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address" maxlength="250" />
+                </label>
+              </template>
+            </div>
+            <p class="profile-editor-note">
+              {{ isReader
+                ? "Nếu đổi số điện thoại, số mới sẽ được dùng để đăng nhập. Vai trò và trạng thái thẻ không thể chỉnh sửa tại đây."
+                : "Mã nhân viên và chức vụ không thể chỉnh sửa tại đây." }}
+            </p>
+            <div class="profile-editor-actions">
+              <button class="ath-btn-outline" type="button" :disabled="savingProfile" @click="closeProfileEditor">Hủy</button>
+              <button class="ath-btn-primary" type="submit" :disabled="savingProfile">
+                {{ savingProfile ? "Đang lưu..." : "Lưu thay đổi" }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -234,6 +384,8 @@
 <script>
 import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
+import docGiaService from "../services/docgia.service";
+import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
 import paymentService from "../services/payment.service";
@@ -245,18 +397,38 @@ export default {
     return {
       currentUser: null,
       readerInfo: null,
+      staffInfo: null,
       borrows: [],
       books: [],
       loading: false,
       activeTab: "active",
       showPaymentModal: false,
       paymentInfo: null,
+      showEditProfileModal: false,
+      savingProfile: false,
+      previousBodyOverflow: "",
+      profileForm: {
+        HoLot: "",
+        Ten: "",
+        HoTenNV: "",
+        NgaySinh: "",
+        Phai: 1,
+        DiaChi: "",
+        DienThoai: "",
+        SoDienThoai: "",
+      },
       revealObserver: null,
     };
   },
   computed: {
+    isReader() {
+      return authService.isReader(this.currentUser);
+    },
+    isAdmin() {
+      return authService.isAdmin(this.staffInfo);
+    },
     displayName() {
-      return authService.getDisplayName(this.readerInfo || this.currentUser);
+      return authService.getDisplayName(this.readerInfo || this.staffInfo || this.currentUser);
     },
     userInitials() {
       if (!this.currentUser) return "DG";
@@ -283,12 +455,30 @@ export default {
       return this.historyBorrows;
     },
   },
+  watch: {
+    showEditProfileModal(isOpen) {
+      if (isOpen) {
+        this.previousBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.addEventListener("keydown", this.handleProfileEditorKeydown);
+      } else {
+        document.body.style.overflow = this.previousBodyOverflow;
+        document.removeEventListener("keydown", this.handleProfileEditorKeydown);
+      }
+    },
+  },
   created() {
     this.currentUser = authService.getUser();
     if (this.currentUser) this.fetchData();
   },
   mounted() { this.initReveal(); },
-  beforeUnmount() { if (this.revealObserver) this.revealObserver.disconnect(); },
+  beforeUnmount() {
+    if (this.revealObserver) this.revealObserver.disconnect();
+    if (this.showEditProfileModal) {
+      document.body.style.overflow = this.previousBodyOverflow;
+      document.removeEventListener("keydown", this.handleProfileEditorKeydown);
+    }
+  },
   methods: {
     initReveal() {
       if (this.revealObserver) this.revealObserver.disconnect();
@@ -301,20 +491,88 @@ export default {
     async fetchData() {
       this.loading = true;
       try {
-        const [readerRes, borrowsRes, booksRes] = await Promise.all([
-          authService.fetchMe(),
-          theoDoiService.getAll({ maDocGia: this.currentUser.MaDocGia }),
-          sachService.getAll(),
-        ]);
-        this.readerInfo = readerRes;
-        this.currentUser = readerRes;
-        this.borrows = borrowsRes;
-        this.books = booksRes;
+        const user = await authService.fetchMe();
+        if (!user) throw new Error("Không thể tải hồ sơ người dùng.");
+        this.currentUser = user;
+
+        if (authService.isReader(user)) {
+          const [borrows, books] = await Promise.all([
+            theoDoiService.getAll({ maDocGia: user.MaDocGia }),
+            sachService.getAll(),
+          ]);
+          this.readerInfo = user;
+          this.borrows = borrows;
+          this.books = books;
+        } else {
+          this.staffInfo = user;
+        }
       } catch (err) {
-        this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải thông tin độc giả.", "error");
+        this.$refs.toast?.show(err.response?.data?.message || err.message || "Lỗi khi tải thông tin hồ sơ.", "error");
       } finally {
         this.loading = false;
         this.$nextTick(() => this.initReveal());
+      }
+    },
+    openProfileEditor() {
+      const profile = this.isReader ? this.readerInfo : this.staffInfo;
+      if (!profile?._id) {
+        this.$refs.toast?.show("Không tìm thấy định danh hồ sơ để cập nhật.", "error");
+        return;
+      }
+      this.profileForm = this.isReader
+        ? {
+            HoLot: profile.HoLot || "",
+            Ten: profile.Ten || "",
+            NgaySinh: profile.NgaySinh ? String(profile.NgaySinh).slice(0, 10) : "",
+            Phai: profile.Phai ?? 1,
+            DiaChi: profile.DiaChi || "",
+            DienThoai: profile.DienThoai || "",
+          }
+        : {
+            HoTenNV: profile.HoTenNV || "",
+            SoDienThoai: profile.SoDienThoai || "",
+            DiaChi: profile.DiaChi || "",
+          };
+      this.showEditProfileModal = true;
+    },
+    closeProfileEditor() {
+      if (!this.savingProfile) this.showEditProfileModal = false;
+    },
+    handleProfileEditorKeydown(event) {
+      if (event.key === "Escape") this.closeProfileEditor();
+    },
+    async saveProfile() {
+      this.savingProfile = true;
+      try {
+        const profile = this.isReader ? this.readerInfo : this.staffInfo;
+        const payload = this.isReader
+          ? {
+              HoLot: this.profileForm.HoLot,
+              Ten: this.profileForm.Ten,
+              NgaySinh: this.profileForm.NgaySinh,
+              Phai: this.profileForm.Phai,
+              DiaChi: this.profileForm.DiaChi,
+              DienThoai: this.profileForm.DienThoai,
+            }
+          : {
+              HoTenNV: this.profileForm.HoTenNV,
+              SoDienThoai: this.profileForm.SoDienThoai,
+              DiaChi: this.profileForm.DiaChi,
+            };
+        const result = this.isReader
+          ? await docGiaService.update(profile._id, payload)
+          : await nhanVienService.update(profile._id, payload);
+        if (!result?.data) throw new Error("Máy chủ không trả về hồ sơ sau khi cập nhật.");
+        if (this.isReader) this.readerInfo = result.data;
+        else this.staffInfo = result.data;
+        this.currentUser = result.data;
+        authService.setUser(result.data);
+        this.showEditProfileModal = false;
+        this.$refs.toast?.show(result.message || "Cập nhật hồ sơ thành công.");
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || err.message || "Không thể cập nhật hồ sơ.", "error");
+      } finally {
+        this.savingProfile = false;
       }
     },
     isOverdue(item) {
@@ -355,10 +613,12 @@ export default {
 /* Layout */
 .profile-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 1.5rem;
   align-items: flex-start;
 }
+.profile-layout > * { min-width: 0; }
+.borrows-panel { min-width: 0; }
 @media (max-width: 991px) {
   .profile-layout { grid-template-columns: 1fr; }
 }
@@ -369,6 +629,10 @@ export default {
   padding: 1.75rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
+}
+.profile-edit-button {
+  width: 100%;
+  margin-top: 1rem;
 }
 .reader-card-top {
   display: flex;
@@ -407,7 +671,7 @@ export default {
 .text-warning { color: var(--status-scarce) !important; }
 .text-success { color: var(--status-available) !important; }
 
-.blacklist-warning {
+.danh-sach-den-warning {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
@@ -456,7 +720,10 @@ export default {
 }
 .state-text { font-size: 0.9rem; color: var(--ink-muted); margin: 0; }
 
-.borrows-table-wrap { overflow-x: auto; }
+.borrows-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
 
 .book-link {
   text-decoration: none;
@@ -528,6 +795,39 @@ export default {
 .modal-close:hover { background: var(--paper-subtle); color: var(--ink-primary); }
 .modal-body { padding: 1.5rem; }
 .modal-sub { font-size: 0.84rem; color: var(--ink-muted); margin-bottom: 1rem; }
+.profile-editor-modal { width: min(100% - 2rem, 620px); }
+.profile-editor-form { padding: 1.25rem 1.5rem 1.5rem; }
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.profile-form-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--ink-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.profile-form-field-wide { grid-column: 1 / -1; }
+.profile-form-field .ath-input { min-width: 0; }
+.profile-editor-note {
+  margin: 1rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+.profile-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--paper-border);
+}
+.profile-editor-actions button:disabled { opacity: 0.6; cursor: wait; }
 .qr-wrap {
   display: inline-block;
   padding: 1rem;
@@ -550,5 +850,12 @@ export default {
 .ath-btn-primary:hover .btn-island {
   transform: translate(2px, -1px) scale(1.08);
   background: rgba(255,255,255,0.22);
+}
+@media (max-width: 575.98px) {
+  .profile-editor-form { padding: 1rem; }
+  .profile-form-grid { grid-template-columns: 1fr; }
+  .profile-form-field-wide { grid-column: auto; }
+  .profile-editor-actions { flex-direction: column-reverse; }
+  .profile-editor-actions button { width: 100%; }
 }
 </style>

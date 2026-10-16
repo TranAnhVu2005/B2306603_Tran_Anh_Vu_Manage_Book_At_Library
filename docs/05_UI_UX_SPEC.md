@@ -25,6 +25,12 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 - **Motion**: Tất cả transition dùng custom `cubic-bezier`, không dùng `linear` hay `ease-in-out`.
 - **Scroll Entry Animation**: Mọi element vào viewport phải có `translate-y + blur + opacity` fade-up animation (dùng `IntersectionObserver`).
 
+### 1.3. Bố Cục Responsive Trong Vùng Nội Dung
+- `App.vue` dùng một `.container` Bootstrap cho vùng nội dung chính; các trang con không lồng thêm `.container`/`.container-fluid` để tránh co hẹp và lặp gutter.
+- Nội dung trang sử dụng toàn bộ chiều rộng vùng chính; các bố cục nhiều cột tự xếp thành một cột ở breakpoint phù hợp.
+- Bảng quản trị có nhiều cột được đặt trong vùng `overflow-x: auto` và có chiều rộng tối thiểu phù hợp; chỉ bảng cuộn ngang, không làm tràn toàn bộ trang.
+- Header và Footer tiếp tục dùng chiều rộng layout riêng, độc lập với vùng nội dung chính.
+
 ---
 
 ## 2. Bản Đồ Màn Hình & Tuyến Đường (Vue Router)
@@ -45,10 +51,13 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
    * Nền `backdrop-blur` (fixed overlay), Double-Bezel card.
    * Hiển thị tựa sách, thời hạn mượn mặc định (14 ngày), địa điểm nhận sách vật lý tại quầy.
    * Thông báo: Đơn ở trạng thái `ChoDuyet` chờ thủ thư kiểm tra.
-4. **Trang cá nhân & Thẻ độc giả (`/profile`)**:
-   * Thông tin thẻ: Mã độc giả, Họ tên, Trạng thái thẻ (🟢 Hoạt động / 🔴 Bị khóa Blacklist).
+4. **Trang hồ sơ cá nhân (`/profile`)**:
+   * Thông tin thẻ: Mã độc giả, Họ tên, Trạng thái thẻ (Hoạt động / Tạm khóa / Danh sách đen).
+   * Cho phép độc giả chỉnh sửa họ tên, ngày sinh, giới tính, địa chỉ và số điện thoại đăng nhập của chính mình; không cho sửa vai trò, trạng thái thẻ hoặc số lần vi phạm.
+   * Sau khi cập nhật thành công, hồ sơ và dữ liệu user lưu phiên phải đồng bộ; báo lỗi API ngay trong toast nếu cập nhật thất bại.
    * Bảng danh sách sách đang mượn: Tên sách, ngày mượn, hạn trả, trạng thái (`DangMuon`, `ChoDuyet`, `DaTra`).
    * Áp dụng Scroll Entry Animation cho từng dòng bảng.
+   * Với nhân viên và quản trị viên, trang `/profile` hiển thị hồ sơ nhân viên, cho phép tự sửa `HoTenNV`, `SoDienThoai`, `DiaChi`; không cho sửa `MSNV` hoặc `ChucVu`.
 
 ---
 
@@ -65,7 +74,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
    * Áp dụng Double-Bezel cho form thêm/sửa sách (dạng Modal hoặc Drawer).
 3. **Quản lý Nhà Xuất Bản (`/manager/publishers`)**:
    * Thêm, sửa, xóa các đơn vị NXB liên kết.
-4. **Danh sách đen Thư viện (`/manager/blacklist`)**:
+4. **Bộ lọc danh sách đen tại Quản trị người dùng (`/admin/users?filter=danhsachden`)**:
    * Danh sách độc giả có ≥ 3 lần vi phạm bị tước quyền mượn sách.
 
 ---
@@ -73,9 +82,11 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 ### 2.3. Phân Hệ Quản Trị Tối Cao (Super Admin Portal - `/admin`)
 1. **Quản lý Người Dùng & Phân Quyền (`/admin/users`)**:
    * Danh sách tất cả tài khoản độc giả và nhân viên.
+   * Bộ lọc trạng thái riêng cho `DanhSachDen` và thẻ bị khóa (`Khoa`); hiển thị trạng thái thẻ thực tế, không gộp hai trạng thái.
+   * **Khóa thẻ** chỉ dành cho thẻ `HoatDong`; **Mở khóa** chỉ dành cho thẻ `Khoa` và giữ nguyên `SoLanViPham`. Nếu đã đạt 3 vi phạm, mở khóa khẩn cấp vẫn để thẻ ở `DanhSachDen`.
+   * Thẻ `DanhSachDen` có thao tác **Xét gỡ khỏi danh sách đen** riêng; khi được duyệt, trạng thái trở về `HoatDong` nhưng lịch sử vi phạm không bị xóa.
    * Nút **Nâng cấp (Promote)**: Thăng cấp Độc giả → Quản lý/Thủ thư.
    * Nút **Hạ cấp (Demote)**: Thu hồi quyền quản lý về lại Độc giả.
-   * Nút **Mở khóa Blacklist (Unblock)**: Reset vi phạm về 0, mở lại quyền mượn sách.
 
 ---
 

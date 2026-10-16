@@ -9,7 +9,7 @@ function hasOnlyFields(value, allowedFields) {
     return value && Object.keys(value).every(field => allowedFields.includes(field));
 }
 
-function request(method, path, body = null) {
+function request(method, path, body = null, headers = {}) {
     return new Promise((resolve, reject) => {
         const dataString = body ? JSON.stringify(body) : null;
         const options = {
@@ -19,6 +19,7 @@ function request(method, path, body = null) {
             method: method,
             headers: {
                 "Content-Type": "application/json",
+                ...headers,
             }
         };
         if (dataString) {
@@ -61,8 +62,14 @@ async function runTests() {
     let passed = 0;
     let failed = 0;
     let temporaryReaderId = null;
+    let temporaryReaderObjectId = null;
+    let temporaryReaderPhone = null;
+    let temporaryReaderToken = null;
     let temporaryStaffId = null;
     let temporaryStaffCode = null;
+    let temporaryStaffToken = null;
+    let temporaryAdminId = null;
+    let temporaryAdminToken = null;
 
     async function assert(name, fn) {
         try {
@@ -89,6 +96,7 @@ async function runTests() {
         temporaryStaffCode = staff.data.data.MSNV;
 
         const res = await request("POST", "/api/auth/login", { identifier: temporaryStaffCode, password: "staff_test_password" });
+        temporaryStaffToken = res.data.token;
         if (
             res.status !== 200 ||
             res.data.data.ChucVu !== "THUTHU" ||
@@ -120,6 +128,7 @@ async function runTests() {
             throw new Error(`Không tạo được độc giả kiểm thử, nhận status=${reader.status}`);
         }
         temporaryReaderId = reader.data.data.MaDocGia;
+        temporaryReaderPhone = reader.data.data.DienThoai;
 
         const res = await request("POST", "/api/auth/login", {
             identifier: reader.data.data.DienThoai,
@@ -132,6 +141,165 @@ async function runTests() {
             !hasOnlyFields(res.data.data, ["_id", "MaDocGia", "HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "VaiTro", "SoLanViPham", "TrangThaiThe"])
         ) {
             throw new Error(`Kỳ vọng HTTP 200, MaDocGia và VaiTro USER, nhận status=${res.status}`);
+        }
+        temporaryReaderObjectId = res.data.data._id;
+        temporaryReaderToken = res.data.token;
+    });
+
+    await assert("TC-STATUS-01: Từ chối trạng thái thẻ không chuẩn", async () => {
+        const res = await request("POST", "/api/docgia", {
+            HoLot: "Kiểm thử",
+            Ten: "Trạng thái",
+            NgaySinh: "2000-01-01",
+            Phai: 1,
+            DienThoai: `09${String(Date.now() + 5000).slice(-8)}`,
+            MatKhau: "reader_test_password",
+            TrangThaiThe: "Blacklist"
+        });
+        if (res.status !== 400) {
+            throw new Error(`Kỳ vọng HTTP 400 khi gửi trạng thái thẻ không hợp lệ, nhận status=${res.status}`);
+        }
+    });
+
+    // TC-PROFILE-01: Chỉ chủ hồ sơ đã đăng nhập được cập nhật thông tin cá nhân
+    await assert("TC-PROFILE-01: Độc giả cập nhật hồ sơ của chính mình", async () => {
+        const unauthorized = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderObjectId}`,
+            { HoLot: "Không được phép" }
+        );
+        if (unauthorized.status !== 401) {
+            throw new Error(`Kỳ vọng HTTP 401 khi thiếu token, nhận status=${unauthorized.status}`);
+        }
+
+        const staffUpdate = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderObjectId}`,
+            { HoLot: "Không được phép" },
+            { Authorization: `Bearer ${temporaryStaffToken}` }
+        );
+        if (staffUpdate.status !== 403) {
+            throw new Error(`Kỳ vọng HTTP 403 khi nhân viên sửa hồ sơ độc giả, nhận status=${staffUpdate.status}`);
+        }
+
+        const updated = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderObjectId}`,
+            {
+                HoLot: "Hồ sơ",
+                Ten: "Đã cập nhật",
+                DienThoai: temporaryReaderPhone,
+                Phai: 0,
+                DiaChi: "Cần Thơ",
+                VaiTro: "ADMIN",
+                SoLanViPham: 99,
+                TrangThaiThe: "DanhSachDen",
+                MatKhau: "attacker_password"
+            },
+            { Authorization: `Bearer ${temporaryReaderToken}` }
+        );
+        if (
+            updated.status !== 200 ||
+            updated.data.data.HoLot !== "Hồ sơ" ||
+            updated.data.data.Ten !== "Đã cập nhật" ||
+            updated.data.data.Phai !== 0 ||
+            updated.data.data.DiaChi !== "Cần Thơ" ||
+            updated.data.data.VaiTro !== "USER" ||
+            updated.data.data.SoLanViPham !== 0 ||
+            updated.data.data.TrangThaiThe !== "HoatDong" ||
+            Object.prototype.hasOwnProperty.call(updated.data.data, "MatKhau")
+        ) {
+            throw new Error(`Kỳ vọng chỉ cập nhật trường cá nhân, nhận status=${updated.status}`);
+        }
+
+        const oldPasswordLogin = await request("POST", "/api/auth/login", {
+            identifier: temporaryReaderPhone,
+            password: "reader_test_password"
+        });
+        const injectedPasswordLogin = await request("POST", "/api/auth/login", {
+            identifier: temporaryReaderPhone,
+            password: "attacker_password"
+        });
+        if (oldPasswordLogin.status !== 200 || injectedPasswordLogin.status !== 401) {
+            throw new Error("Thông tin mật khẩu bị thay đổi ngoài ý muốn khi cập nhật hồ sơ.");
+        }
+    });
+
+    // TC-PROFILE-02: Nhân viên và Admin chỉ có thể cập nhật thông tin cá nhân của mình
+    await assert("TC-PROFILE-02: Admin cập nhật hồ sơ nhân viên của chính mình", async () => {
+        const admin = await request("POST", "/api/nhanvien", {
+            HoTenNV: "Quản trị kiểm thử",
+            ChucVu: "ADMIN",
+            MatKhau: "admin_test_password"
+        });
+        if (admin.status !== 201) {
+            throw new Error(`Không tạo được Admin kiểm thử, nhận status=${admin.status}`);
+        }
+        temporaryAdminId = admin.data.data.MSNV;
+
+        const login = await request("POST", "/api/auth/login", {
+            identifier: temporaryAdminId,
+            password: "admin_test_password"
+        });
+        const adminToken = login.data?.token;
+        const adminObjectId = login.data?.data?._id;
+        if (login.status !== 200 || !adminToken || !adminObjectId) {
+            throw new Error(`Không đăng nhập được Admin kiểm thử, nhận status=${login.status}`);
+        }
+        temporaryAdminToken = adminToken;
+
+        const unauthorized = await request(
+            "PUT",
+            `/api/nhanvien/${adminObjectId}`,
+            { HoTenNV: "Không được phép" }
+        );
+        if (unauthorized.status !== 401) {
+            throw new Error(`Kỳ vọng HTTP 401 khi thiếu token, nhận status=${unauthorized.status}`);
+        }
+
+        const otherProfile = await request(
+            "PUT",
+            `/api/nhanvien/${adminObjectId}`,
+            { HoTenNV: "Không được phép" },
+            { Authorization: `Bearer ${temporaryStaffToken}` }
+        );
+        if (otherProfile.status !== 403) {
+            throw new Error(`Kỳ vọng HTTP 403 khi nhân viên sửa hồ sơ Admin, nhận status=${otherProfile.status}`);
+        }
+
+        const updated = await request(
+            "PUT",
+            `/api/nhanvien/${adminObjectId}`,
+            {
+                HoTenNV: "Quản trị đã cập nhật",
+                SoDienThoai: "0901234567",
+                DiaChi: "Cần Thơ",
+                ChucVu: "THUTHU",
+                MatKhau: "attacker_password"
+            },
+            { Authorization: `Bearer ${adminToken}` }
+        );
+        if (
+            updated.status !== 200 ||
+            updated.data.data.HoTenNV !== "Quản trị đã cập nhật" ||
+            updated.data.data.SoDienThoai !== "0901234567" ||
+            updated.data.data.DiaChi !== "Cần Thơ" ||
+            updated.data.data.ChucVu !== "ADMIN" ||
+            Object.prototype.hasOwnProperty.call(updated.data.data, "MatKhau")
+        ) {
+            throw new Error(`Kỳ vọng chỉ cập nhật trường cá nhân, nhận status=${updated.status}`);
+        }
+
+        const originalPasswordLogin = await request("POST", "/api/auth/login", {
+            identifier: temporaryAdminId,
+            password: "admin_test_password"
+        });
+        const injectedPasswordLogin = await request("POST", "/api/auth/login", {
+            identifier: temporaryAdminId,
+            password: "attacker_password"
+        });
+        if (originalPasswordLogin.status !== 200 || injectedPasswordLogin.status !== 401) {
+            throw new Error("Mật khẩu Admin bị thay đổi ngoài ý muốn khi cập nhật hồ sơ.");
         }
     });
 
@@ -217,15 +385,13 @@ async function runTests() {
         }
     });
 
-    // TC-BORROW-04: Chặn độc giả thuộc Blacklist mượn sách
-    await assert("TC-BORROW-04: Chặn độc giả Blacklist mượn sách (HTTP 403 Forbidden)", async () => {
-        const update = await request("PUT", `/api/docgia/${temporaryReaderId}`, {
-            TrangThaiThe: "Blacklist",
-            SoLanViPham: 3
-        });
-        if (update.status !== 200) {
-            throw new Error(`Không cập nhật được trạng thái độc giả kiểm thử, nhận status=${update.status}`);
-        }
+    // TC-BORROW-04: Chặn độc giả thuộc danh sách đen mượn sách
+    await assert("TC-BORROW-04: Chặn độc giả thuộc danh sách đen mượn sách (HTTP 403 Forbidden)", async () => {
+        const readers = MongoDB.client.db().collection("docgia");
+        await readers.updateOne(
+            { MaDocGia: temporaryReaderId },
+            { $set: { TrangThaiThe: "DanhSachDen", SoLanViPham: 3 } }
+        );
 
         const res = await request("POST", "/api/theodoimuonsach", {
             MaDocGia: temporaryReaderId,
@@ -235,10 +401,10 @@ async function runTests() {
             throw new Error(`Kỳ vọng HTTP 403 từ chối mượn, nhận status=${res.status}`);
         }
 
-        await request("PUT", `/api/docgia/${temporaryReaderId}`, {
-            TrangThaiThe: "HoatDong",
-            SoLanViPham: 0
-        });
+        await readers.updateOne(
+            { MaDocGia: temporaryReaderId },
+            { $set: { TrangThaiThe: "HoatDong", SoLanViPham: 0 } }
+        );
     });
 
     // TC-BORROW-05: Thủ thư duyệt đơn mượn (Kho giảm từ 10 xuống 9, gán MSNV và hạn trả 14 ngày)
@@ -320,15 +486,107 @@ async function runTests() {
         }
     });
 
-    // TC-ADMIN-02: Admin mở khóa Blacklist cho độc giả bị phạt
-    await assert("TC-ADMIN-02: Admin mở khóa Blacklist (TrangThaiThe HoatDong & SoLanViPham=0)", async () => {
-        await request("PUT", `/api/docgia/${temporaryReaderId}`, {
-            TrangThaiThe: "Blacklist",
-            SoLanViPham: 3
-        });
-        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/unblock`);
-        if (res.status !== 200 || res.data.data.TrangThaiThe !== "HoatDong" || res.data.data.SoLanViPham !== 0) {
-            throw new Error(`Kỳ vọng HTTP 200, TrangThaiThe HoatDong, SoLanViPham=0, nhận status=${res.status}`);
+    // TC-ADMIN-02: Admin xét gỡ độc giả khỏi danh sách đen
+    await assert("TC-ADMIN-02: Gỡ khỏi danh sách đen sau xét duyệt nhưng giữ lịch sử vi phạm", async () => {
+        await MongoDB.client.db().collection("docgia").updateOne(
+            { MaDocGia: temporaryReaderId },
+            { $set: { TrangThaiThe: "DanhSachDen", SoLanViPham: 3 } }
+        );
+        const cannotEmergencyUnlock = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/unblock`,
+            null,
+            { Authorization: `Bearer ${temporaryAdminToken}` }
+        );
+        if (cannotEmergencyUnlock.status !== 400) {
+            throw new Error(`Kỳ vọng HTTP 400 khi dùng mở khóa khẩn cấp cho danh sách đen, nhận ${cannotEmergencyUnlock.status}`);
+        }
+        const unauthorizedReinstatement = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/reinstate`
+        );
+        const managerReinstatement = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/reinstate`,
+            null,
+            { Authorization: `Bearer ${temporaryStaffToken}` }
+        );
+        if (unauthorizedReinstatement.status !== 401 || managerReinstatement.status !== 403) {
+            throw new Error(`Kỳ vọng HTTP 401/403 khi xét gỡ danh sách đen không phải Admin, nhận ${unauthorizedReinstatement.status}/${managerReinstatement.status}`);
+        }
+
+        const reinstated = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/reinstate`,
+            null,
+            { Authorization: `Bearer ${temporaryAdminToken}` }
+        );
+        if (
+            reinstated.status !== 200 ||
+            reinstated.data.data.TrangThaiThe !== "HoatDong" ||
+            reinstated.data.data.SoLanViPham !== 3
+        ) {
+            throw new Error(`Kỳ vọng gỡ khỏi danh sách đen nhưng giữ SoLanViPham=3, nhận status=${reinstated.status}`);
+        }
+    });
+
+    // TC-ADMIN-03: Khóa khẩn cấp không reset vi phạm và không bỏ qua ngưỡng danh sách đen
+    await assert("TC-ADMIN-03: Khóa/mở khóa khẩn cấp giữ nguyên vi phạm", async () => {
+        const readers = MongoDB.client.db().collection("docgia");
+        await readers.updateOne(
+            { MaDocGia: temporaryReaderId },
+            { $set: { TrangThaiThe: "HoatDong", SoLanViPham: 2 } }
+        );
+        const unauthorizedLock = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/lock`
+        );
+        const managerLock = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/lock`,
+            null,
+            { Authorization: `Bearer ${temporaryStaffToken}` }
+        );
+        if (unauthorizedLock.status !== 401 || managerLock.status !== 403) {
+            throw new Error(`Kỳ vọng HTTP 401/403 khi thao tác khóa không phải Admin, nhận ${unauthorizedLock.status}/${managerLock.status}`);
+        }
+
+        const lock = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/lock`,
+            null,
+            { Authorization: `Bearer ${temporaryAdminToken}` }
+        );
+        if (lock.status !== 200 || lock.data.data.TrangThaiThe !== "Khoa" || lock.data.data.SoLanViPham !== 2) {
+            throw new Error(`Kỳ vọng khóa thẻ và giữ SoLanViPham=2, nhận status=${lock.status}`);
+        }
+
+        const unlock = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/unblock`,
+            null,
+            { Authorization: `Bearer ${temporaryAdminToken}` }
+        );
+        if (unlock.status !== 200 || unlock.data.data.TrangThaiThe !== "HoatDong" || unlock.data.data.SoLanViPham !== 2) {
+            throw new Error(`Kỳ vọng mở khóa khẩn cấp và giữ SoLanViPham=2, nhận status=${unlock.status}`);
+        }
+
+        await readers.updateOne(
+            { MaDocGia: temporaryReaderId },
+            { $set: { TrangThaiThe: "Khoa", SoLanViPham: 3 } }
+        );
+        const thresholdUnlock = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderId}/unblock`,
+            null,
+            { Authorization: `Bearer ${temporaryAdminToken}` }
+        );
+        if (
+            thresholdUnlock.status !== 200 ||
+            thresholdUnlock.data.data.TrangThaiThe !== "DanhSachDen" ||
+            thresholdUnlock.data.data.SoLanViPham !== 3
+        ) {
+            throw new Error(`Kỳ vọng mở khóa về danh sách đen khi đạt ngưỡng, nhận status=${thresholdUnlock.status}`);
         }
     });
 
@@ -341,6 +599,9 @@ async function runTests() {
     }
     if (temporaryStaffId) {
         await request("DELETE", `/api/nhanvien/${temporaryStaffId}`);
+    }
+    if (temporaryAdminId) {
+        await MongoDB.client.db().collection("nhanvien").deleteOne({ MSNV: temporaryAdminId });
     }
 
     console.log("\n=========================================================================");

@@ -1,7 +1,7 @@
 <template>
   <div class="py-4">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
       <div>
         <span class="text-uppercase small fw-bold" style="color: var(--primary); letter-spacing: 0.05em;">
           Danh Mục Đối Tác Xuất Bản
@@ -10,8 +10,8 @@
           Quản Lý Nhà Xuất Bản
         </h2>
       </div>
-      <div>
-        <button class="ath-btn-primary me-2" @click="openCreateModal">
+      <div class="d-flex flex-wrap gap-2">
+        <button class="ath-btn-primary" @click="openCreateModal">
           <i class="fas fa-plus me-1"></i> Thêm NXB mới
         </button>
         <button class="ath-btn-outline" @click="fetchData">
@@ -53,8 +53,8 @@
         <p class="text-muted small mb-0">Vui lòng kiểm tra lại từ khóa tìm kiếm.</p>
       </div>
 
-      <div v-else class="table-responsive">
-        <table class="ath-table">
+      <div v-else class="table-responsive publishers-table-wrap">
+        <table class="ath-table publishers-table">
           <thead>
             <tr>
               <th style="width: 130px;">Mã NXB</th>
@@ -249,3 +249,12 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.publishers-table-wrap {
+  max-width: 100%;
+}
+.publishers-table {
+  min-width: 680px;
+}
+</style>

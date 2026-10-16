@@ -155,8 +155,20 @@ class NhanVienService {
      * Cập nhật thông tin nhân viên
      */
     async update(id, payload) {
-        const data = await this.extractData(payload, false);
-        delete data.MSNV; // Không cho phép sửa MSNV
+        const editableFields = ["HoTenNV", "SoDienThoai", "DiaChi"];
+        const editablePayload = Object.fromEntries(
+            editableFields
+                .filter((field) => payload[field] !== undefined)
+                .map((field) => [field, payload[field]])
+        );
+        if (Object.keys(editablePayload).length === 0) {
+            throw new Error("Không có thông tin cá nhân hợp lệ để cập nhật.");
+        }
+
+        const data = await this.extractData(editablePayload, false);
+        if (data.HoTenNV !== undefined && !data.HoTenNV) {
+            throw new Error("Họ tên nhân viên không được để trống.");
+        }
 
         data.UpdatedAt = new Date();
 

@@ -23,7 +23,7 @@ Các trường liệt kê trong tài liệu là lược đồ nghiệp vụ CDM.
 ## 2. Chi Tiết Lược Đồ Dữ Liệu Từng Bảng (Schema Specification)
 
 ### 2.1. Bảng Độc Giả (`docgia`)
-Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mượn sách, thông tin tài khoản đăng nhập, cấp bậc phân quyền và các chỉ số theo dõi vi phạm nội quy để xử lý đưa vào danh sách đen (Blacklist).
+Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mượn sách, thông tin tài khoản đăng nhập, cấp bậc phân quyền và các chỉ số theo dõi vi phạm nội quy để xử lý đưa vào danh sách đen.
 
 ```json
 {
@@ -38,11 +38,11 @@ Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mư�
   "MatKhau": "$2a$10$e7...",          // [Bắt buộc, String] Mật khẩu tài khoản (Đã mã hóa Bcrypt an toàn)
   "VaiTro": "USER",                   // [USER | MANAGER | ADMIN] Vai trò người dùng trong hệ thống
   "SoLanViPham": 0,                   // [Number >= 0] Số lần vi phạm nội quy (trả trễ hạn, làm mất sách)
-  "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "Blacklist"] Trạng thái thẻ thư viện
+  "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "DanhSachDen"] Trạng thái thẻ thư viện
 }
 ```
 
-* **Quy tắc Blacklist tự động**: Nếu `SoLanViPham >= 3`, hệ thống tự động khóa thẻ độc giả, chuyển `TrangThaiThe = "Blacklist"` và từ chối mọi yêu cầu đăng ký mượn sách mới. Chỉ Quản trị viên tối cao (Super Admin) mới có quyền mở khóa thẻ và đặt lại `SoLanViPham = 0`.
+* **Quy tắc Danh sách đen tự động**: Khi số lần vi phạm tăng đến ngưỡng 3, hệ thống tự động chuyển `TrangThaiThe = "DanhSachDen"` và từ chối yêu cầu mượn mới. Trạng thái khóa khẩn cấp (`Khoa`) là nghiệp vụ riêng, không làm thay đổi số lần vi phạm; mở khóa khẩn cấp ở ngưỡng 3 sẽ chuyển về `DanhSachDen`. Admin có thể xét gỡ khỏi Danh sách đen qua thao tác riêng nhưng không xóa lịch sử `SoLanViPham`; nếu phát sinh vi phạm mới, hệ thống áp dụng lại chế tài.
 
 ---
 
@@ -142,7 +142,7 @@ erDiagram
         string MatKhau "Bcrypt"
         string VaiTro "USER/MANAGER/ADMIN"
         int SoLanViPham
-        string TrangThaiThe "HoatDong/Khoa/Blacklist"
+        string TrangThaiThe "HoatDong/Khoa/DanhSachDen"
     }
 
     NHANVIEN {

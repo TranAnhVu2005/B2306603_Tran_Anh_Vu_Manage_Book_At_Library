@@ -54,14 +54,15 @@
           <i class="fas fa-search me-1.5 text-muted"></i> Tra cứu sách
         </router-link>
 
-        <!-- Sách đang mượn -->
+        <!-- Hồ sơ cá nhân -->
         <router-link
-          v-if="user && authService.isReader(user)"
+          v-if="user"
           to="/profile"
           class="ath-nav-link text-nowrap d-inline-flex align-items-center"
           active-class="active fw-semibold text-primary bg-light"
         >
-          <i class="fas fa-address-card me-1.5 text-muted"></i> Sách đang mượn
+          <i class="fas fa-address-card me-1.5 text-muted"></i>
+          {{ authService.isReader(user) ? "Sách đang mượn" : "Hồ sơ cá nhân" }}
         </router-link>
 
         <!-- Dropdown Nghiệp vụ Thủ thư -->
@@ -136,12 +137,20 @@
               Phân quyền & Tài khoản
             </router-link>
             <router-link
-              to="/admin/users?filter=blacklist"
+              to="/admin/users?filter=danhsachden"
               class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
               @click="isAdminMenuOpen = false"
             >
               <i class="fas fa-user-slash me-2 text-warning" style="width: 18px"></i>
-              Danh sách vi phạm (Blacklist)
+              Danh sách đen
+            </router-link>
+            <router-link
+              to="/admin/users?filter=locked"
+              class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
+              @click="isAdminMenuOpen = false"
+            >
+              <i class="fas fa-lock me-2 text-danger" style="width: 18px"></i>
+              Danh sách thẻ bị khóa
             </router-link>
           </div>
         </div>
@@ -178,7 +187,8 @@
                 class="dropdown-item py-2 px-3 rounded-2"
                 @click="isMenuOpen = false"
               >
-                <i class="fas fa-id-badge me-2 text-muted"></i> Thẻ độc giả & Mượn sách
+                <i class="fas fa-id-badge me-2 text-muted"></i>
+                {{ authService.isReader(user) ? "Thẻ độc giả & Mượn sách" : "Hồ sơ cá nhân" }}
               </router-link>
               <div v-if="isStaffOrAdmin" class="dropdown-divider my-1"></div>
               <router-link
@@ -211,7 +221,7 @@
                 class="dropdown-item py-2 px-3 rounded-2 text-danger"
                 @click="isMenuOpen = false"
               >
-                <i class="fas fa-shield-alt me-2"></i> Phân quyền & Blacklist
+                <i class="fas fa-shield-alt me-2"></i> Phân quyền & Danh sách đen
               </router-link>
               <div class="dropdown-divider my-1"></div>
               <button
@@ -277,12 +287,13 @@
         </router-link>
 
         <router-link
-          v-if="user && authService.isReader(user)"
+          v-if="user"
           to="/profile"
           class="nav-link text-dark py-2.5 px-3 rounded-2"
           @click="isMobileNavOpen = false"
         >
-          <i class="fas fa-address-card me-2 text-info"></i> Thẻ độc giả & Sách đang mượn
+          <i class="fas fa-address-card me-2 text-info"></i>
+          {{ authService.isReader(user) ? "Thẻ độc giả & Sách đang mượn" : "Hồ sơ cá nhân" }}
         </router-link>
 
         <template v-if="isStaffOrAdmin">
@@ -319,7 +330,15 @@
             class="nav-link text-danger py-2.5 px-3 rounded-2"
             @click="isMobileNavOpen = false"
           >
-            <i class="fas fa-users-cog me-2"></i> Phân quyền Admin & Blacklist
+            <i class="fas fa-users-cog me-2"></i> Phân quyền Admin & Danh sách đen
+          </router-link>
+          <router-link
+            v-if="isAdmin"
+            to="/admin/users?filter=locked"
+            class="nav-link text-danger py-2.5 px-3 rounded-2"
+            @click="isMobileNavOpen = false"
+          >
+            <i class="fas fa-lock me-2"></i> Danh sách thẻ bị khóa
           </router-link>
         </template>
 
@@ -373,9 +392,11 @@ export default {
   created() {
     this.checkUser();
     document.addEventListener("click", this.handleDocumentClick);
+    window.addEventListener("auth-user-updated", this.handleAuthUserUpdated);
   },
   beforeUnmount() {
     document.removeEventListener("click", this.handleDocumentClick);
+    window.removeEventListener("auth-user-updated", this.handleAuthUserUpdated);
   },
   watch: {
     $route() {
@@ -389,6 +410,9 @@ export default {
   methods: {
     checkUser() {
       this.user = authService.getUser();
+    },
+    handleAuthUserUpdated(event) {
+      this.user = event.detail || authService.getUser();
     },
     toggleMenu(e) {
       e.stopPropagation();

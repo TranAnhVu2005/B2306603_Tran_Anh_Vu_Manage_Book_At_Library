@@ -68,6 +68,11 @@
 ### 📌 `GET /api/auth/me` (Thông tin người dùng hiện tại)
 * **Response (200 OK)**: `{ "data": { ... } }`; dữ liệu `data` chỉ gồm các trường của collection tương ứng trong sơ đồ CDM. Hồ sơ nhân viên chỉ có `ChucVu`, không thêm trường `VaiTro`.
 
+### Cập nhật hồ sơ nhân viên (`PUT /api/nhanvien/:id`)
+* **Quyền truy cập**: Nhân viên hoặc quản trị viên đã đăng nhập; chỉ được cập nhật hồ sơ có `_id` hoặc `MSNV` khớp với danh tính trong JWT.
+* **Trường được phép sửa**: `HoTenNV`, `SoDienThoai`, `DiaChi`. Không cho phép sửa `MSNV`, `ChucVu` hoặc `MatKhau`.
+* **Response**: `{ "message": "...", "data": { ... } }`; `data` chỉ gồm các trường nhân viên trong CDM và không chứa `MatKhau`.
+
 ---
 
 ## 2. Quản Lý Sách (`/api/sach`)
@@ -92,12 +97,14 @@
 
 ## 4. Quản Lý Độc Giả (`/api/docgia`)
 
-* `GET /api/docgia`: [Manager/Admin] Danh sách độc giả (Hỗ trợ lọc: `?trangThai=Blacklist`, `?role=MANAGER`, `?search=...`).
+* `GET /api/docgia`: [Manager/Admin] Danh sách độc giả (Hỗ trợ lọc: `?trangThai=DanhSachDen`, `?role=MANAGER`, `?search=...`).
 * `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`.
 * `POST /api/docgia`: Tạo hồ sơ độc giả mới.
-* `PUT /api/docgia/:id`: Cập nhật thông tin cá nhân.
+* `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Số điện thoại phải đúng định dạng và chưa được tài khoản khác sử dụng.
 * `PUT /api/docgia/:id/role`: [Super Admin] Thăng cấp / hạ cấp vai trò (`role: "MANAGER"` hoặc `"USER"`).
-* `PUT /api/docgia/:id/unblock`: [Super Admin] Mở khóa độc giả khỏi Blacklist (Reset `SoLanViPham = 0`, `TrangThaiThe = "HoatDong"`).
+* `PUT /api/docgia/:id/lock`: [Super Admin] Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`), không thay đổi `SoLanViPham`.
+* `PUT /api/docgia/:id/unblock`: [Super Admin] Chỉ mở khóa thẻ trạng thái `Khoa`; giữ nguyên `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, trạng thái sau mở khóa là `DanhSachDen`.
+* `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); giữ nguyên lịch sử `SoLanViPham`. Không dùng thay cho mở khóa khẩn cấp.
 * `DELETE /api/docgia/:id`: [Super Admin] Xóa độc giả vĩnh viễn (Chặn xóa nếu còn phiếu mượn chưa hoàn tất).
 
 ---
@@ -111,7 +118,7 @@
 ### 📌 `POST /api/theodoimuonsach` (Độc giả đăng ký mượn)
 * **Request Body**: `{ "MaDocGia": "DG-000001", "MaSach": "SACH-000001", "GhiChu": "..." }`
 * **Xử lý**:
-  - Chặn nếu thẻ độc giả bị `Blacklist` hoặc `Khoa` (HTTP 403).
+  - Chặn nếu thẻ độc giả ở trạng thái `DanhSachDen` hoặc `Khoa` (HTTP 403).
   - Chặn nếu độc giả đã mượn đủ 3 cuốn đang lưu thông (HTTP 400).
   - Chặn nếu sách đã hết trong kho `SoQuyen <= 0` (HTTP 400).
   - Tạo phiếu với `TrangThai: "ChoDuyet"`.
@@ -130,7 +137,7 @@
 * **Xử lý**:
   - Tăng kho: `SoQuyen = SoQuyen + 1`.
   - Cập nhật: `TrangThai: "DaTra"`, `NgayTra = hiện tại`.
-  - Nếu `NgayTra > NgayHenTra`: Tự động tăng `SoLanViPham` của độc giả. Nếu đạt 3 lần, tự động chuyển sang `Blacklist`.
+  - Nếu `NgayTra > NgayHenTra`: Tự động tăng `SoLanViPham` của độc giả. Nếu đạt 3 lần, tự động chuyển sang `DanhSachDen`.
 
 ### 📌 `PUT /api/theodoimuonsach/:id/bao-mat` (Xử lý mất sách)
 * **Request Body**: `{ "ghiChu": "Làm mất sách vật lý" }`
@@ -138,7 +145,7 @@
   - Chuyển `TrangThai: "MatSach"`.
   - Gán tiền bồi thường: `GiaTriBoiThuong = Sach.DonGia`.
   - **Không cộng hoàn trả kho** `SoQuyen`.
-  - Tăng `SoLanViPham` của độc giả lên 1. Nếu đạt 3 lần, khóa thẻ đưa vào `Blacklist`.
+  - Tăng `SoLanViPham` của độc giả lên 1. Nếu đạt 3 lần, đưa thẻ vào `DanhSachDen`.
 
 ---
 

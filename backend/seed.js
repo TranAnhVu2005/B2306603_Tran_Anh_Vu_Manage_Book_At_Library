@@ -224,7 +224,7 @@ async function seedData() {
                 Password: hashedUserPass,
                 VaiTro: "USER",
                 SoLanViPham: 3,
-                TrangThaiThe: "Blacklist", // Đã vi phạm 3 lần -> Bị Blacklist
+                TrangThaiThe: "DanhSachDen", // Đã vi phạm 3 lần -> Danh sách đen
                 CreatedAt: new Date(),
                 UpdatedAt: new Date()
             },
@@ -302,7 +302,7 @@ async function seedData() {
         console.log("  👑 [Super Admin]  MSNV: NV-0001   | Pass: admin123");
         console.log("  📚 [Thủ thư]      MSNV: NV-0002   | Pass: staff123");
         console.log("  📖 [Độc giả BT]   SĐT:  0912345678 | Pass: 123456 (DG-000001 - Hoạt động)");
-        console.log("  🚫 [Độc giả Phạt] SĐT:  0987654321 | Pass: 123456 (DG-000002 - Blacklist vi phạm 3 lần)");
+        console.log("  🚫 [Độc giả Phạt] SĐT:  0987654321 | Pass: 123456 (DG-000002 - Danh sách đen, vi phạm 3 lần)");
         console.log("---------------------------------------------------------------");
         process.exit(0);
     } catch (error) {

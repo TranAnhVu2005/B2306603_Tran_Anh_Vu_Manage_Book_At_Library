@@ -1,13 +1,13 @@
 <template>
   <div class="py-4">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
       <div>
         <span class="text-uppercase small fw-bold text-danger" style="letter-spacing: 0.05em;">
           <i class="fas fa-shield-alt me-1"></i> Khu Vực Quản Trị Tối Cao (Super Admin)
         </span>
         <h2 class="font-serif-headline fw-bold text-dark mb-0">
-          Phân Quyền Người Dùng & Quản Lý Blacklist
+          Phân Quyền Người Dùng & Danh Sách Đen
         </h2>
       </div>
       <button class="ath-btn-outline" @click="fetchData">
@@ -17,36 +17,43 @@
 
     <!-- Quick Filter -->
     <div class="ath-card p-3 mb-4">
-      <div class="row align-items-center">
-        <div class="col-md-6 mb-2 mb-md-0">
-          <div class="input-group">
-            <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
-              <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" 
-                   class="form-control ath-input border-start-0" 
-                   v-model="search" 
-                   placeholder="Tìm kiếm theo mã độc giả, họ tên, số điện thoại..." />
-            <button v-if="search" class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
+      <div class="admin-filter-panel">
+        <div class="input-group admin-user-search">
+          <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+            <i class="fas fa-search text-muted"></i>
+          </span>
+          <input type="text"
+                 class="form-control ath-input border-start-0"
+                 v-model="search"
+                 placeholder="Tìm kiếm theo mã độc giả, họ tên, số điện thoại..." />
+          <button v-if="search" class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
-        <div class="col-md-6 d-flex justify-content-md-end flex-wrap gap-2">
-          <button class="btn btn-sm me-2 mb-1 mb-md-0" 
+        <div class="admin-filter-options" role="group" aria-label="Lọc danh sách người dùng">
+          <button class="btn btn-sm"
                   :class="filterRole === 'all' ? 'ath-btn-primary' : 'ath-btn-outline'"
+                  :aria-pressed="filterRole === 'all'"
                   @click="filterRole = 'all'">
             Tất cả ({{ users.length }})
           </button>
-          <button class="btn btn-sm me-2 mb-1 mb-md-0" 
+          <button class="btn btn-sm"
                   :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
+                  :aria-pressed="filterRole === 'MANAGER'"
                   @click="filterRole = 'MANAGER'">
             <i class="fas fa-user-shield me-1"></i> Quản lý / Thủ thư
           </button>
-          <button class="btn btn-sm mb-1 mb-md-0" 
-                  :class="filterRole === 'Blacklist' ? 'ath-btn-danger' : 'ath-btn-outline'"
-                  @click="filterRole = 'Blacklist'">
-            <i class="fas fa-ban me-1"></i> Blacklist ({{ blacklistCount }})
+          <button class="btn btn-sm"
+                  :class="filterRole === 'DanhSachDen' ? 'ath-btn-danger' : 'ath-btn-outline'"
+                  :aria-pressed="filterRole === 'DanhSachDen'"
+                  @click="filterRole = 'DanhSachDen'">
+            <i class="fas fa-ban me-1"></i> Danh sách đen ({{ danhSachDenCount }})
+          </button>
+          <button class="btn btn-sm"
+                  :class="filterRole === 'Khoa' ? 'ath-btn-danger' : 'ath-btn-outline'"
+                  :aria-pressed="filterRole === 'Khoa'"
+                  @click="filterRole = 'Khoa'">
+            <i class="fas fa-lock me-1"></i> Thẻ bị khóa ({{ lockedCount }})
           </button>
         </div>
       </div>
@@ -65,8 +72,8 @@
         <p class="text-muted small mb-0">Thử thay đổi từ khóa hoặc bộ lọc vai trò.</p>
       </div>
 
-      <div v-else class="table-responsive">
-        <table class="ath-table">
+      <div v-else class="table-responsive admin-users-table-wrap">
+        <table class="ath-table admin-users-table">
           <thead>
             <tr>
               <th>Mã độc giả</th>
@@ -92,8 +99,11 @@
                 <span v-else class="badge bg-light text-dark border">ĐỘC GIẢ (USER)</span>
               </td>
               <td>
-                <span v-if="u.TrangThaiThe === 'Blacklist'" class="ath-badge ath-badge-blacklist">
-                  <i class="fas fa-ban"></i> Blacklist
+                <span v-if="u.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den">
+                  <i class="fas fa-ban"></i> Danh sách đen
+                </span>
+                <span v-else-if="u.TrangThaiThe === 'Khoa'" class="ath-badge ath-badge-out">
+                  <i class="fas fa-lock"></i> Đang khóa
                 </span>
                 <span v-else class="ath-badge ath-badge-available">
                   <i class="fas fa-check-circle"></i> Hoạt động
@@ -119,12 +129,23 @@
                   <i class="fas fa-arrow-down text-warning"></i> Hạ cấp
                 </button>
 
-                <!-- Mở khóa Blacklist nếu bị phạt -->
-                <button v-if="u.TrangThaiThe === 'Blacklist' || (u.SoLanViPham || 0) > 0" 
+                <button v-if="u.TrangThaiThe === 'HoatDong'"
+                        class="ath-action-btn ath-action-btn-danger me-1"
+                        @click="lockUser(u)"
+                        title="Khóa khẩn cấp thẻ, không thay đổi số lần vi phạm">
+                  <i class="fas fa-lock text-danger"></i> Khóa thẻ
+                </button>
+                <button v-else-if="u.TrangThaiThe === 'Khoa'"
                         class="ath-action-btn ath-action-btn-success me-1"
                         @click="unblockUser(u)"
-                        title="Mở khóa thẻ và reset số lần vi phạm">
+                        title="Mở khóa khẩn cấp, giữ nguyên số lần vi phạm">
                   <i class="fas fa-unlock text-info"></i> Mở khóa
+                </button>
+                <button v-else-if="u.TrangThaiThe === 'DanhSachDen'"
+                        class="ath-action-btn ath-action-btn-success me-1"
+                        @click="reinstateUser(u)"
+                        title="Xét gỡ khỏi danh sách đen, giữ nguyên lịch sử vi phạm">
+                  <i class="fas fa-clipboard-check text-success"></i> Xét gỡ danh sách đen
                 </button>
 
                 <!-- Xóa độc giả -->
@@ -162,8 +183,11 @@ export default {
     };
   },
   computed: {
-    blacklistCount() {
-      return this.users.filter(u => u.TrangThaiThe === "Blacklist").length;
+    danhSachDenCount() {
+      return this.users.filter(u => u.TrangThaiThe === "DanhSachDen").length;
+    },
+    lockedCount() {
+      return this.users.filter(u => u.TrangThaiThe === "Khoa").length;
     },
     filteredUsers() {
       return this.users.filter(u => {
@@ -174,22 +198,32 @@ export default {
 
         let matchesRole = true;
         if (this.filterRole === "MANAGER") matchesRole = u.VaiTro === "MANAGER";
-        if (this.filterRole === "Blacklist") matchesRole = u.TrangThaiThe === "Blacklist";
+        if (this.filterRole === "DanhSachDen") matchesRole = u.TrangThaiThe === "DanhSachDen";
+        if (this.filterRole === "Khoa") matchesRole = u.TrangThaiThe === "Khoa";
 
         return matchesSearch && matchesRole;
       });
     }
   },
   created() {
-    if (this.$route.query.filter === "blacklist") this.filterRole = "Blacklist";
+    this.syncFilterFromRoute(this.$route.query.filter);
     this.fetchData();
   },
   watch: {
     "$route.query.filter"(filter) {
-      this.filterRole = filter === "blacklist" ? "Blacklist" : "all";
+      this.syncFilterFromRoute(filter);
     },
   },
   methods: {
+    syncFilterFromRoute(filter) {
+      if (filter === "danhsachden") {
+        this.filterRole = "DanhSachDen";
+      } else if (filter === "locked") {
+        this.filterRole = "Khoa";
+      } else {
+        this.filterRole = "all";
+      }
+    },
     async fetchData() {
       this.loading = true;
       try {
@@ -218,14 +252,40 @@ export default {
         this.$refs.toast.show(err.response?.data?.message || "Lỗi khi cập nhật vai trò.", "error");
       }
     },
-    async unblockUser(u) {
-      if (!confirm(`Xác nhận mở khóa thẻ và reset số lần vi phạm về 0 cho '${u.HoLot} ${u.Ten}'?`)) return;
+    async lockUser(u) {
+      if (!confirm(`Khóa khẩn cấp thẻ của '${u.HoLot} ${u.Ten}'? Số lần vi phạm sẽ được giữ nguyên.`)) return;
       try {
-        await docGiaService.unblock(u._id || u.MaDocGia);
-        this.$refs.toast.show("Đã mở khóa thẻ và đặt lại số lần vi phạm về 0!");
+        await docGiaService.lock(u._id || u.MaDocGia);
+        this.$refs.toast.show("Đã khóa thẻ khẩn cấp. Số lần vi phạm không thay đổi.");
         this.fetchData();
       } catch (err) {
-        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi mở khóa tài khoản.", "error");
+        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi khóa thẻ.", "error");
+      }
+    },
+    async unblockUser(u) {
+      const willRemainInDanhSachDen = (u.SoLanViPham || 0) >= 3;
+      const consequence = willRemainInDanhSachDen
+        ? "Vì đã có ít nhất 3 lần vi phạm, thẻ sẽ tiếp tục ở trạng thái danh sách đen."
+        : "Thẻ sẽ hoạt động trở lại.";
+      if (!confirm(`Mở khóa khẩn cấp thẻ của '${u.HoLot} ${u.Ten}'? Số lần vi phạm được giữ nguyên. ${consequence}`)) return;
+      try {
+        await docGiaService.unblock(u._id || u.MaDocGia);
+        this.$refs.toast.show(willRemainInDanhSachDen
+          ? "Đã mở khóa khẩn cấp; thẻ vẫn thuộc danh sách đen do lịch sử vi phạm."
+          : "Đã mở khóa thẻ. Số lần vi phạm được giữ nguyên.");
+        this.fetchData();
+      } catch (err) {
+        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi mở khóa thẻ.", "error");
+      }
+    },
+    async reinstateUser(u) {
+      if (!confirm(`Xét gỡ thẻ khỏi danh sách đen cho '${u.HoLot} ${u.Ten}'? Hành động này không xóa lịch sử ${u.SoLanViPham || 0} lần vi phạm.`)) return;
+      try {
+        await docGiaService.reinstate(u._id || u.MaDocGia);
+        this.$refs.toast.show("Đã gỡ thẻ khỏi danh sách đen sau khi xét duyệt. Lịch sử vi phạm được giữ nguyên.");
+        this.fetchData();
+      } catch (err) {
+        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi xét gỡ khỏi danh sách đen.", "error");
       }
     },
     async deleteUser(u) {
@@ -248,3 +308,41 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.admin-filter-panel {
+  display: grid;
+  gap: 1rem;
+}
+.admin-user-search {
+  width: 100%;
+}
+.admin-filter-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.admin-filter-options .btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 0.65rem;
+  white-space: nowrap;
+}
+.admin-users-table-wrap {
+  max-width: 100%;
+}
+.admin-users-table {
+  min-width: 900px;
+}
+@media (max-width: 767.98px) {
+  .admin-filter-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .admin-filter-options {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

@@ -13,7 +13,7 @@
 Hệ thống được thiết kế theo tiêu chuẩn thực tế của một thư viện hiện đại:
 - **Số hóa toàn diện**: Thay thế sổ sách thủ công bằng nền tảng ứng dụng web tập trung với ngăn xếp công nghệ MEVN Stack (MongoDB, Express.js 5, Vue.js 3, Node.js).
 - **Kiểm soát kho tồn theo thời gian thực**: Trừ kho tức thì khi duyệt mượn sách, cộng hoàn kho khi độc giả hoàn trả đúng hạn.
-- **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; kích hoạt chế tài đưa vào Danh sách đen (`Blacklist`) khi vi phạm đạt 3 lần.
+- **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; đưa thẻ vào `DanhSachDen` khi vi phạm đạt 3 lần.
 - **Bảo mật và an toàn dữ liệu**: Mật khẩu độc giả và nhân viên được mã hóa an toàn bằng thuật toán Bcrypt.
 - **Khả năng mở rộng**: Tích hợp module thanh toán trực tuyến tiền bồi hoàn sách mất qua MoMo và đăng nhập nhanh bằng tài khoản Google OAuth 2.0.
 - **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (MANAGER)**, và **Quản trị viên hệ thống (ADMIN)**.
@@ -45,7 +45,8 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Đặc quyền phân quyền & nhân sự**:
   - Quản lý toàn bộ danh sách tài khoản người dùng và nhân viên trong hệ thống.
   - **Thăng cấp** Độc giả thông thường (`USER`) lên làm Thủ thư (`MANAGER`) hoặc **Hạ cấp** Thủ thư về lại Độc giả.
-  - Quản lý danh sách đen: **Mở khóa thẻ** cho độc giả vi phạm (reset số lần vi phạm về 0 và khôi phục trạng thái `HoatDong`).
+  - Quản lý trạng thái thẻ: khóa/mở khóa khẩn cấp độc lập với chế tài Danh sách đen; mở khóa khẩn cấp không xóa số lần vi phạm.
+  - Có thể xét gỡ khỏi Danh sách đen bằng thao tác riêng; lịch sử vi phạm vẫn được bảo toàn.
   - Quyền xóa vĩnh viễn các tài khoản vi phạm nghiêm trọng khỏi CSDL.
 
 ---

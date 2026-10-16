@@ -60,8 +60,8 @@ class TheoDoiMuonSachService {
             throw new Error(`Độc giả với mã/SĐT '${maDocGia}' không tồn tại trong hệ thống.`);
         }
 
-        if (docGia.TrangThaiThe === "Blacklist") {
-            const err = new Error("Tài khoản của bạn đã bị đưa vào Danh sách đen (Blacklist) do vi phạm quy định mượn trả. Vui lòng liên hệ thủ thư!");
+        if (docGia.TrangThaiThe === "DanhSachDen") {
+            const err = new Error("Thẻ của bạn đang ở Danh sách đen do vi phạm quy định mượn trả. Vui lòng liên hệ thủ thư!");
             err.statusCode = 403;
             throw err;
         }
@@ -238,12 +238,12 @@ class TheoDoiMuonSachService {
             { returnDocument: "after" }
         );
 
-        // Nếu trả trễ hạn: Tự động tăng SoLanViPham, chuyển sang Blacklist nếu đạt 3 lần
+        // Nếu trả trễ hạn: Tự động tăng SoLanViPham, đưa vào DanhSachDen nếu đạt 3 lần
         if (isLate) {
             const docGia = await this.DocGia.findOne({ MaDocGia: record.MaDocGia });
             if (docGia) {
                 const newViPham = (docGia.SoLanViPham || 0) + 1;
-                const newStatus = newViPham >= 3 ? "Blacklist" : docGia.TrangThaiThe;
+                const newStatus = newViPham >= 3 ? "DanhSachDen" : docGia.TrangThaiThe;
                 await this.DocGia.updateOne(
                     { MaDocGia: record.MaDocGia },
                     { $set: { SoLanViPham: newViPham, TrangThaiThe: newStatus, UpdatedAt: new Date() } }
@@ -286,11 +286,11 @@ class TheoDoiMuonSachService {
             { returnDocument: "after" }
         );
 
-        // Tăng số lần vi phạm của độc giả và đưa vào Blacklist nếu vi phạm đạt 3 lần
+        // Tăng số lần vi phạm của độc giả và đưa vào DanhSachDen nếu đạt 3 lần
         const docGia = await this.DocGia.findOne({ MaDocGia: record.MaDocGia });
         if (docGia) {
             const newViPham = (docGia.SoLanViPham || 0) + 1;
-            const newStatus = newViPham >= 3 ? "Blacklist" : docGia.TrangThaiThe;
+            const newStatus = newViPham >= 3 ? "DanhSachDen" : docGia.TrangThaiThe;
             await this.DocGia.updateOne(
                 { MaDocGia: record.MaDocGia },
                 { $set: { SoLanViPham: newViPham, TrangThaiThe: newStatus, UpdatedAt: new Date() } }

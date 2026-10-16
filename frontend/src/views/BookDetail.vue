@@ -1,6 +1,6 @@
 <template>
   <div class="vg-page">
-    <div class="container">
+    <div>
       <!-- Back button -->
       <div class="mb-4 reveal" data-reveal>
         <router-link to="/" class="ath-btn-outline text-decoration-none">
@@ -214,8 +214,8 @@ export default {
         this.$refs.toast.show("Chỉ độc giả mới có thể đăng ký mượn sách.", "error");
         return;
       }
-      if (u.TrangThaiThe === "Blacklist") {
-        this.$refs.toast.show("Tài khoản của bạn đã bị đưa vào Danh sách đen (Blacklist). Vui lòng liên hệ quầy thủ thư!", "error", 5000); return;
+      if (u.TrangThaiThe === "DanhSachDen") {
+        this.$refs.toast.show("Thẻ của bạn đang ở Danh sách đen. Vui lòng liên hệ quầy thủ thư!", "error", 5000); return;
       }
       if (u.TrangThaiThe === "Khoa") {
         this.$refs.toast.show("Thẻ của bạn hiện đang bị khóa tạm thời. Vui lòng liên hệ thủ thư!", "error", 5000); return;
@@ -245,13 +245,14 @@ export default {
   gap: 3rem;
   align-items: flex-start;
 }
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
   .book-detail-grid { grid-template-columns: 1fr; gap: 2rem; }
-  .cover-col { display: flex; flex-direction: column; align-items: center; }
+  .cover-col { position: static; display: flex; flex-direction: column; align-items: center; }
 }
 
 /* Cover */
 .cover-col { position: sticky; top: 1.5rem; }
+.meta-col { min-width: 0; }
 .cover-shell {
   padding: 5px;
   border-radius: 1.25rem;

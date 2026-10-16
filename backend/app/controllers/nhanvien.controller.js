@@ -2,6 +2,7 @@ const NhanVienService = require("../services/nhanvien.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
+// Tạo tài khoản nhân viên, sử dụng thông qua api, không dùng trên giao diện
 exports.create = async (req, res, next) => {
     try {
         const service = new NhanVienService(MongoDB.client);
@@ -40,6 +41,12 @@ exports.findOne = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
     try {
+        const isOwnStaffProfile = req.user?.type === "staff" &&
+            (req.user.id === req.params.id || req.user.username === req.params.id);
+        if (!isOwnStaffProfile) {
+            return next(new ApiError(403, "Bạn chỉ có thể cập nhật hồ sơ nhân viên của chính mình."));
+        }
+
         const service = new NhanVienService(MongoDB.client);
         const result = await service.update(req.params.id, req.body);
         if (!result) {

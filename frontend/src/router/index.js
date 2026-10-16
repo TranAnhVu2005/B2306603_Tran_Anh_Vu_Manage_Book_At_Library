@@ -33,7 +33,7 @@ const routes = [
         path: "/profile",
         name: "profile",
         component: () => import("@/views/ProfileView.vue"),
-        meta: { role: "reader" },
+        meta: { role: "authenticated" },
     },
     {
         path: "/manager/borrows",

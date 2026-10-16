@@ -103,6 +103,11 @@ class AuthService {
         return user?.DienThoai || user?.SoDienThoai || "";
     }
 
+    setUser(user) {
+        localStorage.setItem("user", JSON.stringify(user));
+        window.dispatchEvent(new CustomEvent("auth-user-updated", { detail: user }));
+    }
+
     isReader(user = this.getUser()) {
         return Boolean(user?.MaDocGia);
     }
@@ -144,7 +149,7 @@ class AuthService {
     async fetchMe() {
         const response = await this.api.get("/me");
         if (response.data?.data) {
-            localStorage.setItem("user", JSON.stringify(response.data.data));
+            this.setUser(response.data.data);
         }
         return response.data?.data || null;
     }

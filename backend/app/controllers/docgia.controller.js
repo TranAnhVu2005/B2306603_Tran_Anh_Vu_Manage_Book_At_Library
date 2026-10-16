@@ -16,7 +16,7 @@ exports.create = async (req, res, next) => {
     }
 };
 
-// Tìm danh sách tất cả độc giả
+// Tìm danh sách tất cả độc giả - Completed
 exports.findAll = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);
@@ -27,6 +27,7 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
+// Tìm một độc giả - Completed
 exports.findOne = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);
@@ -40,8 +41,15 @@ exports.findOne = async (req, res, next) => {
     }
 };
 
+// Cập nhật thông tin độc giả - Completed
 exports.update = async (req, res, next) => {
     try {
+        const isOwnReaderProfile = req.user?.type === "reader" &&
+            (req.user.id === req.params.id || req.user.username === req.params.id);
+        if (!isOwnReaderProfile) {
+            return next(new ApiError(403, "Bạn chỉ có thể cập nhật hồ sơ độc giả của chính mình."));
+        }
+
         const service = new DocGiaService(MongoDB.client);
         const result = await service.update(req.params.id, req.body);
         if (!result) {
@@ -56,6 +64,7 @@ exports.update = async (req, res, next) => {
     }
 };
 
+// Cập nhật vai trò - Completed
 exports.updateRole = async (req, res, next) => {
     try {
         const { role } = req.body;
@@ -76,22 +85,72 @@ exports.updateRole = async (req, res, next) => {
     }
 };
 
+// Mở khóa thẻ - Completed
 exports.unblock = async (req, res, next) => {
     try {
+        if (req.user?.type !== "staff" || req.user?.role !== "ADMIN") {
+            return next(new ApiError(403, "Chỉ Quản trị viên tối cao mới được mở khóa thẻ."));
+        }
+
         const service = new DocGiaService(MongoDB.client);
         const result = await service.unblock(req.params.id);
         if (!result) {
-            return next(new ApiError(404, "Không tìm thấy độc giả để mở khóa."));
+            return next(new ApiError(404, "Không tìm thấy thẻ đang khóa để mở khóa."));
         }
         return res.json({
-            message: "Mở khóa độc giả khỏi Blacklist thành công. Số lần vi phạm đã reset về 0.",
+            message: result.TrangThaiThe === "DanhSachDen"
+                ? "Đã mở khóa khẩn cấp; thẻ vẫn thuộc danh sách đen do có từ 3 lần vi phạm."
+                : "Mở khóa thẻ khẩn cấp thành công. Số lần vi phạm được giữ nguyên.",
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 
+// Khóa thẻ - Completed
+exports.lock = async (req, res, next) => {
+    try {
+        if (req.user?.type !== "staff" || req.user?.role !== "ADMIN") {
+            return next(new ApiError(403, "Chỉ Quản trị viên tối cao mới được khóa thẻ khẩn cấp."));
+        }
+
+        const service = new DocGiaService(MongoDB.client);
+        const result = await service.lock(req.params.id);
+        if (!result) {
+            return next(new ApiError(404, "Không tìm thấy độc giả để khóa thẻ."));
+        }
+        return res.json({
+            message: "Đã khóa thẻ khẩn cấp. Số lần vi phạm được giữ nguyên.",
+            data: result,
+        });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+};
+
+// Xét gỡ người dùng khỏi danh sách đen nhưng giữ lịch sử vi phạm.
+exports.reinstate = async (req, res, next) => {
+    try {
+        if (req.user?.type !== "staff" || req.user?.role !== "ADMIN") {
+            return next(new ApiError(403, "Chỉ Quản trị viên tối cao mới được xét gỡ độc giả khỏi danh sách đen."));
+        }
+
+        const service = new DocGiaService(MongoDB.client);
+        const result = await service.reinstate(req.params.id);
+        if (!result) {
+            return next(new ApiError(404, "Không tìm thấy độc giả đang ở trạng thái danh sách đen."));
+        }
+        return res.json({
+            message: "Đã gỡ thẻ khỏi danh sách đen sau khi xét duyệt. Lịch sử vi phạm được giữ nguyên.",
+            data: result,
+        });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+};
+
+// Hàm xóa người dùng khỏi cơ sở dữ liệu - Completed
 exports.delete = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);

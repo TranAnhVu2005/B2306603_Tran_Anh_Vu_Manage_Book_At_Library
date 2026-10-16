@@ -25,8 +25,16 @@ class DocGiaService {
         return (await this.api.put(`/${id}/role`, { role })).data;
     }
 
+    async lock(id) {
+        return (await this.api.put(`/${id}/lock`)).data;
+    }
+
     async unblock(id) {
         return (await this.api.put(`/${id}/unblock`)).data;
+    }
+
+    async reinstate(id) {
+        return (await this.api.put(`/${id}/reinstate`)).data;
     }
 
     async delete(id) {

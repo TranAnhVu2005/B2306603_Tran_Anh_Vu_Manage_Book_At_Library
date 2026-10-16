@@ -1,7 +1,7 @@
 <template>
   <div class="py-4">
     <!-- Header Page -->
-    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
       <div>
         <span class="text-uppercase small fw-bold" style="color: var(--primary); letter-spacing: 0.05em;">
           Quản Lý Kho Thư Viện
@@ -56,8 +56,8 @@
         <p class="text-muted small mb-0">Vui lòng thử lại với từ khóa khác.</p>
       </div>
 
-      <div v-else class="table-responsive">
-        <table class="ath-table">
+      <div v-else class="table-responsive manager-books-table-wrap">
+        <table class="ath-table manager-books-table">
           <thead>
             <tr>
               <th>Bìa</th>
@@ -372,3 +372,12 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.manager-books-table-wrap {
+  max-width: 100%;
+}
+.manager-books-table {
+  min-width: 960px;
+}
+</style>

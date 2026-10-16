@@ -1,5 +1,6 @@
 const express = require("express");
 const controller = require("../controllers/nhanvien.controller");
+const { authenticate } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
@@ -9,7 +10,7 @@ router.route("/")
 
 router.route("/:id")
     .get(controller.findOne)
-    .put(controller.update)
+    .put(authenticate, controller.update)
     .delete(controller.delete);
 
 module.exports = router;
