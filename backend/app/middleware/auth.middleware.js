@@ -38,6 +38,18 @@ function authorize(...roles) {
     };
 }
 
+function authorizeStaff(...roles) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return next(new ApiError(401, "Chưa xác thực danh tính."));
+        }
+        if (req.user.type !== "staff" || !roles.includes(req.user.role)) {
+            return next(new ApiError(403, `Chỉ nhân viên có quyền ${roles.join(" hoặc ")} mới được thực hiện thao tác này.`));
+        }
+        next();
+    };
+}
+
 // Hàm xác thực cho các chức năng khách vãng lai có thể truy cập, không có token thì bỏ qua, không lỗi.
 function optionalAuth(req, res, next) {
     const authHeader = req.headers["authorization"];
@@ -52,4 +64,4 @@ function optionalAuth(req, res, next) {
     next();
 }
 
-module.exports = { authenticate, authorize, optionalAuth };
+module.exports = { authenticate, authorize, authorizeStaff, optionalAuth };

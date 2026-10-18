@@ -60,6 +60,7 @@ export default {
   right: 1.75rem;
   z-index: 2000;
   pointer-events: none;
+  max-width: calc(100vw - 2rem);
 }
 
 /* Double-Bezel Toast */
@@ -77,7 +78,7 @@ export default {
   gap: 0.6rem;
   padding: 0.65rem 0.65rem 0.65rem 1rem;
   border-radius: calc(999px - 4px);
-  min-width: 260px;
+  min-width: min(260px, calc(100vw - 3rem));
   max-width: 400px;
   box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), 0 12px 24px -8px rgba(0,0,0,0.3);
 }
@@ -121,16 +122,16 @@ export default {
   color: inherit;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.25s;
+  transition: background 0.35s var(--ease-spring);
 }
 .toast-close:hover { background: rgba(255,255,255,0.24); }
 
 /* Transition */
 .toast-enter-active {
-  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s var(--ease-out);
 }
 .toast-leave-active {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 1, 1), opacity 0.35s ease;
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.35s var(--ease-out);
 }
 .toast-enter-from {
   opacity: 0;
@@ -139,5 +140,14 @@ export default {
 .toast-leave-to {
   opacity: 0;
   transform: translateY(8px) scale(0.97);
+}
+
+@media (max-width: 575.98px) {
+  .toast-wrapper {
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .toast-core { padding-left: 0.75rem; }
 }
 </style>

@@ -17,20 +17,6 @@ const publicFields = {
  * =========================================================================================
  * SERVICE QUẢN LÝ THEO DÕI MƯỢN SÁCH (THEODOIMUONSACH SERVICE)
  * =========================================================================================
- * Căn cứ thiết kế Cơ sở dữ liệu Báo cáo CT449 (Mục 2.5, Trang 25):
- * - Collection: 'theodoimuonsach'
- * - Cấu trúc trường:
- *   + _id: ObjectId
- *   + MaDocGia: String (Khóa ngoại tham chiếu docgia.MaDocGia)
- *   + MaSach: String (Khóa ngoại tham chiếu sach.MaSach)
- *   + NgayMuon: String / Date (Ngày độc giả gửi yêu cầu hoặc bắt đầu nhận sách)
- *   + MSNV: String (Khóa ngoại tham chiếu nhanvien.MSNV - Thủ thư phụ trách duyệt)
- *   + NgayHenTra: String / Date (Hạn trả dự kiến - Mặc định 14 ngày kể từ ngày duyệt)
- *   + NgayTra: String / Date (Ngày thực tế mang sách trả tại quầy - null nếu chưa trả)
- *   + TrangThai: String (ChoDuyet, DangMuon, DaTra, MatSach, TuChoi)
- *   + GiaTriBoiThuong: Double (Tiền bồi hoàn theo đơn giá nếu làm mất sách)
- *   + GhiChu: String (Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả)
- * =========================================================================================
  */
 class TheoDoiMuonSachService {
     constructor(client) {
@@ -131,10 +117,12 @@ class TheoDoiMuonSachService {
         return await this.findById(result.insertedId);
     }
 
-    /**
-     * Thủ thư phê duyệt phiếu mượn: Trừ tồn kho (-1), gán MSNV, hẹn ngày trả
-     */
-    async duyetMuon(id, msnv = "NV-0002") {
+    // Duyệt mượn - Completed
+    async duyetMuon(id, msnv) {
+        if (!msnv || String(msnv).trim() === "") {
+            throw new Error("Mã số nhân viên (MSNV) là bắt buộc để thực hiện duyệt phiếu mượn.");
+        }
+
         const record = await this.findById(id);
         if (!record) {
             throw new Error("Không tìm thấy phiếu mượn.");
@@ -165,7 +153,7 @@ class TheoDoiMuonSachService {
             {
                 $set: {
                     TrangThai: "DangMuon",
-                    MSNV: msnv,
+                    MSNV: String(msnv).trim(),
                     NgayMuon: todayStr,
                     NgayHenTra: dueDateStr,
                     UpdatedAt: new Date()
@@ -176,10 +164,12 @@ class TheoDoiMuonSachService {
         return result ? this.findById(String(record._id)) : null;
     }
 
-    /**
-     * Thủ thư từ chối yêu cầu mượn sách kèm lý do
-     */
-    async tuChoi(id, lyDo = "Thủ thư từ chối yêu cầu") {
+    // Từ chối kèm lý do - Completed
+    async tuChoi(id, lyDo) {
+        if (!lyDo || String(lyDo).trim() === "") {
+            throw new Error("Vui lòng cung cấp lý do từ chối phiếu mượn.");
+        }
+
         const record = await this.findById(id);
         if (!record) {
             throw new Error("Không tìm thấy phiếu mượn.");
@@ -194,7 +184,7 @@ class TheoDoiMuonSachService {
             {
                 $set: {
                     TrangThai: "TuChoi",
-                    GhiChu: lyDo,
+                    GhiChu: String(lyDo).trim(),
                     UpdatedAt: new Date()
                 }
             },
@@ -203,9 +193,7 @@ class TheoDoiMuonSachService {
         return result ? this.findById(String(record._id)) : null;
     }
 
-    /**
-     * Xác nhận độc giả trả sách: Hoàn kho (+1), kiểm tra trễ hạn và tăng vi phạm nếu trễ
-     */
+    // Xác nhận trả sách có check có trễ hay không - Completed
     async xacNhanTra(id) {
         const record = await this.findById(id);
         if (!record) {
@@ -217,6 +205,8 @@ class TheoDoiMuonSachService {
         }
 
         const todayStr = new Date().toISOString().split("T")[0];
+
+        // record.NgayHenTra nếu bằng null thì trả về false liền
         const isLate = record.NgayHenTra && todayStr > record.NgayHenTra;
 
         // Cộng hoàn 1 cuốn về kho
@@ -252,10 +242,12 @@ class TheoDoiMuonSachService {
         return result ? this.findById(String(record._id)) : null;
     }
 
-    /**
-     * Xử lý sự cố mất sách: Gán GiaTriBoiThuong = DonGia, không hoàn kho, tăng vi phạm
-     */
-    async baoMat(id, ghiChu = "Độc giả làm mất sách") {
+    // Do thủ thư thực hiện - Completed
+    async baoMat(id, ghiChu) {
+        if (!ghiChu || String(ghiChu).trim() === "") {
+            throw new Error("Vui lòng cung cấp biên bản hoặc ghi chú lý do báo mất sách.");
+        }
+
         const record = await this.findById(id);
         if (!record) {
             throw new Error("Không tìm thấy phiếu mượn.");
@@ -277,7 +269,7 @@ class TheoDoiMuonSachService {
                     TrangThai: "MatSach",
                     NgayTra: new Date().toISOString().split("T")[0],
                     GiaTriBoiThuong: giaTriBoiThuong,
-                    GhiChu: `${ghiChu} (Tiền bồi thường: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫)`,
+                    GhiChu: `${String(ghiChu).trim()} (Tiền bồi thường: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫)`,
                     UpdatedAt: new Date()
                 }
             },

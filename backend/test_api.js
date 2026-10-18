@@ -2,6 +2,7 @@ const http = require("http");
 const app = require("./app");
 const config = require("./app/config");
 const MongoDB = require("./app/utils/mongodb.util");
+const JwtUtil = require("./app/utils/jwt.util");
 
 let server = null;
 
@@ -407,10 +408,39 @@ async function runTests() {
         );
     });
 
-    // TC-BORROW-05: Thủ thư duyệt đơn mượn (Kho giảm từ 10 xuống 9, gán MSNV và hạn trả 14 ngày)
+    // TC-BORROW-05: Chỉ nhân viên/Admin được duyệt và MSNV lấy từ JWT
     await assert("TC-BORROW-05: Thủ thư duyệt mượn, trừ kho và gán hạn trả 14 ngày", async () => {
-        const res = await request("PUT", `/api/theodoimuonsach/${borrowId}/duyet`, { msnv: "NV-0002" });
-        if (res.status !== 200 || res.data.data.TrangThai !== "DangMuon") {
+        const unauthorized = await request("PUT", `/api/theodoimuonsach/${borrowId}/duyet`);
+        if (unauthorized.status !== 401) {
+            throw new Error(`Kỳ vọng HTTP 401 khi thiếu token, nhận status=${unauthorized.status}`);
+        }
+
+        const readerRequest = await request(
+            "PUT",
+            `/api/theodoimuonsach/${borrowId}/duyet`,
+            null,
+            { Authorization: `Bearer ${JwtUtil.sign({
+                id: temporaryReaderObjectId,
+                username: temporaryReaderId,
+                role: "MANAGER",
+                type: "reader"
+            })}` }
+        );
+        if (readerRequest.status !== 403) {
+            throw new Error(`Kỳ vọng HTTP 403 khi độc giả duyệt phiếu, nhận status=${readerRequest.status}`);
+        }
+
+        const res = await request(
+            "PUT",
+            `/api/theodoimuonsach/${borrowId}/duyet`,
+            { msnv: "NV-FORGED" },
+            { Authorization: `Bearer ${temporaryStaffToken}` }
+        );
+        if (
+            res.status !== 200 ||
+            res.data.data.TrangThai !== "DangMuon" ||
+            res.data.data.MSNV !== temporaryStaffCode
+        ) {
             throw new Error(`Kỳ vọng HTTP 200 & DangMuon, nhận status=${res.status}`);
         }
         // Kiểm tra tồn kho TEST_SACH_99 giảm từ 10 còn 9
@@ -446,7 +476,15 @@ async function runTests() {
         }
         lossBorrowId = borrowRes.data.data._id;
         // Duyệt mượn -> kho còn 9
-        await request("PUT", `/api/theodoimuonsach/${lossBorrowId}/duyet`);
+        const approval = await request(
+            "PUT",
+            `/api/theodoimuonsach/${lossBorrowId}/duyet`,
+            null,
+            { Authorization: `Bearer ${temporaryAdminToken}` }
+        );
+        if (approval.status !== 200 || approval.data.data.MSNV !== temporaryAdminId) {
+            throw new Error(`Admin phải duyệt được phiếu và được ghi nhận MSNV của token, nhận status=${approval.status}`);
+        }
 
         // Báo mất sách
         const lossRes = await request("PUT", `/api/theodoimuonsach/${lossBorrowId}/bao-mat`, {

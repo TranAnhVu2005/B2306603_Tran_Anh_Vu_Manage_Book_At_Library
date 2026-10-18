@@ -1,7 +1,7 @@
 <template>
   <div class="home-root">
     <!-- ===== HERO SECTION ===== -->
-    <section class="hero-section">
+    <section class="hero-section p-5">
       <div class="hero-bg" aria-hidden="true"></div>
 
       <div class="hero-inner">
@@ -81,7 +81,7 @@
                 <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M4 6h16M7 12h10M10 18h4"/>
                 </svg>
-                <select class="search-select" v-model="selectedPublisher" @change="fetchBooks">
+                <select class="search-select" v-model="selectedPublisher">
                   <option value="all">Tất cả NXB</option>
                   <option v-for="nxb in publishers" :key="nxb.MaNXB" :value="nxb.MaNXB">
                     {{ nxb.TENNXB }}
@@ -96,7 +96,6 @@
                   id="availCheck"
                   class="search-check-input"
                   v-model="availableOnly"
-                  @change="fetchBooks"
                 />
                 <span class="search-check-box" aria-hidden="true"></span>
                 Còn trong kho
@@ -227,17 +226,22 @@ export default {
       return this.books.filter((b) => b.SoQuyen > 0).length;
     },
     filteredBooks() {
+      const keyword = this.normalizeSearchText(this.searchKeyword.trim());
+
       return this.books.filter((book) => {
-        const kw = this.searchKeyword.toLowerCase().trim();
-        const matchesKeyword =
-          !kw ||
-          book.TenSach.toLowerCase().includes(kw) ||
-          book.TacGia.toLowerCase().includes(kw) ||
-          book.MaSach.toLowerCase().includes(kw);
+        const searchableFields = [book.TenSach, book.TacGia, book.MaSach];
+        const matchesKeyword = !keyword || searchableFields.some((field) =>
+          this.normalizeSearchText(field).includes(keyword)
+        );
         const matchesPublisher = this.selectedPublisher === "all" || book.MaNXB === this.selectedPublisher;
-        const matchesAvailability = !this.availableOnly || book.SoQuyen > 0;
+        const matchesAvailability = !this.availableOnly || Number(book.SoQuyen) > 0;
         return matchesKeyword && matchesPublisher && matchesAvailability;
       });
+    },
+  },
+  watch: {
+    filteredBooks() {
+      this.$nextTick(() => this.initReveal());
     },
   },
   created() {
@@ -254,21 +258,39 @@ export default {
       return this.publishers.find((publisher) => publisher.MaNXB === maNxb)?.TENNXB || "";
     },
     initReveal() {
-      if (this.revealObserver) this.revealObserver.disconnect();
-      this.revealObserver = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((e) => {
-            if (e.isIntersecting) {
-              e.target.classList.add("is-visible");
-              this.revealObserver.unobserve(e.target);
-            }
-          });
-        },
-        { threshold: 0.08 }
-      );
+      if (typeof IntersectionObserver === "undefined") {
+        this.$el.querySelectorAll("[data-reveal]").forEach((el) => {
+          el.classList.add("is-visible");
+        });
+        return;
+      }
+
+      if (!this.revealObserver) {
+        this.revealObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                e.target.classList.add("is-visible");
+                this.revealObserver.unobserve(e.target);
+              }
+            });
+          },
+          { threshold: 0.08 }
+        );
+      }
+
       this.$el.querySelectorAll("[data-reveal]").forEach((el) => {
-        this.revealObserver.observe(el);
+        if (!el.classList.contains("is-visible")) {
+          this.revealObserver.observe(el);
+        }
       });
+    },
+    normalizeSearchText(value) {
+      return String(value ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .toLocaleLowerCase("vi");
     },
     async fetchData() {
       this.loading = true;
@@ -284,13 +306,14 @@ export default {
       }
     },
     async fetchBooks() {
+      this.loading = true;
       try {
-        const params = {};
-        if (this.selectedPublisher !== "all") params.maNxb = this.selectedPublisher;
-        if (this.availableOnly) params.availableOnly = "true";
-        this.books = await sachService.getAll(params);
+        this.books = await sachService.getAll();
       } catch {
         this.$refs.toast.show("Lỗi khi tải danh sách sách.", "error");
+      } finally {
+        this.loading = false;
+        this.$nextTick(() => this.initReveal());
       }
     },
     clearSearch() { this.searchKeyword = ""; },
@@ -298,15 +321,23 @@ export default {
       this.searchKeyword = "";
       this.selectedPublisher = "all";
       this.availableOnly = false;
-      this.fetchBooks();
     },
     openBorrowModal(book) {
-      if (!authService.isLoggedIn()) {
+      const user = authService.getUser();
+      if (!authService.isLoggedIn() || !user) {
         this.$router.push("/login?redirect=/");
         return;
       }
-      if (!authService.isReader()) {
+      if (!authService.isReader(user)) {
         this.$refs.toast.show("Chỉ độc giả mới có thể đăng ký mượn sách.", "error");
+        return;
+      }
+      if (user.TrangThaiThe === "DanhSachDen") {
+        this.$refs.toast.show("Thẻ của bạn đang ở Danh sách đen. Vui lòng liên hệ quản trị viên để được xem xét.", "error", 5000);
+        return;
+      }
+      if (user.TrangThaiThe === "Khoa") {
+        this.$refs.toast.show("Thẻ của bạn hiện đang bị khóa tạm thời. Vui lòng liên hệ thủ thư.", "error", 5000);
         return;
       }
       this.selectedBook = book;
@@ -333,7 +364,7 @@ export default {
 <style scoped>
 /* === Root === */
 .home-root {
-  min-height: 100vh;
+  width: 100%;
   background-color: var(--paper);
 }
 
@@ -686,5 +717,26 @@ export default {
   .search-check-label { margin-left: 0; }
   .books-grid { grid-template-columns: 1fr; }
   .catalog-section { padding-bottom: 3rem; }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .books-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 420px) {
+  .hero-stats {
+    width: 100%;
+    border-radius: 1.25rem;
+  }
+
+  .hero-stat {
+    min-width: 0;
+    padding-inline: 0.6rem;
+  }
+
+  .hero-stat-num { font-size: 1.35rem; }
+  .hero-stat-label { font-size: 0.57rem; letter-spacing: 0.06em; }
+  .search-select { min-width: 0; width: 100%; }
+  .filter-status { align-items: flex-start; }
 }
 </style>

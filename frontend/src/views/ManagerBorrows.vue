@@ -365,13 +365,7 @@ export default {
     },
     async handleApprove(item) {
       try {
-        const staffUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (!staffUser.MSNV) {
-          this.$refs.toast.show("Không xác định được mã nhân viên đang đăng nhập.", "error");
-          return;
-        }
-        const msnv = staffUser.MSNV;
-        const res = await theoDoiService.duyet(item._id, msnv);
+        const res = await theoDoiService.duyet(item._id);
         this.$refs.toast.show(res.message || "Đã duyệt mượn và trừ 1 cuốn trong kho.");
         this.fetchData();
       } catch (err) { this.$refs.toast.show(err.response?.data?.message || "Không thể duyệt yêu cầu mượn.", "error"); }
@@ -426,6 +420,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .overdue-check-label {
@@ -455,6 +450,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--paper-border);
@@ -467,7 +463,8 @@ export default {
   font-family: var(--font-sans);
   font-size: 0.82rem;
   color: var(--ink-primary);
-  width: 180px;
+  width: min(180px, 40vw);
+  min-width: 0;
 }
 .table-search-input::placeholder { color: var(--ink-muted); }
 
@@ -559,5 +556,30 @@ export default {
   line-height: 1.5;
   margin-bottom: 1rem;
   box-shadow: inset 0 0 0 1px rgba(154, 91, 24, 0.2);
+}
+
+@media (max-width: 575.98px) {
+  .filter-row,
+  .table-search-wrap {
+    width: 100%;
+  }
+
+  .table-search-input { width: 100%; }
+
+  .modal-head,
+  .modal-body {
+    padding-inline: 1rem;
+  }
+
+  .modal-footer-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer-actions button { width: 100%; }
+}
+
+@media (max-width: 359.98px) {
+  .stats-row { grid-template-columns: 1fr; }
 }
 </style>

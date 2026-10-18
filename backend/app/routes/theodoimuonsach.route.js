@@ -1,5 +1,6 @@
 const express = require("express");
 const controller = require("../controllers/theodoimuonsach.controller");
+const { authenticate, authorizeStaff } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ router.route("/:id")
     
 
 router.route("/:id/duyet")
-    .put(controller.duyetMuon);
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.duyetMuon);
 
 router.route("/:id/tu-choi")
     .put(controller.tuChoiMuon);

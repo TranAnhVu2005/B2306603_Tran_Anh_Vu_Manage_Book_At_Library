@@ -22,16 +22,16 @@
             <form @submit.prevent="handleLogin">
               <div class="mb-3">
                 <label class="small fw-bold text-dark mb-1">
-                  Số điện thoại, mã độc giả hoặc mã nhân viên:
+                  Số điện thoại: 
                 </label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                  <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                     <i class="fas fa-user text-muted"></i>
                   </span>
                   <input type="text" 
                          class="form-control ath-input border-start-0" 
                          v-model="identifier" 
-                         placeholder="VD: 0912345678, DG-000001 hoặc NV-0001"
+                         placeholder="Nhập số điện thoại..."
                          required />
                 </div>
               </div>
@@ -41,13 +41,13 @@
                   Mật khẩu:
                 </label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                  <span class="input-group-text bg-white border-end-0 me-2" style="border-color: var(--paper-border);">
                     <i class="fas fa-key text-muted"></i>
                   </span>
                   <input :type="showPassword ? 'text' : 'password'" 
                          class="form-control ath-input border-start-0" 
                          v-model="password" 
-                         placeholder="Nhập mật khẩu" 
+                         placeholder="Nhập mật khẩu..." 
                          required />
                   <button class="btn btn-outline-secondary" type="button" @click="showPassword = !showPassword" style="border-color: var(--paper-border);">
                     <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>

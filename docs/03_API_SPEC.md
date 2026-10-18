@@ -124,10 +124,10 @@
   - Tạo phiếu với `TrangThai: "ChoDuyet"`.
 
 ### 📌 `PUT /api/theodoimuonsach/:id/duyet` (Thủ thư phê duyệt mượn)
-* **Request Body**: `{ "msnv": "NV-0002" }` (Tùy chọn)
+* **Quyền truy cập**: Bắt buộc JWT của nhân viên (`MANAGER`) hoặc quản trị viên (`ADMIN`). `MSNV` được lấy từ token, không nhận danh tính nhân viên từ request body.
 * **Xử lý**:
   - Kiểm tra kho `SoQuyen > 0`, trừ kho: `SoQuyen = SoQuyen - 1`.
-  - Cập nhật: `TrangThai: "DangMuon"`, `MSNV: "NV-0002"`, `NgayHenTra = NgayMuon + 14 ngày`.
+  - Cập nhật: `TrangThai: "DangMuon"`, gán `MSNV` từ tài khoản đang đăng nhập, `NgayHenTra = NgayMuon + 14 ngày`.
 
 ### 📌 `PUT /api/theodoimuonsach/:id/tu-choi` (Từ chối yêu cầu)
 * **Request Body**: `{ "lyDo": "Không đủ điều kiện" }`

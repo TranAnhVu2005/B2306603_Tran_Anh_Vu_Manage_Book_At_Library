@@ -13,7 +13,7 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
     <AppHeader />
-    <main class="flex-grow-1 py-3 container">
+    <main class="app-main container flex-grow-1">
       <router-view />
     </main>
     <AppFooter />
@@ -21,9 +21,14 @@
 </template>
 
 <style>
-/* Base overrides */
 #app {
   background-color: var(--paper);
   color: var(--ink-primary);
+}
+
+.app-main {
+  min-width: 0;
+  padding-top: clamp(1.25rem, 3vw, 2rem);
+  padding-bottom: clamp(1.75rem, 4vw, 3rem);
 }
 </style>

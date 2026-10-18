@@ -30,6 +30,9 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 - Nội dung trang sử dụng toàn bộ chiều rộng vùng chính; các bố cục nhiều cột tự xếp thành một cột ở breakpoint phù hợp.
 - Bảng quản trị có nhiều cột được đặt trong vùng `overflow-x: auto` và có chiều rộng tối thiểu phù hợp; chỉ bảng cuộn ngang, không làm tràn toàn bộ trang.
 - Header và Footer tiếp tục dùng chiều rộng layout riêng, độc lập với vùng nội dung chính.
+- Khoảng cách vùng nội dung dùng nhịp co giãn theo viewport; trang chủ không tự ép chiều cao bằng `100vh` bên trong layout đã có Header/Footer.
+- Card quản trị và modal dùng vỏ + lõi riêng; bảng nhiều cột chỉ cuộn ngang trong wrapper của bảng. Các form, bộ lọc và nút hành động phải co giãn hoặc xuống dòng trên màn hình hẹp.
+- Tôn trọng `prefers-reduced-motion`; nội dung không được làm tràn ngang ở chiều rộng tối thiểu 320px.
 
 ---
 
@@ -39,6 +42,8 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 1. **Trang chủ & Tra cứu mục lục sách (`/` hoặc `/books`)**:
    * **Thanh thông báo trên cùng**: Thống kê số lượng đầu sách và giờ phục vụ thư viện.
    * **Khung tìm kiếm thông minh**: Ô nhập tìm kiếm (tên sách, tác giả), bộ lọc danh mục NXB, checkbox *"Chỉ sách còn trong kho"*, hiển thị định mức mượn: **Tối đa 03 cuốn**.
+   * Từ khóa, nhà xuất bản và tình trạng kho được kết hợp trên cùng danh mục đã tải; thay đổi bộ lọc không làm mất các bản ghi ngoài điều kiện đang chọn. Tìm kiếm không phân biệt chữ hoa/thường và dấu tiếng Việt.
+   * Khi danh sách đổi theo tìm kiếm/bộ lọc, các thẻ sách mới vẫn phải được quan sát và hiện đầy đủ sau hiệu ứng reveal; không để số kết quả thay đổi mà thẻ tương ứng bị ẩn.
    * **Lưới danh mục sách (Catalog Grid)**:
      * Áp dụng **Asymmetrical Bento Layout** hoặc **Z-Axis Cascade** tùy context.
      * Thẻ sách dùng Double-Bezel card với tỉ lệ ảnh bìa 3:4.

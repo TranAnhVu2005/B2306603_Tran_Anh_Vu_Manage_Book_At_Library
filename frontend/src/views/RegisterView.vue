@@ -25,7 +25,7 @@
               <div class="mb-3">
                 <label class="small fw-bold mb-1 text-dark">Số điện thoại liên hệ:</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                  <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                     <i class="fas fa-phone text-muted"></i>
                   </span>
                   <input
@@ -43,7 +43,7 @@
                 <div class="col-md-7 mb-3">
                   <label class="small fw-bold mb-1 text-dark">Họ và tên đệm:</label>
                   <div class="input-group">
-                    <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                    <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                       <i class="fas fa-user text-muted"></i>
                     </span>
                     <input
@@ -59,7 +59,7 @@
                 <div class="col-md-5 mb-3">
                   <label class="small fw-bold mb-1 text-dark">Tên:</label>
                   <div class="input-group">
-                    <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                    <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                       <i class="fas fa-signature text-muted"></i>
                     </span>
                     <input
@@ -78,7 +78,7 @@
                 <div class="col-md-6 mb-3">
                   <label class="small fw-bold mb-1 text-dark">Ngày sinh:</label>
                   <div class="input-group">
-                    <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                    <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                       <i class="fas fa-calendar-alt text-muted"></i>
                     </span>
                     <input
@@ -93,7 +93,7 @@
                 <div class="col-md-6 mb-3">
                   <label class="small fw-bold mb-1 text-dark">Giới tính:</label>
                   <div class="input-group">
-                    <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                    <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                       <i class="fas fa-venus-mars text-muted"></i>
                     </span>
                     <select class="form-select ath-input border-start-0" v-model="form.Phai">
@@ -109,7 +109,7 @@
               <div class="mb-3">
                 <label class="small fw-bold mb-1 text-dark">Địa chỉ thường trú:</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                  <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                     <i class="fas fa-map-marker-alt text-muted"></i>
                   </span>
                   <input
@@ -125,7 +125,7 @@
               <div class="mb-4">
                 <label class="small fw-bold mb-1 text-dark">Mật khẩu tài khoản:</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
+                  <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                     <i class="fas fa-key text-muted"></i>
                   </span>
                   <input

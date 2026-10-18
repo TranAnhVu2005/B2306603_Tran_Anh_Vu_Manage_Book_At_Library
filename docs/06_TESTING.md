@@ -36,7 +36,7 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | **TC-BORROW-02**| Mượn sách khi đã hết kho | Độc giả kiểm thử tạm thời, `SACH-000003` (`SoQuyen: 0`) | HTTP 400: Báo hết sách trong kho | ✅ PASSED |
 | **TC-BORROW-03**| Mượn sách vượt hạn mức 3 cuốn | Độc giả đã có 3 cuốn chưa trả | HTTP 400: Chặn vượt hạn mức | ✅ PASSED |
 | **TC-BORROW-04**| Độc giả trong danh sách đen mượn sách | Tạo độc giả kiểm thử với `TrangThaiThe: DanhSachDen` | HTTP 403: Bị từ chối mượn | ✅ PASSED |
-| **TC-BORROW-05**| Thủ thư duyệt đơn mượn | `id` đơn mượn, nhấn Duyệt | HTTP 200, `DangMuon`, kho giảm 10 -> 9, gán `MSNV` | ✅ PASSED |
+| **TC-BORROW-05**| Thủ thư/Admin duyệt đơn mượn | Thử thiếu JWT, JWT độc giả, rồi JWT thủ thư/Admin | Thiếu JWT: HTTP 401; độc giả: HTTP 403; thủ thư/Admin: HTTP 200, `DangMuon`, kho giảm 10 -> 9, gán `MSNV` theo JWT | ✅ PASSED |
 | **TC-RETURN-01**| Xác nhận trả sách đúng hạn | `id` đơn mượn, nhấn Trả sách | HTTP 200, `DaTra`, kho hoàn lại 9 -> 10 | ✅ PASSED |
 | **TC-RETURN-02**| Trả sách trễ hạn | Đơn mượn có `NgayTra > NgayHenTra` | HTTP 200, `SoLanViPham` tăng +1 | ✅ PASSED |
 | **TC-RETURN-03**| Tự động đưa vào danh sách đen sau 3 lần trễ | Vi phạm lần thứ 3 | `TrangThaiThe` tự động đổi sang `DanhSachDen` | ✅ PASSED |
@@ -55,7 +55,7 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc 
 | Mã UI | Luồng Thao Tác (User Flow) | Hành Vi Giao Diện Mong Đợi | Trạng Thái |
 |:---:|:---|:---|:---:|
 | **UI-01** | Xem danh mục sách trang chủ | Hiển thị đúng lưới thẻ sách Athenaeum, ảnh bìa, badge Còn/Hết sách | ✅ PASSED |
-| **UI-02** | Tìm kiếm theo tên / Lọc theo NXB | Danh sách sách tự động lọc mượt mà theo từ khóa nhập vào | ✅ PASSED |
+| **UI-02** | Tìm kiếm theo tên / Lọc theo NXB / tình trạng kho | Tìm chính xác hoặc không dấu theo tên sách/tác giả/mã phải hiện thẻ sách; kết hợp bộ lọc NXB và còn kho, đếm trên toàn danh mục, xóa bộ lọc khôi phục đầy đủ danh sách; thẻ mới sau lọc không bị ẩn bởi reveal | ✅ PASSED |
 | **UI-03** | Bấm nút "Đăng ký mượn" | Hiển thị `BorrowModal` xác nhận; hiển thị Toast báo thành công | ✅ PASSED |
 | **UI-04** | Sách hết số lượng (`SoQuyen == 0`) | Nút mượn bị vô hiệu hóa (disabled), hiển thị badge "Tạm hết sách" | ✅ PASSED |
 | **UI-05** | Quản lý duyệt mượn trên bảng | Nhấn nút "Duyệt" -> Trạng thái đổi sang "Đang mượn" ngay trên bảng | ✅ PASSED |
@@ -64,3 +64,4 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc 
 | **UI-08** | Admin quản lý trạng thái thẻ | Bộ lọc Danh sách đen và `Khoa` tách biệt; khóa/mở khẩn cấp không reset vi phạm; xét gỡ khỏi danh sách đen là thao tác riêng | 🟡 Build verified; chưa chạy trình duyệt |
 | **UI-09** | Độc giả chỉnh sửa hồ sơ `/profile` | Mở form, sửa thông tin cá nhân, lưu thành công cập nhật thẻ hồ sơ và phiên; lỗi từ API được thông báo | 🟡 Build verified; chưa chạy trình duyệt |
 | **UI-10** | Nhân viên/Admin chỉnh sửa hồ sơ `/profile` | Hiển thị hồ sơ nhân viên; tự cập nhật họ tên, số điện thoại, địa chỉ và đồng bộ phiên; không cho sửa chức vụ/mã nhân viên | 🟡 Build verified; chưa chạy trình duyệt |
+| **UI-11** | Kiểm tra bố cục responsive toàn hệ thống | Ở chiều rộng 320–768px không tràn ngang trang; bảng cuộn trong wrapper riêng; form, bộ lọc, modal và nút hành động không chồng lấn | 🟡 Build verified; cần kiểm thử trình duyệt trên đủ breakpoint |

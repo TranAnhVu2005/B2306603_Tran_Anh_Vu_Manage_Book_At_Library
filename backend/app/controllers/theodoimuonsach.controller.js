@@ -39,6 +39,7 @@ exports.duyetMuon = async (req, res, next) => {
     }
 };
 
+//Từ chối mượn - Completed
 exports.tuChoiMuon = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
@@ -53,6 +54,7 @@ exports.tuChoiMuon = async (req, res, next) => {
     }
 };
 
+// Xác nhận trả - Completed
 exports.xacNhanTra = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
@@ -91,7 +93,7 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
-// Tìm 1 phiếu mượn - Completed
+// Tìm 1 phiếu mượn - Completed 
 exports.findOne = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);

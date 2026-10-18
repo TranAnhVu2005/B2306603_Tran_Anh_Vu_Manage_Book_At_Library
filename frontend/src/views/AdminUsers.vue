@@ -1,33 +1,36 @@
 <template>
-  <div class="py-4">
+  <div class="vg-page admin-users-page">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 pb-3 mb-4 border-bottom" style="border-color: var(--paper-border) !important;">
+    <div class="vg-page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
-        <span class="text-uppercase small fw-bold text-danger" style="letter-spacing: 0.05em;">
-          <i class="fas fa-shield-alt me-1"></i> Khu Vực Quản Trị Tối Cao (Super Admin)
+        <span class="vg-section-label admin-eyebrow">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
+          Khu Vực Quản Trị Tối Cao (Super Admin)
         </span>
-        <h2 class="font-serif-headline fw-bold text-dark mb-0">
+        <h1 class="admin-page-title">
           Phân Quyền Người Dùng & Danh Sách Đen
-        </h2>
+        </h1>
       </div>
-      <button class="ath-btn-outline" @click="fetchData">
-        <i class="fas fa-sync-alt me-1"></i> Làm mới
+      <button class="ath-btn-outline" type="button" @click="fetchData">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.6 9a7 7 0 0 1 11.9-2L20 12M4 12l2.5 5a7 7 0 0 0 11.9-2" /></svg>
+        Làm mới
       </button>
     </div>
 
     <!-- Quick Filter -->
-    <div class="ath-card p-3 mb-4">
+    <div class="vg-shell">
+      <div class="vg-core p-3 p-md-4">
       <div class="admin-filter-panel">
         <div class="input-group admin-user-search">
           <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
-            <i class="fas fa-search text-muted"></i>
+            <svg class="ui-icon text-muted" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4.5 4.5" /></svg>
           </span>
           <input type="text"
                  class="form-control ath-input border-start-0"
                  v-model="search"
                  placeholder="Tìm kiếm theo mã độc giả, họ tên, số điện thoại..." />
           <button v-if="search" class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
-            <i class="fas fa-times"></i>
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
         </div>
         <div class="admin-filter-options" role="group" aria-label="Lọc danh sách người dùng">
@@ -41,33 +44,38 @@
                   :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   :aria-pressed="filterRole === 'MANAGER'"
                   @click="filterRole = 'MANAGER'">
-            <i class="fas fa-user-shield me-1"></i> Quản lý / Thủ thư
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M16 11h6" /></svg>
+            Quản lý / Thủ thư
           </button>
           <button class="btn btn-sm"
                   :class="filterRole === 'DanhSachDen' ? 'ath-btn-danger' : 'ath-btn-outline'"
                   :aria-pressed="filterRole === 'DanhSachDen'"
                   @click="filterRole = 'DanhSachDen'">
-            <i class="fas fa-ban me-1"></i> Danh sách đen ({{ danhSachDenCount }})
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>
+            Danh sách đen ({{ danhSachDenCount }})
           </button>
           <button class="btn btn-sm"
                   :class="filterRole === 'Khoa' ? 'ath-btn-danger' : 'ath-btn-outline'"
                   :aria-pressed="filterRole === 'Khoa'"
                   @click="filterRole = 'Khoa'">
-            <i class="fas fa-lock me-1"></i> Thẻ bị khóa ({{ lockedCount }})
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg>
+            Thẻ bị khóa ({{ lockedCount }})
           </button>
         </div>
+      </div>
       </div>
     </div>
 
     <!-- Users Table -->
-    <div class="ath-card p-3 p-md-4">
+    <div class="vg-shell">
+      <div class="vg-core p-3 p-md-4">
       <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-success" role="status"></div>
         <p class="text-muted small mt-2">Đang tải danh sách người dùng...</p>
       </div>
 
       <div v-else-if="filteredUsers.length === 0" class="text-center py-5">
-        <i class="fas fa-users-slash text-muted mb-2" style="font-size: 2.5rem;"></i>
+        <svg class="ui-icon admin-empty-icon text-muted mb-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v8M16 12h8" /></svg>
         <h6 class="font-serif-headline fw-bold">Không tìm thấy người dùng phù hợp</h6>
         <p class="text-muted small mb-0">Thử thay đổi từ khóa hoặc bộ lọc vai trò.</p>
       </div>
@@ -100,13 +108,13 @@
               </td>
               <td>
                 <span v-if="u.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den">
-                  <i class="fas fa-ban"></i> Danh sách đen
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg> Danh sách đen
                 </span>
                 <span v-else-if="u.TrangThaiThe === 'Khoa'" class="ath-badge ath-badge-out">
-                  <i class="fas fa-lock"></i> Đang khóa
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg> Đang khóa
                 </span>
                 <span v-else class="ath-badge ath-badge-available">
-                  <i class="fas fa-check-circle"></i> Hoạt động
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></svg> Hoạt động
                 </span>
               </td>
               <td>
@@ -120,44 +128,45 @@
                         class="ath-action-btn ath-action-btn-success me-1"
                         @click="changeRole(u, 'MANAGER')"
                         title="Nâng cấp lên Quản lý / Thủ thư">
-                  <i class="fas fa-arrow-up text-success"></i> Thăng cấp
+                  <svg class="ui-icon text-success" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg> Thăng cấp
                 </button>
                 <button v-else-if="u.VaiTro === 'MANAGER'"
                         class="ath-action-btn me-1"
                         @click="changeRole(u, 'USER')"
                         title="Hạ cấp về Độc giả thường">
-                  <i class="fas fa-arrow-down text-warning"></i> Hạ cấp
+                  <svg class="ui-icon text-warning" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg> Hạ cấp
                 </button>
 
                 <button v-if="u.TrangThaiThe === 'HoatDong'"
                         class="ath-action-btn ath-action-btn-danger me-1"
                         @click="lockUser(u)"
                         title="Khóa khẩn cấp thẻ, không thay đổi số lần vi phạm">
-                  <i class="fas fa-lock text-danger"></i> Khóa thẻ
+                  <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg> Khóa thẻ
                 </button>
                 <button v-else-if="u.TrangThaiThe === 'Khoa'"
                         class="ath-action-btn ath-action-btn-success me-1"
                         @click="unblockUser(u)"
                         title="Mở khóa khẩn cấp, giữ nguyên số lần vi phạm">
-                  <i class="fas fa-unlock text-info"></i> Mở khóa
+                  <svg class="ui-icon text-info" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 7.5-2" /></svg> Mở khóa
                 </button>
                 <button v-else-if="u.TrangThaiThe === 'DanhSachDen'"
                         class="ath-action-btn ath-action-btn-success me-1"
                         @click="reinstateUser(u)"
                         title="Xét gỡ khỏi danh sách đen, giữ nguyên lịch sử vi phạm">
-                  <i class="fas fa-clipboard-check text-success"></i> Xét gỡ danh sách đen
+                  <svg class="ui-icon text-success" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5h6M8.5 13l2.2 2.2 4.8-4.8" /></svg> Xét gỡ danh sách đen
                 </button>
 
                 <!-- Xóa độc giả -->
                 <button class="ath-action-btn ath-action-btn-danger" 
                         @click="deleteUser(u)"
                         title="Xóa tài khoản">
-                  <i class="fas fa-trash-alt text-danger"></i>
+                  <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3" /></svg>
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
 
@@ -310,6 +319,27 @@ export default {
 </script>
 
 <style scoped>
+.admin-users-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  min-width: 0;
+}
+.admin-users-page > * { min-width: 0; }
+
+.admin-eyebrow { color: var(--accent); }
+.admin-eyebrow .ui-icon { margin-right: 0.25rem; }
+
+.admin-page-title {
+  margin: 0;
+  color: var(--ink-primary);
+  font-family: var(--font-serif);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
 .admin-filter-panel {
   display: grid;
   gap: 1rem;
@@ -327,22 +357,38 @@ export default {
   min-width: 0;
   min-height: 44px;
   padding-inline: 0.65rem;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.35;
 }
 .admin-users-table-wrap {
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
 }
 .admin-users-table {
-  min-width: 900px;
+  min-width: 980px;
+}
+.admin-empty-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 @media (max-width: 767.98px) {
+  .admin-users-page { gap: 1rem; }
+
   .admin-filter-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 420px) {
-  .admin-filter-options {
-    grid-template-columns: 1fr;
+  .admin-filter-options .btn {
+    min-height: 52px;
+    padding-inline: 0.45rem;
+    font-size: 0.72rem;
   }
 }
 </style>
