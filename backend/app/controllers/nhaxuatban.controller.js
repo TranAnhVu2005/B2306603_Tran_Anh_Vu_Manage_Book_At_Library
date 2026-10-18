@@ -2,6 +2,7 @@ const NhaXuatBanService = require("../services/nhaxuatban.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
+// Tạo nhà xuất bản - Completed
 exports.create = async (req, res, next) => {
     try {
         const service = new NhaXuatBanService(MongoDB.client);
@@ -15,6 +16,7 @@ exports.create = async (req, res, next) => {
     }
 };
 
+// Tìm tất cả nhà xuất bản, ngoài ra có thể lọc - Completed
 exports.findAll = async (req, res, next) => {
     try {
         const service = new NhaXuatBanService(MongoDB.client);
@@ -25,6 +27,7 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
+// Tìm một nhà xuất bản - Completed
 exports.findOne = async (req, res, next) => {
     try {
         const service = new NhaXuatBanService(MongoDB.client);
@@ -38,6 +41,7 @@ exports.findOne = async (req, res, next) => {
     }
 };
 
+// Cập nhật thông tin nhà xuất bản - Completed
 exports.update = async (req, res, next) => {
     try {
         const service = new NhaXuatBanService(MongoDB.client);
@@ -54,6 +58,7 @@ exports.update = async (req, res, next) => {
     }
 };
 
+// Xóa nhà xuất bản - Completed
 exports.delete = async (req, res, next) => {
     try {
         const service = new NhaXuatBanService(MongoDB.client);

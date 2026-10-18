@@ -10,6 +10,7 @@ router.route("/")
 router.route("/:id")
     .get(controller.findOne)
     .delete(controller.delete);
+    
 
 router.route("/:id/duyet")
     .put(controller.duyetMuon);

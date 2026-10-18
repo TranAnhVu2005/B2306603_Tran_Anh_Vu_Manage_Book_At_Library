@@ -2,7 +2,7 @@ const NhanVienService = require("../services/nhanvien.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
-// Tạo tài khoản nhân viên, sử dụng thông qua api, không dùng trên giao diện
+// Tạo tài khoản nhân viên - Completed
 exports.create = async (req, res, next) => {
     try {
         const service = new NhanVienService(MongoDB.client);
@@ -16,6 +16,7 @@ exports.create = async (req, res, next) => {
     }
 };
 
+//Hàm tìm tất cả nhân viên - Completed
 exports.findAll = async (req, res, next) => {
     try {
         const service = new NhanVienService(MongoDB.client);
@@ -26,6 +27,7 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
+//Lấy thông tin một nhân viên - Completed
 exports.findOne = async (req, res, next) => {
     try {
         const service = new NhanVienService(MongoDB.client);
@@ -39,6 +41,7 @@ exports.findOne = async (req, res, next) => {
     }
 };
 
+// Cập nhật hồ sơ nhân viên - Completed
 exports.update = async (req, res, next) => {
     try {
         const isOwnStaffProfile = req.user?.type === "staff" &&
@@ -61,6 +64,7 @@ exports.update = async (req, res, next) => {
     }
 };
 
+// Xóa hồ sơ nhân viên - Completed
 exports.delete = async (req, res, next) => {
     try {
         const service = new NhanVienService(MongoDB.client);

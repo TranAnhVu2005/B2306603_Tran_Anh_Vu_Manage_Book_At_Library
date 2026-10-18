@@ -2,6 +2,7 @@ const TheoDoiMuonSachService = require("../services/theodoimuonsach.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
+// Đăng ký mượn sách - Tạo một đăng ký mượn - Completed
 exports.dangKyMuon = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
@@ -15,10 +16,19 @@ exports.dangKyMuon = async (req, res, next) => {
     }
 };
 
+// Duyệt mượn - Completed
 exports.duyetMuon = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
-        const msnv = req.body?.msnv || req.headers["x-msnv"] || "NV-0002";
+
+        // 1. Lấy MSNV trực tiếp từ token của nhân viên đang đăng nhập (thông qua middleware xác thực)
+        // (Giả sử middleware authenticate của bạn đã gán thông tin vào req.user)
+        const msnv = req.user?.username;
+
+        if (!msnv) {
+            return next(new ApiError(401, "Không xác định được danh tính nhân viên thực hiện thao tác này."));
+        }
+
         const result = await service.duyetMuon(req.params.id, msnv);
         return res.json({
             message: "Duyệt yêu cầu mượn thành công. Đã xuất kho 1 cuốn và hẹn trả sau 14 ngày.",
@@ -70,6 +80,7 @@ exports.baoMat = async (req, res, next) => {
     }
 };
 
+// Tìm tất cả các theo dõi mượn sách - Completed
 exports.findAll = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
@@ -80,6 +91,7 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
+// Tìm 1 phiếu mượn - Completed
 exports.findOne = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
@@ -93,6 +105,7 @@ exports.findOne = async (req, res, next) => {
     }
 };
 
+// Xóa phiếu mượn - Completed
 exports.delete = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);

@@ -41,9 +41,7 @@ class TheoDoiMuonSachService {
         this.NhanVien = client.db().collection("nhanvien");
     }
 
-    /**
-     * Độc giả gửi phiếu yêu cầu mượn sách trực tuyến
-     */
+    // Service đăng ký mượn sách - Completed
     async createDangKy(payload) {
         const maDocGia = String(payload.MaDocGia || "").trim();
         const maSach = String(payload.MaSach || "").trim();
@@ -112,7 +110,7 @@ class TheoDoiMuonSachService {
         const dueDate = new Date(today);
         dueDate.setDate(dueDate.getDate() + 14); // Quy định thời hạn 14 ngày
 
-        const todayStr = today.toISOString().split("T")[0];
+        const todayStr = today.toISOString().split("T")[0]; // Chuyển giờ theo dạng ISO, cắt bỏ từ chữ T, bỏ giờ phút giây
         const dueDateStr = dueDate.toISOString().split("T")[0];
 
         const record = {
@@ -300,9 +298,7 @@ class TheoDoiMuonSachService {
         return result ? this.findById(String(record._id)) : null;
     }
 
-    /**
-     * Lấy danh sách giao dịch mượn - trả kèm chi tiết Sách, Độc giả và Nhân viên
-     */
+    // Tìm theo mã độc giả, mã sách và trạng thái - Completed
     async find(filter = {}) {
         const query = {};
         if (filter.maDocGia) {
@@ -318,17 +314,13 @@ class TheoDoiMuonSachService {
         return await this.TheoDoi.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 }).toArray();
     }
 
-    /**
-     * Tìm phiếu mượn theo ID
-     */
+    // Tìm phiếu mượn theo object id, các trường khác không đủ xác định tính duy nhất - Completed
     async findById(id) {
         if (!ObjectId.isValid(id)) return null;
         return await this.TheoDoi.findOne({ _id: new ObjectId(id) }, { projection: publicFields });
     }
 
-    /**
-     * Xóa phiếu lưu trữ
-     */
+    // Xóa phiếu mượn - Completed
     async delete(id) {
         if (!ObjectId.isValid(id)) return null;
         return await this.TheoDoi.findOneAndDelete({ _id: new ObjectId(id) });

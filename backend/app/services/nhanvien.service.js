@@ -31,9 +31,7 @@ class NhanVienService {
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
-    /**
-     * Tự động sinh mã nhân viên định dạng: NV-0001, NV-0002,...
-     */
+    // Tự động sinh mã số nhân viên, tương tự như độc giả - Completed
     async generateMSNV() {
         const last = await this.NhanVien.find(
             { MSNV: { $regex: /^NV-\d{4}$/ } },
@@ -50,9 +48,7 @@ class NhanVienService {
         return `NV-${String(nextNum).padStart(4, "0")}`;
     }
 
-    /**
-     * Lọc và chuẩn hóa dữ liệu nhân viên
-     */
+    // Chuẩn hóa dữ liệu từ payload, mặc định là tạo, nếu truyền true thì update - Completed
     async extractData(payload, isCreating = false) {
         const data = {};
 
@@ -61,11 +57,10 @@ class NhanVienService {
         if (payload.DiaChi !== undefined) data.DiaChi = String(payload.DiaChi).trim();
         if (payload.SoDienThoai !== undefined) data.SoDienThoai = String(payload.SoDienThoai).trim();
 
-        // Mật khẩu tài khoản nhân viên (chuẩn hóa trường MatKhau)
-        const rawPassword = payload.MatKhau || payload.Password;
+        // Mật khẩu tài khoản nhân viên
+        const rawPassword = payload.MatKhau;
         if (rawPassword) {
             data.MatKhau = await PasswordUtil.hash(rawPassword);
-            data.Password = data.MatKhau; // Đồng bộ alias
         }
 
         if (isCreating) {
@@ -77,9 +72,7 @@ class NhanVienService {
         return data;
     }
 
-    /**
-     * Thêm tài khoản nhân viên / cán bộ thư viện mới
-     */
+    // Thêm tài khoản nhân viên
     async create(payload) {
         const data = await this.extractData(payload, true);
 
@@ -87,16 +80,8 @@ class NhanVienService {
             throw new Error("Vui lòng điền đầy đủ Họ tên nhân viên và Mật khẩu.");
         }
 
-        // Tự sinh MSNV nếu không truyền
-        if (!payload.MSNV) {
-            data.MSNV = await this.generateMSNV();
-        } else {
-            const existing = await this.NhanVien.findOne({ MSNV: payload.MSNV });
-            if (existing) {
-                throw new Error(`Mã số nhân viên '${payload.MSNV}' đã tồn tại.`);
-            }
-            data.MSNV = payload.MSNV;
-        }
+        // Tự sinh mã số nhân viên
+        data.MSNV = await this.generateMSNV();
 
         data.CreatedAt = new Date();
         data.UpdatedAt = new Date();
@@ -105,9 +90,7 @@ class NhanVienService {
         return await this.findById(result.insertedId);
     }
 
-    /**
-     * Lấy danh sách nhân viên thư viện
-     */
+    // Lấy danh sách nhân viên thư viện, có lọc theo họ tên, msnv, số điện thoại - Completed
     async find(filter = {}) {
         const query = {};
         if (filter.search) {
@@ -122,9 +105,8 @@ class NhanVienService {
         return await cursor.toArray();
     }
 
-    /**
-     * Tìm nhân viên theo ID hoặc MSNV
-     */
+
+    // Query theo object id hoặc mã nhân viên, trả về các trường được quy định sẵn trong publicFields - Completed
     async findById(id) {
         let query = {};
         if (ObjectId.isValid(id)) {
@@ -151,9 +133,7 @@ class NhanVienService {
         return staff;
     }
 
-    /**
-     * Cập nhật thông tin nhân viên
-     */
+    // Cập nhật thông tin nhân viên - Completed
     async update(id, payload) {
         const editableFields = ["HoTenNV", "SoDienThoai", "DiaChi"];
         const editablePayload = Object.fromEntries(
@@ -188,9 +168,7 @@ class NhanVienService {
         return result ? this.findById(id) : null;
     }
 
-    /**
-     * Xóa nhân viên
-     */
+    // Xóa nhân viên, quản trị viên duy nhất của hệ thống không được xóa
     async delete(id) {
         let filter = {};
         if (ObjectId.isValid(id)) {
@@ -202,12 +180,9 @@ class NhanVienService {
         const current = await this.NhanVien.findOne(filter);
         if (!current) return null;
 
-        // Quản trị viên tối cao không được tự xóa tài khoản của mình
+        // Không được xóa tài khoản quản trị viên
         if (current.ChucVu === "ADMIN") {
-            const adminCount = await this.NhanVien.countDocuments({ ChucVu: "ADMIN" });
-            if (adminCount <= 1) {
-                throw new Error("Không thể xóa tài khoản Quản trị viên tối cao duy nhất trong hệ thống.");
-            }
+            throw new Error("Không thể xóa tài khoản quản trị viên.");
         }
 
         return await this.NhanVien.findOneAndDelete({ _id: current._id });

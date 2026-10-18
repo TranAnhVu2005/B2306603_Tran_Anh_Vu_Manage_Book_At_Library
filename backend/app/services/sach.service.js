@@ -39,9 +39,7 @@ class SachService {
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
-    /**
-     * Tự động sinh mã sách: SACH-000001, SACH-000002,...
-     */
+    // Sinh mã sách tự động - Completed
     async generateMaSach() {
         const last = await this.Sach.find(
             { MaSach: { $regex: /^SACH-\d{6}$/ } },
@@ -58,9 +56,7 @@ class SachService {
         return `SACH-${String(nextNum).padStart(6, "0")}`;
     }
 
-    /**
-     * Lọc và kiểm tra tính hợp lệ dữ liệu sách
-     */
+    // Chuẩn hóa dữ liệu đầu vào - Completed
     extractData(payload, isCreating = false) {
         const data = {};
 
@@ -77,16 +73,18 @@ class SachService {
         if (isCreating) {
             if (data.HinhAnh === undefined) data.HinhAnh = "";
             if (data.MoTa === undefined) data.MoTa = "";
-            if (data.NguonGoc === undefined) data.NguonGoc = "Việt Nam";
-            if (data.NamXuatBan === undefined) data.NamXuatBan = new Date().getFullYear();
+            if (data.NguonGoc === undefined) {
+                data.NguonGoc = payload.NguonGoc ? String(payload.NguonGoc).trim() : "Không rõ";
+            }
+            if (payload.NamXuatBan !== undefined) {
+                // Nếu người dùng để trống hoặc truyền giá trị rỗng, gán là "Không rõ"
+                data.NamXuatBan = payload.NamXuatBan ? String(payload.NamXuatBan).trim() : "Không rõ";
+            }
         }
-
         return data;
     }
 
-    /**
-     * Thêm sách mới vào kho lưu trữ
-     */
+    // Thêm sách mới - Completed
     async create(payload) {
         const data = this.extractData(payload, true);
 
@@ -108,17 +106,7 @@ class SachService {
             throw new Error(`Nhà xuất bản có mã '${data.MaNXB}' không tồn tại trong hệ thống.`);
         }
 
-        // Tự động sinh MaSach nếu không truyền
-        if (!payload.MaSach) {
-            data.MaSach = await this.generateMaSach();
-        } else {
-            const existing = await this.Sach.findOne({ MaSach: payload.MaSach });
-            if (existing) {
-                throw new Error(`Mã sách '${payload.MaSach}' đã tồn tại.`);
-            }
-            data.MaSach = payload.MaSach;
-        }
-
+        data.MaSach = await this.generateMaSach();
         data.CreatedAt = new Date();
         data.UpdatedAt = new Date();
 
@@ -126,9 +114,7 @@ class SachService {
         return await this.findById(result.insertedId);
     }
 
-    /**
-     * Tìm kiếm và lọc danh mục sách
-     */
+    // Tìm kiếm sách, bộ lọc và sắp xếp - Completed
     async find(filter = {}) {
         const query = {};
         if (filter.tenSach) {
@@ -152,9 +138,7 @@ class SachService {
         return await cursor.toArray();
     }
 
-    /**
-     * Lấy thông tin chi tiết đầu sách theo ID hoặc MaSach
-     */
+    // Lấy chi tiết 1 quyển sách - Completed
     async findById(id) {
         let query = {};
         if (ObjectId.isValid(id)) {
@@ -165,9 +149,7 @@ class SachService {
         return await this.Sach.findOne(query, { projection: publicFields });
     }
 
-    /**
-     * Cập nhật thông tin sách hoặc cập nhật số lượng nhập kho
-     */
+    // Cập nhật thông tin sách - Completed
     async update(id, payload) {
         const data = this.extractData(payload, false);
         delete data.MaSach; // Không sửa MaSach
@@ -203,9 +185,7 @@ class SachService {
         return result ? this.findById(id) : null;
     }
 
-    /**
-     * Xóa đầu sách (Kiểm tra ràng buộc nghiệp vụ: Không xóa nếu sách đang có người mượn)
-     */
+    // Xóa sách có ràng buộc không xóa nếu sách đang có người mượn - Completed
     async delete(id) {
         let filter = {};
         if (ObjectId.isValid(id)) {
@@ -231,13 +211,11 @@ class SachService {
         return result;
     }
 
-    /**
-     * Thay đổi tồn kho sách (Tăng khi trả, giảm khi duyệt mượn)
-     */
-    async changeSoQuyen(maSach, delta) {
+    // Cập nhật số quyển - Completed !!! Chưa được gọi ở bất kỳ đâu
+    async changeSoQuyen(maSach, soLuong) {
         return await this.Sach.findOneAndUpdate(
             { MaSach: maSach },
-            { $inc: { SoQuyen: delta }, $set: { UpdatedAt: new Date() } },
+            { $inc: { SoQuyen: soLuong }, $set: { UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
     }

@@ -8,21 +8,11 @@ async function startServer() {
         await MongoDB.connect(config.db.uri);
         console.log(`-> Kết nối CSDL thành công tại: ${config.db.uri}`);
 
-        const migration = await MongoDB.client.db()
-            .collection("docgia")
-            .updateMany(
-                { TrangThaiThe: "Blacklist" },
-                { $set: { TrangThaiThe: "DanhSachDen" } }
-            );
-        if (migration.modifiedCount > 0) {
-            console.log(`-> Đã chuẩn hóa ${migration.modifiedCount} trạng thái thẻ cũ thành DanhSachDen.`);
-        }
-
         const PORT = config.app.port;
         const server = app.listen(PORT, () => {
             console.log(`====================================================`);
-            console.log(`🚀 Máy chủ Backend đang lắng nghe tại: http://localhost:${PORT}`);
-            console.log(`📚 Hệ thống Quản Lý Mượn Sách Thư Viện (CT449 - ĐH Cần Thơ)`);
+            console.log(`Máy chủ Backend đang lắng nghe tại: http://localhost:${PORT}`);
+            console.log(`Hệ thống Quản Lý Mượn Sách Thư Viện (CT449 - ĐH Cần Thơ)`);
             console.log(`====================================================`);
         });
 

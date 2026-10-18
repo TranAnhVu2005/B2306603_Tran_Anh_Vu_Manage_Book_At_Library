@@ -2,6 +2,7 @@ const SachService = require("../services/sach.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 
+// Thêm sách mới - Completed
 exports.create = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);
@@ -15,6 +16,7 @@ exports.create = async (req, res, next) => {
     }
 };
 
+// Tìm tất cả sách - Completed
 exports.findAll = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);
@@ -25,6 +27,7 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
+// Tìm chi tiết sách - Completed
 exports.findOne = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);
@@ -38,6 +41,7 @@ exports.findOne = async (req, res, next) => {
     }
 };
 
+// Cập nhật thông tin sách - Completed
 exports.update = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);
@@ -54,6 +58,7 @@ exports.update = async (req, res, next) => {
     }
 };
 
+// Xóa sách - Completed
 exports.delete = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);

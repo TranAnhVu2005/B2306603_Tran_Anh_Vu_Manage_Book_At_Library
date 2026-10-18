@@ -26,9 +26,7 @@ class NhaXuatBanService {
         this.Sach = client.db().collection("sach");
     }
 
-    /**
-     * Tự động sinh mã NXB chuẩn hóa: NXB-0001, NXB-0002,...
-     */
+    // Tự sinh mã - Completed
     async generateMaNXB() {
         const last = await this.NhaXuatBan.find(
             { MaNXB: { $regex: /^NXB-\d{4}$/ } },
@@ -45,14 +43,11 @@ class NhaXuatBanService {
         return `NXB-${String(nextNum).padStart(4, "0")}`;
     }
 
-    /**
-     * Lọc và chuẩn hóa dữ liệu NXB
-     */
+    // Lọc và chuẩn hóa dữ liệu - Completed
     extractData(payload) {
         const data = {};
-        
-        // Chấp nhận tên trường cũ từ request nhưng chỉ lưu theo lược đồ báo cáo.
-        const name = payload.TENNXB || payload.TenNXB;
+
+        const name = payload.TENNXB;
         if (name !== undefined) {
             data.TENNXB = String(name).trim();
         }
@@ -64,26 +59,14 @@ class NhaXuatBanService {
         return data;
     }
 
-    /**
-     * Thêm nhà xuất bản mới
-     */
+    // Thêm nhà xuất bản mới - Completed
     async create(payload) {
         const data = this.extractData(payload);
         if (!data.TENNXB) {
             throw new Error("Tên nhà xuất bản không được để trống.");
         }
 
-        // Tự động sinh MaNXB nếu không truyền
-        if (!payload.MaNXB) {
-            data.MaNXB = await this.generateMaNXB();
-        } else {
-            const existing = await this.NhaXuatBan.findOne({ MaNXB: payload.MaNXB });
-            if (existing) {
-                throw new Error(`Mã nhà xuất bản '${payload.MaNXB}' đã tồn tại.`);
-            }
-            data.MaNXB = payload.MaNXB;
-        }
-
+        data.MaNXB = await this.generateMaNXB();
         data.CreatedAt = new Date();
         data.UpdatedAt = new Date();
 
@@ -91,9 +74,7 @@ class NhaXuatBanService {
         return await this.findById(result.insertedId);
     }
 
-    /**
-     * Lấy danh sách nhà xuất bản
-     */
+    // Tìm nhà xuất bản, cho phép query - Completed
     async find(filter = {}) {
         const query = {};
         if (filter.search) {
@@ -112,9 +93,7 @@ class NhaXuatBanService {
         return await cursor.toArray();
     }
 
-    /**
-     * Tìm nhà xuất bản theo ID hoặc MaNXB
-     */
+    // Tìm nhà xuất bản theo id hoặc mã - Completed
     async findById(id) {
         let query = {};
         if (ObjectId.isValid(id)) {
@@ -125,9 +104,7 @@ class NhaXuatBanService {
         return await this.NhaXuatBan.findOne(query, { projection: publicFields });
     }
 
-    /**
-     * Cập nhật thông tin nhà xuất bản
-     */
+    // Cập nhật thông tin nhà xuất bản, tìm theo object id hoặc mã - Completed
     async update(id, payload) {
         const data = this.extractData(payload);
         delete data.MaNXB; // Không cho phép sửa MaNXB
@@ -148,9 +125,7 @@ class NhaXuatBanService {
         return result ? this.findById(id) : null;
     }
 
-    /**
-     * Xóa nhà xuất bản (Kiểm tra ràng buộc: Chặn xóa nếu còn sách tham chiếu)
-     */
+    // Xóa nhà xuất bản tìm theo mã hoặc object id - Completed
     async delete(id) {
         let filter = {};
         if (ObjectId.isValid(id)) {
