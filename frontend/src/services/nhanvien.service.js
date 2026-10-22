@@ -6,7 +6,10 @@ class NhanVienService {
     }
 
     async update(id, data) {
-        return (await this.api.put(`/${id}`, data)).data;
+        const isFormData = data instanceof FormData;
+        return (await this.api.put(`/${id}`, data, {
+            headers: isFormData ? { "Content-Type": "multipart/form-data" } : {}
+        })).data;
     }
 }
 

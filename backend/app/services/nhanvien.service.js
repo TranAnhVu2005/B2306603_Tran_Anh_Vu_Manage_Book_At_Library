@@ -8,6 +8,7 @@ const publicFields = {
     ChucVu: 1,
     SoDienThoai: 1,
     DiaChi: 1,
+    AnhDaiDien: 1,
 };
 
 /**
@@ -56,6 +57,7 @@ class NhanVienService {
         if (payload.ChucVu !== undefined) data.ChucVu = String(payload.ChucVu).trim().toUpperCase();
         if (payload.DiaChi !== undefined) data.DiaChi = String(payload.DiaChi).trim();
         if (payload.SoDienThoai !== undefined) data.SoDienThoai = String(payload.SoDienThoai).trim();
+        if (payload.AnhDaiDien !== undefined) data.AnhDaiDien = String(payload.AnhDaiDien).trim();
 
         // Mật khẩu tài khoản nhân viên
         const rawPassword = payload.MatKhau;
@@ -135,7 +137,7 @@ class NhanVienService {
 
     // Cập nhật thông tin nhân viên - Completed
     async update(id, payload) {
-        const editableFields = ["HoTenNV", "SoDienThoai", "DiaChi"];
+        const editableFields = ["HoTenNV", "SoDienThoai", "DiaChi", "AnhDaiDien"];
         const editablePayload = Object.fromEntries(
             editableFields
                 .filter((field) => payload[field] !== undefined)

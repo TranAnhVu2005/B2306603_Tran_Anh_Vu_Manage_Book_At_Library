@@ -14,6 +14,7 @@ const publicFields = {
     VaiTro: 1,
     SoLanViPham: 1,
     TrangThaiThe: 1,
+    AnhDaiDien: 1.
 };
 
 /**
@@ -95,6 +96,8 @@ class DocGiaService {
             }
             data.TrangThaiThe = trangThaiThe;
         }
+        if (payload.AnhDaiDien !== undefined) data.AnhDaiDien = String(payload.AnhDaiDien).trim();
+
 
         // Xử lý mật khẩu
         const rawPassword = payload.MatKhau;
@@ -195,7 +198,7 @@ class DocGiaService {
 
     // Cho phép cập nhật thông tin cá nhân, dùng được cho mã và object id - Completed
     async update(id, payload) {
-        const editableFields = ["HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai"];
+        const editableFields = ["HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "AnhDaiDien"];
         const editablePayload = Object.fromEntries(
             editableFields
                 .filter((field) => payload[field] !== undefined)

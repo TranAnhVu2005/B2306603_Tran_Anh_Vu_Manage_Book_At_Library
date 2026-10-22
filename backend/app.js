@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
-
+const path = require("path");
 const app = express();
+
+app.use(express.static(path.join(__dirname, "public")));
 const ApiError = require("./app/api-error");
 
 // Import các bộ định tuyến API (Routes)
@@ -11,7 +13,6 @@ const sachRouter = require("./app/routes/sach.route");
 const docGiaRouter = require("./app/routes/docgia.route");
 const nhanVienRouter = require("./app/routes/nhanvien.route");
 const theoDoiRouter = require("./app/routes/theodoimuonsach.route");
-const paymentRouter = require("./app/routes/payment.route");
 
 // Middleware cấu hình CORS và Parser JSON
 app.use(cors());
@@ -32,7 +33,6 @@ app.use("/api/sach", sachRouter);
 app.use("/api/docgia", docGiaRouter);
 app.use("/api/nhanvien", nhanVienRouter);
 app.use("/api/theodoimuonsach", theoDoiRouter);
-app.use("/api/payment", paymentRouter);
 
 // Endpoint kiểm tra tình trạng máy chủ (Health Check)
 app.get("/api/health", (req, res) => {

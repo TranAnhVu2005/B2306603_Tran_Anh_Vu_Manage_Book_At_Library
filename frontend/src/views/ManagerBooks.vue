@@ -98,15 +98,15 @@
                         <path d="M8 7h8M8 11h8" />
                       </svg>
                     </span>
-                    <img v-if="book.HinhAnh" :src="book.HinhAnh" :alt="book.TenSach"
+                    <!-- Hiển thị ảnh bìa từ đường dẫn của server -->
+                    <img v-if="book.HinhAnh" :src="`http://localhost:3000${book.HinhAnh}`" :alt="book.TenSach"
                       @error="$event.target.style.opacity = '0'" />
                   </div>
                 </td>
-                <!-- Thêm text-nowrap để mã sách luôn nằm trên 1 dòng -->
                 <td class="font-mono-code fw-bold text-dark text-nowrap">{{ book.MaSach }}</td>
                 <td>
                   <strong class="font-serif-headline text-dark d-block" style="font-size: 0.95rem;">{{ book.TenSach
-                  }}</strong>
+                    }}</strong>
                   <small class="text-muted fst-italic">{{ book.TacGia }}</small>
                 </td>
                 <td>
@@ -116,7 +116,6 @@
                 </td>
                 <td class="small text-nowrap">{{ book.NamXuatBan || '—' }}</td>
                 <td>
-                  <!-- Quick Adjust Quantity (+ / -) -->
                   <div class="d-flex align-items-center">
                     <button class="ath-action-btn py-0 px-2 me-1" :disabled="book.SoQuyen <= 0"
                       @click="quickAdjustStock(book, -1)" title="Bớt 1 cuốn">
@@ -132,9 +131,7 @@
                     </button>
                   </div>
                 </td>
-                <!-- Thêm text-nowrap để giá tiền và ký hiệu đ không bị rớt dòng -->
                 <td class="font-mono-code small text-nowrap">{{ formatCurrency(book.DonGia) }}</td>
-                <!-- Bọc các nút hành động trong flex-nowrap để luôn nằm ngang, ngay ngắn -->
                 <td class="text-end">
                   <div class="d-flex align-items-center justify-content-end gap-1 flex-nowrap">
                     <button class="ath-action-btn px-2" @click="openEditModal(book)" title="Chỉnh sửa">
@@ -208,9 +205,21 @@
               </div>
             </div>
 
+            <!-- Trường tải ảnh lên thay cho thẻ input URL cũ -->
             <div class="mb-2">
-              <label class="small fw-bold mb-1">Đường dẫn ảnh bìa (URL):</label>
-              <input type="url" class="ath-input" v-model="form.HinhAnh" placeholder="https://..." />
+              <label class="small fw-bold mb-1">Ảnh bìa sách (Tải lên từ thiết bị):</label>
+              <!-- Thuộc tính accept="image/*" giới hạn chỉ được chọn các file ảnh -->
+              <input type="file" ref="fileInput" class="form-control ath-input" style="padding: 0.5rem 1rem;"
+                accept="image/*" @change="onFileChange" />
+
+              <!-- Hiển thị gợi ý nếu đang ở trạng thái sửa sách và đã có ảnh cũ -->
+              <div v-if="isEditing && form.HinhAnh && !selectedFile" class="mt-2 small text-muted">
+                Đang sử dụng ảnh bìa hiện tại. Chọn file mới nếu muốn thay đổi.
+              </div>
+              <!-- Hiển thị tên file sau khi chọn xong -->
+              <div v-if="selectedFile" class="mt-2 small text-success">
+                Đã chọn: {{ selectedFile.name }}
+              </div>
             </div>
 
             <div class="mb-3">
@@ -253,6 +262,7 @@ export default {
       showModal: false,
       isEditing: false,
       saving: false,
+      selectedFile: null, // Lưu trữ file ảnh người dùng vừa chọn
       form: {
         TenSach: "",
         TacGia: "",
@@ -339,8 +349,22 @@ export default {
         this.$refs.toast.show("Không thể cập nhật số lượng.", "error");
       }
     },
+
+    // Hàm bắt sự kiện khi người dùng chọn file ảnh
+    onFileChange(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.selectedFile = file;
+      } else {
+        this.selectedFile = null;
+      }
+    },
+
     openCreateModal() {
       this.isEditing = false;
+      this.selectedFile = null; // Làm trống file đã chọn
+      if (this.$refs.fileInput) this.$refs.fileInput.value = ""; // Xóa hiển thị tên file ở input
+
       this.form = {
         TenSach: "",
         TacGia: "",
@@ -355,19 +379,42 @@ export default {
     },
     openEditModal(book) {
       this.isEditing = true;
+      this.selectedFile = null; // Làm trống file đã chọn
+      if (this.$refs.fileInput) this.$refs.fileInput.value = ""; // Xóa hiển thị tên file ở input
+
       this.form = { ...book };
       this.showModal = true;
     },
+
+    // Tinh chỉnh hàm lưu để sử dụng FormData thay vì JSON thông thường
     async saveBook() {
       this.saving = true;
       try {
+        // Tạo một đối tượng FormData để chứa dữ liệu text và file nhị phân (hình ảnh)
+        const formData = new FormData();
+        formData.append("TenSach", this.form.TenSach);
+        formData.append("TacGia", this.form.TacGia);
+        formData.append("MaNXB", this.form.MaNXB);
+        formData.append("SoQuyen", this.form.SoQuyen);
+        formData.append("DonGia", this.form.DonGia);
+
+        if (this.form.NamXuatBan) formData.append("NamXuatBan", this.form.NamXuatBan);
+        if (this.form.MoTa) formData.append("MoTa", this.form.MoTa);
+
+        // Đính kèm file vật lý nếu người dùng có chọn file
+        if (this.selectedFile) {
+          formData.append("HinhAnh", this.selectedFile);
+        }
+
+        // Backend Axios ở `sach.service.js` sẽ tự động cấu hình multipart/form-data
         if (this.isEditing) {
-          await sachService.update(this.form._id || this.form.MaSach, this.form);
+          await sachService.update(this.form._id || this.form.MaSach, formData);
           this.$refs.toast.show("Cập nhật sách thành công!");
         } else {
-          await sachService.create(this.form);
+          await sachService.create(formData);
           this.$refs.toast.show("Thêm sách mới thành công!");
         }
+
         this.showModal = false;
         this.fetchData();
       } catch (err) {

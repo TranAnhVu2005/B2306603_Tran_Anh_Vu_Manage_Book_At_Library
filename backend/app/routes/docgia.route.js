@@ -1,16 +1,20 @@
 const express = require("express");
 const controller = require("../controllers/docgia.controller");
 const { authenticate } = require("../middleware/auth.middleware");
+const createUploader = require("../middleware/upload.middleware");
+
 
 const router = express.Router();
 
+const upload = createUploader("avatars")
+
 router.route("/")
     .get(controller.findAll)
-    .post(controller.create);
+    .post(upload.single("AnhDaiDien"), controller.create);
 
 router.route("/:id")
     .get(controller.findOne) // Chưa sử dụng trong frontend
-    .put(authenticate, controller.update)
+    .put(authenticate, upload.single("AnhDaiDien"), controller.update)
     .delete(controller.delete);
 
 router.route("/:id/role")

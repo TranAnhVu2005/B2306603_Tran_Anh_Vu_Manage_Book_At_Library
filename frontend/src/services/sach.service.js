@@ -14,11 +14,17 @@ class SachService {
     }
 
     async create(data) {
-        return (await this.api.post("/", data)).data;
+        const isFormData = data instanceof FormData;
+        return (await this.api.post("/", data, {
+            headers: isFormData ? { "Content-Type": "multipart/form-data" } : {}
+        })).data;
     }
 
     async update(id, data) {
-        return (await this.api.put(`/${id}`, data)).data;
+        const isFormData = data instanceof FormData;
+        return (await this.api.put(`/${id}`, data, {
+            headers: isFormData ? { "Content-Type": "multipart/form-data" } : {}
+        })).data;
     }
 
     async delete(id) {

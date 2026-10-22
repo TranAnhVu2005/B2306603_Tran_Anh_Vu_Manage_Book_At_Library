@@ -6,6 +6,8 @@ const ApiError = require("../api-error");
 exports.create = async (req, res, next) => {
     try {
         const service = new NhanVienService(MongoDB.client);
+
+
         const result = await service.create(req.body);
         return res.status(201).json({
             message: "Tạo tài khoản nhân viên thành công.",
@@ -51,6 +53,10 @@ exports.update = async (req, res, next) => {
         }
 
         const service = new NhanVienService(MongoDB.client);
+
+        if (req.file) {
+            req.body.AnhDaiDien = `/uploads/avatars/${req.file.filename}`;
+        }
         const result = await service.update(req.params.id, req.body);
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy nhân viên để cập nhật."));

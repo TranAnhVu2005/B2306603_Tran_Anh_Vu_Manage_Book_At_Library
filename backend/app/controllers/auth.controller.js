@@ -187,6 +187,7 @@ class AuthController {
                     ChucVu: staff.ChucVu,
                     SoDienThoai: staff.SoDienThoai,
                     DiaChi: staff.DiaChi,
+                    AnhDaiDien: staff.AnhDaiDien,
                     VaiTro: vaiTro,
                 };
             } else {
@@ -206,6 +207,7 @@ class AuthController {
                     VaiTro: reader.VaiTro || "USER",
                     SoLanViPham: reader.SoLanViPham || 0,
                     TrangThaiThe: reader.TrangThaiThe,
+                    AnhDaiDien: reader.AnhDaiDien,
                 };
             }
 

@@ -6,6 +6,9 @@ const ApiError = require("../api-error");
 exports.create = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);
+        if (req.file) {
+            req.body.HinhAnh = `/uploads/books/${req.file.filename}`;
+        }
         const result = await service.create(req.body);
         return res.status(201).json({
             message: "Thêm sách mới thành công.",
@@ -45,6 +48,10 @@ exports.findOne = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const service = new SachService(MongoDB.client);
+
+        if (req.file) {
+            req.body.HinhAnh = `/uploads/books/${req.file.filename}`;
+        }
         const result = await service.update(req.params.id, req.body);
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy sách để cập nhật."));
