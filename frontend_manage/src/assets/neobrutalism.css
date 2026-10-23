@@ -1,0 +1,213 @@
+/* Shared neo-brutalist visual layer. Keep page photo backgrounds intact. */
+:root {
+  --paper: #fffdf2;
+  --paper-subtle: #fff8d9;
+  --paper-border: #111111;
+  --ink-primary: #111111;
+  --ink-secondary: #302f35;
+  --ink-muted: #625f67;
+  --primary: #fdc800;
+  --primary-dark: #e5b400;
+  --primary-light: #fff4b8;
+  --accent: #432dd7;
+  --accent-soft: #eeeaff;
+  --status-available: #087443;
+  --status-scarce: #9a5b00;
+  --status-out: #b42318;
+  --neo-yellow: #fdc800;
+  --neo-violet: #432dd7;
+  --neo-pink: #ff5c9a;
+  --neo-ink: #111111;
+  --neo-paper: #fffdf2;
+  --neo-shadow: 5px 5px 0 var(--neo-ink);
+  --neo-shadow-sm: 3px 3px 0 var(--neo-ink);
+  --neo-border: 2px solid var(--neo-ink);
+  --radius-card: 12px;
+  --radius-control: 8px;
+}
+
+html { scroll-behavior: smooth; }
+body, #app { background: var(--neo-paper); color: var(--neo-ink); }
+body { font-family: 'Be Vietnam Pro', system-ui, sans-serif; }
+h1, h2, h3, h4, h5, h6 { color: var(--neo-ink); font-weight: 850; letter-spacing: -.035em; }
+a { color: var(--neo-violet); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { color: #3020a8; }
+::selection { background: var(--neo-yellow); color: var(--neo-ink); }
+
+/* Cards and panels: flat paper, bold outline, tactile offset shadow. */
+.ath-card, .vg-shell, .vg-stat-card, .vg-section, .vg-sidebar,
+.ath-modal-content, .toast-shell, .bk-shell, .audit-log-card,
+.manager-panel, .admin-panel, .profile-panel, .catalog-panel {
+  border: var(--neo-border) !important;
+  border-radius: var(--radius-card) !important;
+  background-color: var(--neo-paper) !important;
+  box-shadow: var(--neo-shadow) !important;
+  color: var(--neo-ink);
+}
+.vg-core, .vg-manager-layout, .vg-section-body, .ath-modal-inner {
+  border-radius: calc(var(--radius-card) - 4px);
+}
+.ath-card:hover, .vg-shell:hover, .vg-stat-card:hover, .bk-shell:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--neo-ink) !important;
+}
+
+/* Buttons have visible pressed/disabled/focus states, including Bootstrap controls. */
+.ath-btn-primary, .ath-btn-outline, .ath-btn-danger, .ath-action-btn,
+.bk-btn, button.btn, a.btn, input[type="submit"], input[type="button"] {
+  border: var(--neo-border) !important;
+  border-radius: var(--radius-control) !important;
+  box-shadow: var(--neo-shadow-sm) !important;
+  font-weight: 750;
+  transition: transform .16s cubic-bezier(.2,.8,.2,1), box-shadow .16s cubic-bezier(.2,.8,.2,1), background-color .16s cubic-bezier(.2,.8,.2,1);
+}
+.ath-btn-primary, .bk-btn-primary, button.btn-primary, a.btn-primary {
+  background: var(--neo-yellow) !important;
+  color: var(--neo-ink) !important;
+}
+.ath-btn-outline, button.btn-outline-primary, a.btn-outline-primary {
+  background: var(--neo-paper) !important;
+  color: var(--neo-ink) !important;
+}
+button.btn-secondary, a.btn-secondary { background: var(--neo-violet) !important; color: #fff !important; }
+.ath-btn-primary:hover:not(:disabled), .ath-btn-outline:hover:not(:disabled),
+.ath-action-btn:hover:not(:disabled), .bk-btn:hover:not(:disabled),
+button.btn:hover:not(:disabled), a.btn:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--neo-ink) !important;
+}
+button:active:not(:disabled), .ath-btn-primary:active:not(:disabled), .ath-btn-outline:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: none !important;
+}
+button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: .58; box-shadow: none !important; }
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--neo-violet) !important;
+  outline-offset: 3px;
+}
+
+/* Forms use solid surfaces and a strong focus state. */
+.ath-input, .form-control, .form-select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]), select, textarea {
+  border: 2px solid var(--neo-ink) !important;
+  border-radius: var(--radius-control) !important;
+  background-color: #fff !important;
+  color: var(--neo-ink) !important;
+  box-shadow: 2px 2px 0 var(--neo-ink);
+}
+.ath-input:focus, .form-control:focus, .form-select:focus, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]):focus, select:focus, textarea:focus {
+  border-color: var(--neo-violet) !important;
+  box-shadow: 3px 3px 0 var(--neo-violet) !important;
+}
+.input-group-text { border: 2px solid var(--neo-ink) !important; background: var(--neo-yellow) !important; color: var(--neo-ink); }
+.search-input-wrap, .search-select-wrap { min-width: 0; border: 2px solid var(--neo-ink); border-radius: 8px; background: #fff; box-shadow: 2px 2px 0 var(--neo-ink); }
+.search-input-wrap .search-input, .search-select-wrap .search-select { min-width: 0; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; }
+.search-check-label { border: 2px solid var(--neo-ink); border-radius: 8px !important; background: var(--neo-yellow) !important; box-shadow: 2px 2px 0 var(--neo-ink); color: var(--neo-ink) !important; }
+
+/* Data grids retain their own horizontal scroll wrapper on small screens. */
+.ath-table, table {
+  --bs-table-bg: var(--neo-paper);
+  color: var(--neo-ink);
+  border: 2px solid var(--neo-ink);
+}
+.ath-table th, table thead th { background: var(--neo-yellow) !important; color: var(--neo-ink) !important; font-weight: 800; border-bottom: 2px solid var(--neo-ink) !important; }
+.ath-table td, table td { border-color: #b9b4a7 !important; }
+.ath-table tbody tr:hover td, table tbody tr:hover td { background-color: #fff4b8 !important; }
+.badge, .ath-badge, .vg-section-label, .bk-status {
+  border: 1.5px solid currentColor;
+  font-weight: 750;
+}
+.vg-tabs, .borrows-tabs { gap: 8px; flex-wrap: wrap; }
+.vg-tab, .ath-nav-link, .vg-sidebar-link, .dropdown-item {
+  border-radius: 6px !important;
+  font-weight: 700;
+}
+.vg-tab.is-active, .ath-nav-link.active, .vg-sidebar-link.is-active {
+  background: var(--neo-yellow) !important;
+  color: var(--neo-ink) !important;
+  border: 2px solid var(--neo-ink) !important;
+  box-shadow: 3px 3px 0 var(--neo-ink);
+}
+
+/* Preserve all existing image URLs and crop positions; this only adjusts their color treatment. */
+.announcement-banner, .login-background, .register-background, .home-hero, .catalog-hero {
+  background-blend-mode: overlay, normal;
+}
+.announcement-banner { border-bottom: 2px solid var(--neo-ink); }
+.ath-modal-overlay { background: rgb(17 17 17 / 68%) !important; backdrop-filter: none !important; }
+.dropdown-menu, .mobile-navigation-drawer {
+  border: 2px solid var(--neo-ink) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--neo-shadow) !important;
+  background-color: var(--neo-paper) !important;
+}
+.toast-shell { background: var(--neo-yellow) !important; }
+img { max-width: 100%; }
+
+/* Book cards: constrain every flex/grid child so long Vietnamese values never escape the card. */
+.bk-shell { min-width: 0 !important; height: 100% !important; padding: 0 !important; overflow: hidden !important; }
+.bk-shell .bk-core { min-width: 0 !important; height: 100% !important; display: grid !important; grid-template-rows: minmax(0, 1fr) auto auto !important; gap: 14px !important; padding: clamp(12px, 2.2vw, 20px) !important; background: var(--neo-paper) !important; box-shadow: none !important; }
+.bk-shell .bk-top { display: grid !important; grid-template-columns: minmax(84px, 34%) minmax(0, 1fr) !important; align-items: start !important; gap: clamp(10px, 1.6vw, 18px) !important; min-width: 0 !important; }
+.bk-shell .bk-cover-link { width: 100% !important; min-width: 0 !important; max-width: 160px !important; }
+.bk-shell .bk-cover { border: 2px solid var(--neo-ink); border-radius: 6px !important; box-shadow: 3px 3px 0 var(--neo-ink) !important; }
+.bk-shell .bk-info { min-width: 0 !important; width: 100% !important; overflow: hidden !important; }
+.bk-shell .bk-header-meta { min-width: 0 !important; flex-wrap: wrap !important; justify-content: flex-start !important; gap: 6px !important; }
+.bk-shell .bk-status { max-width: 100%; white-space: nowrap; padding: 4px 7px !important; }
+.bk-shell .bk-code { min-width: 0; max-width: 100%; white-space: nowrap; overflow-wrap: normal; }
+.bk-shell .bk-title { width: 100%; overflow-wrap: anywhere; font-family: var(--font-sans) !important; font-weight: 850 !important; line-height: 1.2 !important; }
+.bk-shell .bk-author { min-width: 0; white-space: normal !important; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; }
+.bk-shell .bk-publisher { min-width: 0 !important; width: 100% !important; max-width: 100% !important; align-items: flex-start !important; overflow: hidden; }
+.bk-shell .bk-publisher span { min-width: 0 !important; max-width: 100% !important; white-space: normal !important; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; }
+.bk-shell .bk-stats { min-width: 0; display: grid !important; grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); gap: 8px; padding: 10px !important; border: 2px solid var(--neo-ink); background: #fff8d9 !important; box-shadow: 2px 2px 0 var(--neo-ink) !important; }
+.bk-shell .bk-stat { min-width: 0; flex-wrap: wrap; justify-content: center; gap: 4px 7px; }
+.bk-shell .bk-stat-label, .bk-shell .bk-stat-val { overflow-wrap: anywhere; }
+.bk-shell .bk-stat-divider { background: var(--neo-ink) !important; height: auto !important; }
+.bk-shell .bk-stat-val.highlight { color: var(--neo-violet) !important; }
+.bk-shell .bk-btn { min-height: 48px; padding: 8px 10px 8px 16px !important; font-size: clamp(14px, 1.2vw, 17px) !important; }
+.bk-shell .bk-btn-island { width: 34px !important; height: 34px !important; background: #e9d45e !important; }
+#app .books-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)) !important; align-items: stretch; }
+.books-grid > * { min-width: 0; }
+
+.hero-bg { opacity: 1 !important; }
+.hero-bg::after { background: linear-gradient(90deg, rgb(17 17 17 / 82%) 0%, rgb(17 17 17 / 63%) 62%, rgb(67 45 215 / 38%) 100%), linear-gradient(0deg, rgb(17 17 17 / 34%), transparent 48%) !important; }
+.hero-title, .hero-title-main, .hero-title-region, .hero-sub { color: #fffdf2 !important; }
+.hero-title { font-family: 'Be Vietnam Pro', system-ui, sans-serif !important; font-weight: 900 !important; }
+.hero-title em { color: var(--neo-yellow) !important; font-weight: 900 !important; }
+.hero-title-region { opacity: .95; }
+.eyebrow { color: var(--neo-ink) !important; background: var(--neo-yellow) !important; border: 2px solid var(--neo-ink) !important; box-shadow: 3px 3px 0 var(--neo-ink); }
+.hero-stats { width: fit-content; max-width: 100%; flex-wrap: wrap; gap: 8px !important; padding: 8px !important; border: 2px solid var(--neo-ink); border-radius: 12px !important; background: var(--neo-violet) !important; box-shadow: 4px 4px 0 var(--neo-ink) !important; }
+.hero-stat { min-width: 112px; border: 2px solid var(--neo-ink); border-radius: 8px !important; background: var(--neo-yellow) !important; box-shadow: 2px 2px 0 var(--neo-ink) !important; }
+.hero-stat-num, .hero-stat-label { color: var(--neo-ink) !important; }
+
+#app > header { border: 0 !important; border-bottom: 3px solid var(--neo-ink) !important; box-shadow: 0 4px 0 var(--neo-ink) !important; }
+.announcement-banner { min-height: 76px; border-bottom: 2px solid var(--neo-ink) !important; }
+.ath-nav-link { padding: 10px 12px !important; border: 2px solid transparent !important; color: var(--neo-ink) !important; }
+.ath-nav-link:hover, .ath-nav-link.active { border-color: var(--neo-ink) !important; box-shadow: 3px 3px 0 var(--neo-ink); }
+.ath-brand-logo-btn { border: 2px solid var(--neo-ink); box-shadow: 3px 3px 0 var(--neo-ink); background: var(--neo-yellow); }
+#app > footer { border-top: 3px solid var(--neo-yellow) !important; background-color: var(--neo-ink) !important; }
+#app > footer .container > .row { border-bottom: 2px solid var(--neo-yellow) !important; }
+#app > footer h1, #app > footer h2, #app > footer h3, #app > footer h4, #app > footer h5, #app > footer h6, #app > footer a { color: var(--neo-yellow) !important; }
+
+@media (max-width: 767.98px) {
+  .app-main { padding-inline: 14px; }
+  .ath-card, .vg-shell, .vg-stat-card, .vg-section, .ath-modal-content, .bk-shell { box-shadow: 3px 3px 0 var(--neo-ink) !important; }
+  .table-responsive { max-width: 100%; }
+  .hero-section { padding: 32px 18px !important; }
+  .hero-stats { width: 100%; }
+  .hero-stat { min-width: min(110px, 28vw); flex: 1 1 28%; padding: 10px 8px !important; }
+  .bk-shell .bk-stats { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); }
+  #app .books-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (min-width: 768px) and (max-width: 1099.98px) {
+  #app .books-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 420px) {
+  .bk-shell .bk-core { gap: 10px !important; padding: 12px !important; }
+  .bk-shell .bk-top { grid-template-columns: minmax(76px, 31%) minmax(0, 1fr) !important; gap: 10px !important; }
+  .bk-shell .bk-stat { flex-direction: column; text-align: center; }
+  .bk-shell .bk-stat-label { font-size: 10px !important; }
+  .bk-shell .bk-stat-val { font-size: 12px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+

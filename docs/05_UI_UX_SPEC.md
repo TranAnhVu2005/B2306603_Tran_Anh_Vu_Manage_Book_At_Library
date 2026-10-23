@@ -1,8 +1,8 @@
 # 05. THIẾT KẾ GIAO DIỆN & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX SPECIFICATION)
 
-Dự án áp dụng **Skill thiết kế Vanguard UI/UX Architect (Awwwards-Tier)** được định nghĩa tại `.agents/skills/high-end-visual-design/SKILL.md`. Agent bắt buộc đọc và tuân thủ 100% skill đó trước khi viết bất kỳ dòng code frontend nào.
+Dự án áp dụng phong cách **Neo-brutalism** theo mô tả thiết kế người dùng cung cấp. Đây là quy chuẩn UI hiện hành, thay thế định hướng Vanguard/Editorial cũ khi có xung đột. Font `Be Vietnam Pro` và nguyên tắc bảo toàn ảnh nền vẫn giữ nguyên.
 
-> Header, Footer, trang đăng nhập và đăng ký đang có thiết kế hiện hữu. Có thể sửa trạng thái đăng nhập, nội dung, điều hướng, khả năng responsive và typography khi cần để khớp quyền/phiên; giữ nguyên nhận diện và bố cục cốt lõi trừ khi yêu cầu mới chỉ rõ khác.
+> Header/Footer và các trang xác thực được phép cập nhật hình thức, trạng thái, điều hướng, responsive và typography để thống nhất với Neo-brutalism. Giữ nguyên toàn bộ nội dung text đã được người dùng biên tập và giữ các ảnh nền.
 
 Frontend sử dụng đúng tên trường CDM từ API (`VaiTro`, `ChucVu`, `TENNXB`, `GiaTriBoiThuong`, ...). Các phiếu mượn chỉ chứa `MaDocGia` và `MaSach`; màn hình cần tên hoặc thông tin tham chiếu phải tra cứu collection độc giả/sách ở phía frontend, không kỳ vọng API trả object lồng ghép.
 
@@ -19,28 +19,31 @@ Backend chạy tại `http://localhost:3000`; mỗi app proxy `/api` về backen
 
 Ứng dụng cũ đã được đổi tên thành `frontend_user/`. Ứng dụng này giữ luồng độc giả; `frontend_manage/` có bản tra cứu danh mục và chi tiết sách riêng dùng cùng API, styles và hành vi tìm kiếm của cổng độc giả. Mỗi app có cấu hình Vite, package và build độc lập. Menu `Tra cứu sách` của cổng quản lý đi tới `/catalog` trên cùng origin nên giữ nguyên phiên nhân viên; liên kết `Cổng độc giả` chỉ dành cho các thao tác cá nhân độc giả. Mỗi cổng xác thực phiên độc lập. Request đọc sách/NXB công khai không gửi JWT; lỗi 401 của request không mang Authorization không được xóa phiên cục bộ.
 
-**Nhận diện hai cổng:** `frontend_user` là nguồn chuẩn cho thiết kế Header/Footer và trang tra cứu. `frontend_manage` phải dùng cùng banner sách, màu xanh rêu, logo, nhịp khoảng cách, hình dáng menu tài khoản/footer và giao diện tra cứu danh mục/chi tiết sách. Khác biệt nằm ở chức năng theo quyền: tra cứu nội bộ tại `/catalog`, thêm menu thủ thư/Admin; không hiển thị thao tác đăng ký mượn trong ứng dụng quản lý.
+**Nhận diện hai cổng:** `frontend_user` là nguồn chuẩn cho cấu trúc Header/Footer và trang tra cứu. Hai cổng cùng dùng palette Neo-brutalist, hình thức viền/bóng, logo và nhịp khoảng cách; vẫn phân biệt chức năng bằng menu theo quyền. `frontend_manage` tra cứu nội bộ tại `/catalog`, có menu thủ thư/Admin và không hiển thị thao tác đăng ký mượn.
+
+**Header hai cổng:** Giữ ảnh nền `/bookshelf.jpg` có thể nhận biết rõ; phủ ảnh bằng tông mực trung tính để chữ sáng dễ đọc, tránh overlay tím bão hòa làm ảnh ngả magenta. Thanh điều hướng dùng nền giấy ngà `#FFFDF2`, chữ mực, trạng thái đang chọn màu vàng `#FDC800`, và viền/bóng mực cứng. Ở desktop, logo nằm bên trái, điều hướng cân giữa và hành động phiên/tài khoản bên phải; ở mobile, giữ logo bên trái và gom hành động cùng nút menu bên phải. Cấu trúc, màu sắc và chiều cao hai header phải đồng nhất, chỉ khác đường dẫn/nội dung theo quyền.
+
+**Thẻ KPI nghiệp vụ:** Các thẻ tóm tắt số liệu ngắn cần ưu tiên độ quét nhanh và tiết kiệm chiều cao. Đặt nhãn/mô tả thành cụm bên trái, số liệu nổi bật bên phải; giảm padding theo breakpoint, giữ màu trạng thái, vùng bấm/focus dễ nhận biết và cho nhãn dài tự xuống dòng an toàn.
 
 ---
 
 ## 1. Quy Chuẩn Thiết Kế Áp Dụng (Design System)
 
-Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md`
+Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
 
-### 1.1. Tóm tắt Hệ Thống Màu & Kiểu chữ (Áp dụng toàn website)
-- **Vibe & Texture Archetype**: Agent tự chọn 1 trong 3 archetype (Ethereal Glass / Editorial Luxury / Soft Structuralism) phù hợp với ngữ cảnh từng màn hình, đảm bảo tính nhất quán xuyên suốt ứng dụng.
-- **Font chính thức**: `Be Vietnam Pro` là sans-serif chính và font mặc định trên toàn website, bao gồm Header, Footer, LoginView và RegisterView. Thay thế các font sans-serif đang dùng; giữ monospace cho mã/định danh nếu cần và có fallback sans-serif hệ thống.
-- **Nạp font**: Dùng một nguồn khai báo thống nhất, chỉ tải các weight cần thiết và fallback tốt nếu font ngoài không tải được. Tránh khai báo lặp ở `index.html` và stylesheet.
-- **Ưu tiên yêu cầu**: Quy định Be Vietnam Pro này thay thế danh sách font cũ trong tài liệu/skill khi có xung đột. Với Header, Footer, LoginView, RegisterView chỉ đổi font/typography; giữ nguyên bố cục và thiết kế tùy chỉnh.
-- **Icons**: Giữ đúng bộ icon đang có trong thiết kế cổng độc giả để hai Header/Footer đồng nhất; nếu bổ sung icon mới thì ưu tiên nét mảnh, kích thước và độ tương phản phải khớp. Không đổi riêng cổng quản lý sang bộ icon khác.
-- **Spacing**: Section padding tối thiểu `py-24`, cho phép design thở nặng.
-- **Borders & Shadows**: Không dùng `1px solid gray` thông thường, không dùng `rgba(0,0,0,0.3)` drop-shadow. Dùng hairline ring hoặc ambient glow.
+### 1.1. Màu sắc, chữ và nhịp điệu
+- **Bảng màu:** vàng `#FDC800` cho CTA/nhấn mạnh, violet `#432DD7` cho điều hướng/secondary, mực `#111111`, nền giấy ngà `#FFFDF2`. Trạng thái thành công/cảnh báo/lỗi vẫn cần màu và nhãn chữ/icon dễ phân biệt.
+- **Typography:** `Be Vietnam Pro` xuyên suốt, giữ monospace cho mã; tiêu đề đậm 800–900; cỡ tham chiếu 13/15/17/21/27/35px, co giãn theo viewport và không cắt chữ tiếng Việt.
+- **Spacing:** đơn vị cơ sở 4px (4/8/12/16/24/32px), sử dụng khoảng trống có chủ đích, không làm bảng nghiệp vụ khó quét.
+- **Bề mặt:** phẳng, màu đặc, không glassmorphism/gradient trang trí. Card/nhóm tương tác dùng viền mực 2–3px, góc vừa phải và bóng cứng lệch 3–6px, không blur.
 
-### 1.2. Kỹ Thuật Component Bắt Buộc
-- **Double-Bezel (Doppelrand)**: Mọi card, container lớn phải dùng kiến trúc Outer Shell + Inner Core lồng nhau.
-- **Button-in-Button**: Nút CTA có icon mũi tên phải dùng kiến trúc pill với icon được bọc trong vòng tròn riêng.
-- **Motion**: Tất cả transition dùng custom `cubic-bezier`, không dùng `linear` hay `ease-in-out`.
-- **Scroll Entry Animation**: Mọi element vào viewport phải có `translate-y + blur + opacity` fade-up animation (dùng `IntersectionObserver`).
+### 1.2. Component, tương tác và ảnh nền
+- **Nút:** viền mực dày, primary vàng, secondary violet; hover dịch chuyển nhẹ, active nén bóng, disabled vẫn đọc được. Không ép dạng pill toàn cục.
+- **Form:** nhãn luôn nhìn thấy, input nền sáng/viền rõ; focus-visible violet dày, lỗi gắn với trường và `aria-describedby`.
+- **Card / bảng / dialog / toast / navigation:** dùng chung token neo-brutalist; bảng có wrapper cuộn ngang riêng; dialog/toast có trạng thái dễ nhận biết.
+- **Ảnh nền phải được giữ:** không xóa, thay bằng màu trơn, ẩn, crop quá mức hoặc đổi URL ảnh header (`/bookshelf.jpg`), đăng nhập/đăng ký (`background_login.jpg`) và hero tra cứu (`background_homeview.jpg`). Có thể chỉnh lớp phủ, blend mode, sáng/bão hòa và vị trí; ảnh vẫn phải nhận ra được và chữ đạt tương phản.
+- **Motion / accessibility:** chuyển động ngắn có `cubic-bezier`; hỗ trợ `prefers-reduced-motion`, bàn phím, `focus-visible`, semantic HTML, ARIA và WCAG 2.2 AA. Không truyền trạng thái chỉ bằng màu.
+- Tránh selector toàn cục làm biến dạng layout, input ẩn, checkbox/radio, scroll wrapper, nút disabled/loading; ưu tiên token và class component.
 
 ### 1.3. Bố Cục Responsive Trong Vùng Nội Dung
 - `App.vue` dùng một `.container` Bootstrap cho vùng nội dung chính; các trang con không lồng thêm `.container`/`.container-fluid` để tránh co hẹp và lặp gutter.
@@ -63,15 +66,15 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
    * Từ khóa, nhà xuất bản và tình trạng kho được kết hợp trên cùng danh mục đã tải; thay đổi bộ lọc không làm mất các bản ghi ngoài điều kiện đang chọn. Tìm kiếm không phân biệt chữ hoa/thường và dấu tiếng Việt.
    * Khi danh sách đổi theo tìm kiếm/bộ lọc, các thẻ sách mới vẫn phải được quan sát và hiện đầy đủ sau hiệu ứng reveal; không để số kết quả thay đổi mà thẻ tương ứng bị ẩn.
    * **Lưới danh mục sách (Catalog Grid)**:
-     * Áp dụng **Asymmetrical Bento Layout** hoặc **Z-Axis Cascade** tùy context.
-     * Thẻ sách dùng Double-Bezel card với tỉ lệ ảnh bìa 3:4.
-     * Thông tin chi tiết: Mã sách, tên sách (Serif/Grotesk Bold), tác giả (In nghiêng), NXB, năm XB.
+     * Dùng lưới responsive dễ quét, có thể nhấn nhịp bất đối xứng khi không ảnh hưởng khả năng so sánh sách.
+     * Thẻ sách dùng nền phẳng, viền mực và bóng cứng; ảnh bìa tỉ lệ 3:4.
+     * Thông tin chi tiết: Mã sách, tên sách đậm, tác giả, NXB, năm XB.
      * Khối thông số: Số lượng còn lại trong kho, đơn giá đền bù nếu mất.
-     * Nút CTA: Pill Button `Đăng ký mượn` (còn sách) hoặc badge `Tạm hết sách`.
+     * Nút CTA vàng có viền đậm `Đăng ký mượn` (còn sách) hoặc badge `Tạm hết sách`.
 2. **Chi tiết sách (`/books/:id`)**:
    * Layout Editorial Split: Tóm tắt nội dung + thông số xuất bản chi tiết + nút mở Modal xác nhận mượn.
 3. **Modal Xác Nhận Mượn Sách (Borrow Dialog)**:
-   * Nền `backdrop-blur` (fixed overlay), Double-Bezel card.
+   * Overlay tương phản cao và card nền đặc, viền đậm/bóng cứng.
    * Hiển thị tựa sách, thời hạn mượn mặc định (14 ngày), địa điểm nhận sách vật lý tại quầy.
    * Thông báo: Đơn ở trạng thái `ChoDuyet` chờ thủ thư kiểm tra.
 4. **Trang hồ sơ cá nhân (`/profile`)**:
@@ -79,7 +82,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
    * Cho phép độc giả chỉnh sửa họ tên, ngày sinh, giới tính, địa chỉ và số điện thoại đăng nhập của chính mình; không cho sửa vai trò, trạng thái thẻ hoặc số lần vi phạm.
    * Sau khi cập nhật thành công, hồ sơ và dữ liệu user lưu phiên phải đồng bộ; báo lỗi API ngay trong toast nếu cập nhật thất bại.
    * Bảng danh sách sách đang mượn: Tên sách, ngày mượn, hạn trả, trạng thái (`DangMuon`, `ChoDuyet`, `DaTra`).
-   * Áp dụng Scroll Entry Animation cho từng dòng bảng.
+   * Bảng gọn, nhãn trạng thái rõ và cuộn trong wrapper nếu viewport hẹp.
    * Với nhân viên và quản trị viên, trang `/profile` hiển thị hồ sơ nhân viên, cho phép tự sửa `HoTenNV`, `SoDienThoai`, `DiaChi`; không cho sửa `MSNV` hoặc `ChucVu`.
 
 ---
@@ -94,7 +97,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
      * **[Báo mất sách]**: Trạng thái → `MatSach`, hiển thị đơn giá đền bù, không hoàn kho, tăng vi phạm +1.
 2. **Quản lý Kho Sách (`/manager/books`)**:
    * Bảng danh sách sách: Thêm mới, sửa thông tin, cập nhật số lượng nhập kho, ảnh bìa, xóa sách.
-   * Áp dụng Double-Bezel cho form thêm/sửa sách (dạng Modal hoặc Drawer).
+   * Form thêm/sửa sách dùng nền phẳng, viền và focus state nhất quán.
 3. **Quản lý Nhà Xuất Bản (`/manager/publishers`)**:
    * Thêm, sửa, xóa các đơn vị NXB liên kết.
 4. **Bộ lọc danh sách đen tại Quản trị người dùng (`/admin/users?filter=danhsachden`)**:
@@ -125,14 +128,14 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
 
 Header cổng quản lý phải phản ánh phiên đang đăng nhập: khi xác thực thành công hiển thị tên và nhãn vai trò (`Thủ thư` hoặc `Quản trị viên`), điều hướng nghiệp vụ phù hợp và nút `Đăng xuất`; chỉ hiển thị `Đăng nhập nhân viên` khi chưa có phiên nhân viên. Khi tải lại trang, đồng bộ người dùng với API để tránh trạng thái header cũ. Cung cấp liên kết `Cổng độc giả` dùng URL từ env.
 
-Các component cần xây dựng/cập nhật theo skill mới:
+Các component cần xây dựng/cập nhật theo neo-brutalism:
 
-1. **`BookCard.vue`**: Thẻ sách dùng Double-Bezel card. Ảnh bìa tỉ lệ 3:4, badge trạng thái còn/hết/sắp hết sách. Scroll Entry Animation khi card vào viewport. Nút CTA dùng kiến trúc Button-in-Button.
-2. **`BorrowModal.vue`**: Hộp thoại fixed overlay với `backdrop-blur`, Double-Bezel content card, phím tắt `Escape` để đóng, `body scroll lock` khi mở.
+1. **`BookCard.vue`**: Thẻ sách dùng nền đặc, viền 2–3px và bóng cứng; giữ ảnh bìa 3:4, badge và nội dung không bị cắt.
+2. **`BorrowModal.vue`**: Hộp thoại overlay tương phản cao, viền đen/bóng cứng, phím `Escape` và body scroll lock.
 3. **`ToastNotification.vue`**: Toast góc dưới phải màn hình với slide-in animation (transform + opacity).
-4. **`ManagerSidebar.vue`** (nếu chưa có): Sidebar quản lý dùng Double-Bezel panel, nav items có hover animation với custom cubic-bezier.
-5. **Bảng dữ liệu (Tables)**: Dùng thiết kế thoáng, hairline borders (`border-white/10` hoặc `border-black/5`), row hover animation nhẹ.
-6. **Form inputs**: Kiểu floating label hoặc pill input với ring hairline, focus state dùng glow thay vì outline mặc định.
+4. **Navigation quản lý**: Nền phẳng, mục active vàng/violet có viền và phản hồi hover rõ.
+5. **Bảng dữ liệu (Tables)**: Header tương phản, đường kẻ rõ, bảo toàn khả năng đọc; cuộn trong wrapper trên mobile.
+6. **Form inputs**: Nhãn thường trực, viền đậm, focus-visible violet; kiểm tra checkbox/radio và input file riêng để không biến dạng.
 
 ---
 

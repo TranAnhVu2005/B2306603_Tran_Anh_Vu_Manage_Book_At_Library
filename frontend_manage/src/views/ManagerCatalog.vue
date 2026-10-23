@@ -330,10 +330,10 @@ export default {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(20, 53, 41, 0.08), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(140, 61, 40, 0.05), transparent 55%),
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(67, 45, 215, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(253, 200, 0, 0.24), transparent 55%),
     url('@/assets/background_homeview.jpg') center/cover no-repeat;
-  opacity: 0.35;
+  opacity: 0.62;
 }
 .hero-bg::after {
   content: "";

@@ -65,6 +65,6 @@ export default {
 </script>
 
 <style scoped>
-.login-background { min-height: 100vh; display:flex; align-items:center; padding:50px 0; background:linear-gradient(135deg,rgba(15,23,42,.55),rgba(20,83,45,.45)),url('@/assets/background_login.jpg') center/cover no-repeat; }
+.login-background { min-height: 100vh; display:flex; align-items:center; padding:50px 0; background:linear-gradient(135deg,rgba(67,45,215,.42),rgba(253,200,0,.28)),url('@/assets/background_login.jpg') center/cover no-repeat; }
 .ath-card { background:rgba(255,255,255,.9); backdrop-filter:blur(14px); border-radius:20px; box-shadow:0 20px 40px rgba(0,0,0,.2); }
 </style>

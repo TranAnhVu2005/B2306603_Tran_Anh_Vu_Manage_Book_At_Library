@@ -1,14 +1,13 @@
 <template>
-  <header class="w-100 border-bottom sticky-top shadow-sm bg-white"
+  <header class="header-shell w-100 border-bottom sticky-top shadow-sm"
     style="border-color: var(--paper-border) !important;">
     <!-- Top Announcement Bar (Hero Banner phong cách học thuật hiện đại) -->
     <div class="w-100 py-4 px-3 text-white announcement-banner">
       <div class="container d-flex justify-content-between align-items-center">
         <!-- Tiêu đề hệ thống với kích thước linh hoạt theo màn hình -->
         <div class="text-truncate pe-2">
-          <span class="fw-bold text-uppercase fw-bold banner-text-shadow d-inline-flex align-items-center"
-            style="font-size: clamp(1.1rem, 2vw, 1.75rem); color: #cbe3d6; letter-spacing: 0.08em;">
-            <i class="fas fa-university me-2.5 text-success-emphasis"></i>
+          <span class="fw-bold text-uppercase banner-text-shadow banner-title d-inline-flex align-items-center">
+            <i class="fas fa-university me-2.5 banner-mark"></i>
             <span class="d-none d-sm-inline">Library Book Management System</span>
             <span class="d-inline d-sm-none">Library</span>
           </span>
@@ -17,9 +16,9 @@
     </div>
 
     <!-- Main Navigation Bar -->
-    <div class="container py-2.5 d-flex align-items-center justify-content-between position-relative">
+    <div class="container header-navigation-shell py-2.5 align-items-center position-relative">
       <!-- Cột 1: Brand Logo & Nhận diện thương hiệu -->
-      <div class="d-flex align-items-center">
+      <div class="header-brand d-flex align-items-center">
         <router-link to="/"
           class="d-flex align-items-center justify-content-center text-decoration-none ath-brand-logo-btn"
           title="Trang chủ Thư viện Học thuật">
@@ -34,7 +33,7 @@
       </div>
 
       <!-- Cột 2: Cụm điều hướng chính (Căn giữa thanh thoát) -->
-      <nav class="d-none d-lg-flex align-items-center mx-auto" style="gap: 0.35rem;">
+      <nav class="header-primary-nav d-none d-lg-flex align-items-center" style="gap: 0.35rem;">
         <!-- Tra cứu sách -->
         <router-link to="/catalog" class="ath-nav-link text-nowrap d-inline-flex align-items-center">
           Tra cứu sách
@@ -58,17 +57,14 @@
             :class="{ show: isManagerMenuOpen }" style="min-width: 230px;">
             <router-link to="/manager/borrows" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
               @click="isManagerMenuOpen = false">
-              <i class="fas fa-clipboard-check me-2 text-success" style="width: 18px"></i>
               Duyệt mượn & Trả sách
             </router-link>
             <router-link to="/manager/books" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
               @click="isManagerMenuOpen = false">
-              <i class="fas fa-layer-group me-2 text-primary" style="width: 18px"></i>
               Quản lý kho sách
             </router-link>
             <router-link to="/manager/publishers" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
               @click="isManagerMenuOpen = false">
-              <i class="fas fa-building me-2 text-secondary" style="width: 18px"></i>
               Quản lý Nhà xuất bản
             </router-link>
           </div>
@@ -105,7 +101,7 @@
       </nav>
 
       <!-- Cột 3: User Account Actions & Mobile Toggle -->
-      <div class="d-flex align-items-center gap-2">
+      <div class="header-actions d-flex align-items-center gap-2">
         <!-- Logged in State -->
         <template v-if="user">
           <div class="dropdown" ref="userDropdown">
@@ -117,10 +113,11 @@
               <i v-else class="fas fa-user-circle me-2 text-secondary fs-5"></i>
               <span class="fw-bold text-truncate" style="max-width: 120px;">{{ authService.getDisplayName(user) ||
                 authService.getIdentifier(user) }}</span>
-              <span v-if="authService.getRole(user) === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1 d-none d-md-inline"
-                style="font-size: 0.65rem;">QUẢN TRỊ VIÊN</span>
-              <span v-else-if="authService.getRole(user) === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1 d-none d-md-inline"
-                style="font-size: 0.65rem;">THỦ THƯ</span>
+              <span v-if="authService.getRole(user) === 'ADMIN'"
+                class="badge bg-danger ms-2 px-2 py-1 d-none d-md-inline" style="font-size: 0.65rem;">QUẢN TRỊ
+                VIÊN</span>
+              <span v-else-if="authService.getRole(user) === 'MANAGER'"
+                class="badge bg-success ms-2 px-2 py-1 d-none d-md-inline" style="font-size: 0.65rem;">THỦ THƯ</span>
               <span v-else class="badge bg-light text-dark border ms-2 d-none d-md-inline px-2 py-1"
                 style="font-size: 0.65rem;">ĐỘC GIẢ</span>
             </button>
@@ -131,32 +128,32 @@
                 <strong class="d-block text-dark text-truncate">{{ authService.getDisplayName(user) ||
                   authService.getIdentifier(user) }}</strong>
                 <small class="font-monospace text-muted" style="font-size: 0.72rem;">{{ authService.getIdentifier(user)
-                }}</small>
+                  }}</small>
               </div>
               <router-link to="/profile" class="dropdown-item py-2 px-3 rounded-2" @click="isMenuOpen = false">
-                <i class="fas fa-id-badge me-2 text-muted"></i>
+
                 {{ authService.isReader(user) ? "Thẻ độc giả & Mượn sách" : "Hồ sơ cá nhân" }}
               </router-link>
               <div v-if="isStaffOrAdmin" class="dropdown-divider my-1"></div>
               <router-link v-if="isStaffOrAdmin" to="/manager/borrows" class="dropdown-item py-2 px-3 rounded-2"
                 @click="isMenuOpen = false">
-                <i class="fas fa-clipboard-check me-2 text-muted"></i> Bảng duyệt mượn trả
+                Bảng duyệt mượn trả
               </router-link>
               <router-link v-if="isStaffOrAdmin" to="/manager/books" class="dropdown-item py-2 px-3 rounded-2"
                 @click="isMenuOpen = false">
-                <i class="fas fa-layer-group me-2 text-muted"></i> Quản lý kho sách
+                Quản lý kho sách
               </router-link>
               <router-link v-if="isStaffOrAdmin" to="/manager/publishers" class="dropdown-item py-2 px-3 rounded-2"
                 @click="isMenuOpen = false">
-                <i class="fas fa-building me-2 text-muted"></i> Quản lý nhà xuất bản
+                Quản lý nhà xuất bản
               </router-link>
               <router-link v-if="isAdmin" to="/admin/users" class="dropdown-item py-2 px-3 rounded-2 text-danger"
                 @click="isMenuOpen = false">
-                <i class="fas fa-shield-alt me-2"></i> Phân quyền & Danh sách đen
+                Phân quyền & Danh sách đen
               </router-link>
               <div class="dropdown-divider my-1"></div>
               <button class="dropdown-item py-2 px-3 rounded-2 text-danger fw-bold" @click="handleLogout">
-                <i class="fas fa-sign-out-alt me-2"></i> Đăng xuất
+                Đăng xuất
               </button>
             </div>
           </div>
@@ -383,8 +380,66 @@ export default {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: rgba(18, 48, 38, 0.82);
-  background-blend-mode: overlay;
+  background-color: rgba(17, 17, 17, 0.58);
+  background-blend-mode: multiply;
+  border-bottom: 2px solid var(--neo-yellow, #fdc800);
+}
+
+.header-shell {
+  background-color: var(--neo-paper, #fffdf2) !important;
+}
+
+.banner-title {
+  color: var(--neo-paper, #fffdf2);
+  font-size: clamp(1rem, 1.8vw, 1.55rem);
+  letter-spacing: 0.055em;
+  line-height: 1.25;
+}
+
+.banner-mark {
+  color: var(--neo-yellow, #fdc800);
+}
+
+.header-navigation-shell {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto minmax(220px, 1fr);
+  min-height: 72px;
+  column-gap: clamp(16px, 3vw, 44px);
+  background: var(--neo-paper, #fffdf2);
+}
+
+.header-brand {
+  justify-self: start;
+}
+
+.header-primary-nav {
+  justify-self: center;
+}
+
+.header-actions {
+  justify-self: end;
+  min-width: 0;
+}
+
+.header-actions>.dropdown>.btn,
+.header-actions>.btn {
+  min-height: 44px;
+  border: 2px solid var(--neo-ink, #111) !important;
+  border-radius: 8px !important;
+  background: var(--neo-paper, #fffdf2) !important;
+  color: var(--neo-ink, #111) !important;
+  box-shadow: 3px 3px 0 var(--neo-ink, #111) !important;
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s cubic-bezier(.2, .8, .2, 1), background-color .18s cubic-bezier(.2, .8, .2, 1);
+}
+
+.header-actions>.dropdown>.btn:hover,
+.header-actions>.btn:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--neo-ink, #111) !important;
+}
+
+.header-actions>.btn-primary {
+  background: var(--neo-yellow, #fdc800) !important;
 }
 
 .banner-text-shadow {
@@ -435,7 +490,53 @@ export default {
 }
 
 @media (max-width: 359.98px) {
-  .announcement-banner { padding-block: .8rem !important; }
-  .announcement-banner span { font-size: .9rem !important; letter-spacing: .035em !important; }
+  .announcement-banner {
+    padding-block: .8rem !important;
+  }
+
+  .banner-title {
+    font-size: .9rem !important;
+    letter-spacing: .035em !important;
+  }
+
+  .header-navigation-shell {
+    column-gap: 8px;
+  }
+
+  .header-brand .ath-header-logo {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .header-actions>.dropdown>.btn {
+    padding-inline: .5rem !important;
+  }
+
+  .header-actions .fw-bold.text-truncate {
+    max-width: 70px !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .header-navigation-shell {
+    grid-template-columns: minmax(42px, auto) minmax(0, 1fr);
+    min-height: 68px;
+    column-gap: 12px;
+  }
+
+  .header-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .header-navigation-shell {
+    column-gap: 16px;
+  }
+
+  .ath-nav-link {
+    padding-inline: .6rem;
+  }
 }
 </style>

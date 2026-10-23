@@ -548,7 +548,9 @@ export default {
 
 .vg-stat-card {
   min-width: 0;
-  border-radius: 1.1rem;
+  padding: 3px !important;
+  border-radius: 10px !important;
+  box-shadow: 4px 4px 0 var(--neo-ink, #111) !important;
   cursor: pointer;
   transition: transform .28s cubic-bezier(.2, .75, .25, 1), box-shadow .28s cubic-bezier(.2, .75, .25, 1);
 }
@@ -564,19 +566,36 @@ export default {
 
 .vg-stat-inner {
   min-width: 0;
-  padding: clamp(1rem, 1.5vw, 1.35rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label number" "sub number";
+  align-items: center;
+  column-gap: 12px;
+  padding: 12px 14px;
+  border-radius: 7px !important;
+  background: var(--neo-paper, #fffdf2) !important;
+  box-shadow: none !important;
 }
 
-.vg-stat-label,
+.vg-stat-label {
+  grid-area: label;
+  margin: 0 0 3px !important;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
 .vg-stat-sub {
+  grid-area: sub;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
 .vg-stat-number {
-  display: block;
-  margin: .45rem 0 .25rem;
-  font-size: clamp(1.6rem, 2.4vw, 2.15rem);
-  line-height: 1.1;
+  grid-area: number;
+  justify-self: end;
+  margin: 0 !important;
+  font-size: clamp(1.45rem, 2vw, 1.8rem);
+  line-height: 1;
 }
 
 /* Main panel and toolbar */
@@ -1069,15 +1088,21 @@ export default {
   }
 
   .vg-stat-inner {
-    padding: .9rem;
+    column-gap: 8px;
+    padding: .65rem .7rem;
   }
 
   .vg-stat-label {
-    font-size: .78rem;
+    font-size: .7rem;
+    letter-spacing: .08em;
   }
 
   .vg-stat-sub {
-    font-size: .72rem;
+    font-size: .68rem;
+  }
+
+  .vg-stat-number {
+    font-size: clamp(1.2rem, 5.5vw, 1.5rem);
   }
 
   .vg-tabs {
