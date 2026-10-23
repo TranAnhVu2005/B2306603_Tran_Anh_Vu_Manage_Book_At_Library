@@ -91,11 +91,14 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 | Chức năng | Khách | USER | MANAGER | ADMIN |
 |:---|:---:|:---:|:---:|:---:|
 | Tra cứu sách/NXB công khai | ✓ | ✓ | ✓ | ✓ |
-| Tìm kiếm sách/NXB từ cổng quản lý (liên kết sang cổng độc giả) | — | ✓ | ✓ | ✓ |
+| Tìm kiếm sách/NXB trên cổng quản lý | — | — | ✓ | ✓ |
 | Đăng ký mượn, xem/cập nhật hồ sơ độc giả của chính mình | — | ✓ | —* | —* |
 | Tạo phiếu cho độc giả, đọc danh sách độc giả/phiếu phục vụ nghiệp vụ | — | — | ✓ | ✓ |
 | Thêm/sửa/xóa sách và NXB | — | — | ✓ | ✓ |
 | Duyệt/từ chối/trả/báo mất phiếu | — | — | ✓ | ✓ |
+| Ghi sự kiện kiểm toán sách và mượn-trả | — | — | ✓ | ✓ |
+| Đọc/tìm kiếm nhật ký kiểm toán | — | — | — | ✓ |
+| Xem/khôi phục sách đã xóa mềm | — | — | — | ✓ |
 | Thăng/hạ quyền, khóa/mở khóa, xét gỡ danh sách đen, xóa tài khoản | — | — | — | ✓ |
 | Cập nhật hồ sơ nhân viên của chính mình | — | — | ✓ | ✓ |
 
@@ -118,3 +121,10 @@ Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở s
 - Thủ thư/Admin truy cập `frontend_manage/` (local `http://localhost:3002`, production domain riêng) để thực hiện nghiệp vụ quản lý. MANAGER có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư cộng quản trị. Cổng quản lý cung cấp liên kết sang cổng độc giả để dùng chức năng công khai hoặc đăng nhập phiên độc giả riêng.
 - Cả hai ứng dụng gọi chung Backend API tại cổng `3000` khi phát triển; CORS production chỉ cho phép hai origin được cấu hình. Khi đăng nhập, frontend điều hướng tới đúng cổng/domain theo vai trò.
 - Mỗi domain có browser storage riêng; không phụ thuộc vào chia sẻ localStorage/cookie giữa hai app. Nếu token không tồn tại ở app đích, yêu cầu đăng nhập lại tại app đó. Backend luôn xác thực token và quyền, bất kể request đến từ domain nào.
+
+## 8. Nhật ký kiểm toán và xóa mềm sách
+
+- Mỗi thao tác thành công trên sách được ghi vào `auditlogs`: thêm, sửa (các trường trước/sau), xóa mềm và khôi phục. Actor lấy từ JWT; log có mã/tên nhân viên, mã/tên sách và thời điểm.
+- Vòng đời phiếu mượn ghi các sự kiện độc giả đăng ký, nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất và Admin xóa phiếu. Mỗi sự kiện lưu snapshot mã/tên sách, mã/tên độc giả, nhân viên chịu trách nhiệm và trạng thái trước/sau khi phù hợp.
+- API log chỉ đọc, chỉ `ADMIN` được truy cập. Log append-only, không cung cấp route sửa/xóa; không lưu mật khẩu, JWT hoặc credential.
+- Xóa sách đặt `deleted=true` và metadata thời gian/nhân viên, không xóa document khỏi MongoDB. Tra cứu công khai và đăng ký/duyệt mượn loại sách đã xóa; phiếu còn mở ngăn xóa mềm. Admin có thể xem danh sách đã xóa và khôi phục; thao tác khôi phục cũng được ghi log.

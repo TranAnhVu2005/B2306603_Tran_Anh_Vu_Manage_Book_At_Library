@@ -96,6 +96,10 @@
               class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center" @click="isAdminMenuOpen = false">
               Danh sách thẻ bị khóa
             </router-link>
+            <router-link to="/admin/audit-logs" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
+              @click="isAdminMenuOpen = false">
+              Nhật ký hệ thống
+            </router-link>
           </div>
         </div>
       </nav>
@@ -224,6 +228,10 @@
           <router-link v-if="isAdmin" to="/admin/users?filter=locked" class="nav-link text-danger py-2.5 px-3 rounded-2"
             @click="isMobileNavOpen = false">
             <i class="fas fa-lock me-2"></i> Danh sách thẻ bị khóa
+          </router-link>
+          <router-link v-if="isAdmin" to="/admin/audit-logs" class="nav-link text-danger py-2.5 px-3 rounded-2"
+            @click="isMobileNavOpen = false">
+            <i class="fas fa-clock-rotate-left me-2"></i> Nhật ký hệ thống
           </router-link>
         </template>
 

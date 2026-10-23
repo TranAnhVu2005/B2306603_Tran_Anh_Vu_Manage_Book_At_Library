@@ -1,6 +1,6 @@
 const express = require("express");
 const controller = require("../controllers/sach.controller");
-const { authenticate, authorizeStaff } = require("../middleware/auth.middleware");
+const { authenticate, authorizeStaff, authorizeAdmin } = require("../middleware/auth.middleware");
 const { allowFields } = require("../middleware/security.middleware");
 const { validateImageUpload } = require("../middleware/upload.middleware");
 
@@ -11,12 +11,23 @@ const upload = createUploader("books")
 
 // Gắn middleware upload.single("HinhAnh") vào route POST (Thêm) và PUT (Sửa)
 router.route("/")
-    .get(controller.findAll)
+    .get((req, res, next) => {
+        if (req.query.includeDeleted === "true") {
+            return authenticate(req, res, (authError) => {
+                if (authError) return next(authError);
+                return authorizeAdmin(req, res, next);
+            });
+        }
+        return next();
+    }, controller.findAll)
     .post(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"), controller.create);
 
 router.route("/:id")
     .get(controller.findOne)
     .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"), controller.update)
     .delete(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.delete);
+
+router.route("/:id/restore")
+    .put(authenticate, authorizeAdmin, controller.restore);
 
 module.exports = router;

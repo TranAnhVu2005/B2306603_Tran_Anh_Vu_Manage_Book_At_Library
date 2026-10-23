@@ -2,9 +2,9 @@
 
 * **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
 * **Tên Database**: `quanlymuonsach`
-* **Quy chuẩn**: Các trường nghiệp vụ của 5 collections bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25).
+* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25); `auditlogs` là collection kỹ thuật bổ sung cho truy cứu hoạt động.
 
-Các trường liệt kê trong tài liệu là lược đồ nghiệp vụ CDM. Backend có thể lưu thêm metadata kỹ thuật (`CreatedAt`, `UpdatedAt`) và dữ liệu phục vụ tích hợp Google OAuth/MoMo; đây không phải trường CDM và không được đưa vào response của API tài nguyên. Response chỉ gồm trường CDM của collection tương ứng, đồng thời loại trừ `MatKhau`.
+Các trường liệt kê trong 5 collections nghiệp vụ là lược đồ CDM. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `auditlogs` có schema API riêng, không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
 
 ---
 
@@ -17,6 +17,7 @@ Các trường liệt kê trong tài liệu là lược đồ nghiệp vụ CDM.
 | 3 | `nhaxuatban` | Danh mục thông tin các nhà xuất bản |
 | 4 | `sach` | Danh mục thông tin các đầu sách và số lượng tồn kho |
 | 5 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
+| 6 | `auditlogs` | Nhật ký kiểm toán append-only, lưu actor, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
 
 ---
 
@@ -81,7 +82,9 @@ Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồ
 }
 ```
 
-* **Ràng buộc toàn vẹn (Integrity Constraint)**: Không cho phép xóa đầu sách khỏi CSDL nếu sách đang có phiếu mượn chưa hoàn tất ở trạng thái `DangMuon` hoặc `ChoDuyet`.
+* **Xóa mềm**: `DELETE /api/sach/:id` đặt `deleted=true`, `DeletedAt`, `DeletedBy`, không xóa document. Sách đã xóa bị ẩn khỏi tra cứu/chi tiết và không thể đăng ký/duyệt mượn. Chỉ Admin được xem danh sách xóa mềm và khôi phục (`deleted=false`); mọi thao tác được ghi log. Bản ghi cũ thiếu `deleted` được hiểu là đang hoạt động.
+* **Ràng buộc toàn vẹn**: Không cho phép xóa mềm nếu sách đang có phiếu `DangMuon` hoặc `ChoDuyet`.
+* `deleted`, `DeletedAt`, `DeletedBy` là metadata kỹ thuật ngoài CDM; chỉ endpoint danh sách đã xóa dành cho Admin trả các trường này.
 
 ---
 
@@ -118,6 +121,32 @@ Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữ
   "GhiChu": "Sách bìa cứng, mới"      // Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
 }
 ```
+
+### 2.6. Nhật Ký Kiểm Toán (`auditlogs`)
+
+Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứu sau khi sách xóa mềm hoặc tên hiển thị thay đổi. Không có API sửa/xóa log.
+
+```json
+{
+  "_id": "ObjectId",
+  "Action": "BORROW_APPROVED",
+  "EntityType": "borrow",
+  "EntityId": "ObjectId hoặc MaSach",
+  "MaSach": "SACH-000001",
+  "TenSach": "Lập trình Web Vue.js",
+  "MaDocGia": "DG-000001",
+  "TenDocGia": "Trần Minh Triết",
+  "MSNV": "NV-0002",
+  "TenNhanVien": "Nguyễn Thủ Thư",
+  "ActorType": "staff",
+  "ActorId": "NV-0002",
+  "ActorName": "Nguyễn Thủ Thư",
+  "Details": { "from": "ChoDuyet", "to": "DangMuon" },
+  "OccurredAt": "2026-10-23T10:00:00.000Z"
+}
+```
+
+Action gồm `BOOK_CREATED`, `BOOK_UPDATED`, `BOOK_SOFT_DELETED`, `BOOK_RESTORED`, `BORROW_REQUESTED`, `BORROW_APPROVED`, `BORROW_REJECTED`, `BOOK_RETURNED`, `BOOK_REPORTED_LOST` và `BORROW_RECORD_DELETED`. Actor được xác định từ JWT phía server, không tin mã do client tự khai.
 
 ---
 
@@ -186,5 +215,16 @@ erDiagram
         string TrangThai
         double GiaTriBoiThuong
         string GhiChu
+    }
+
+    AUDITLOGS {
+        ObjectId _id PK
+        string Action
+        string EntityType
+        string EntityId
+        string MaSach
+        string MaDocGia
+        string MSNV
+        date OccurredAt
     }
 ```

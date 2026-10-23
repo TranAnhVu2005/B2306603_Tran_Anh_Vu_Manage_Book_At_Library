@@ -30,6 +30,10 @@ class SachService {
     async delete(id) {
         return (await this.api.delete(`/${id}`)).data;
     }
+
+    async restore(id) {
+        return (await this.api.put(`/${id}/restore`)).data;
+    }
 }
 
 export default new SachService();

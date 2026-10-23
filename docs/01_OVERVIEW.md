@@ -15,6 +15,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Kiểm soát kho tồn theo thời gian thực**: Trừ kho tức thì khi duyệt mượn sách, cộng hoàn kho khi độc giả hoàn trả đúng hạn.
 - **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; đưa thẻ vào `DanhSachDen` khi vi phạm đạt 3 lần.
 - **Bảo mật và an toàn dữ liệu**: Bảo vệ mật khẩu bằng Bcrypt; kiểm soát quyền theo chức năng ở backend; xác thực và quản lý phiên; kiểm tra dữ liệu chống NoSQL injection; giảm thiểu XSS, CSRF/XSRF, XXE và SSRF phù hợp với kiến trúc MongoDB/JSON hiện tại. Các biện pháp này là yêu cầu cần triển khai và xác minh, không được xem là hoàn tất chỉ từ mô tả tài liệu.
+- **Truy cứu hoạt động**: Lưu log append-only cho thao tác sách và vòng đời mượn-trả; Admin được lọc theo sách, độc giả, nhân viên và thời gian. Xóa sách dùng soft delete để giữ lịch sử và dữ liệu gốc.
 - **Tích hợp**: Đăng nhập Google OAuth 2.0 đã có trong mã nguồn. Thanh toán MoMo là yêu cầu tài liệu/định hướng còn chờ triển khai; hiện chưa có payment route/service trong backend.
 - **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (MANAGER)**, và **Quản trị viên hệ thống (ADMIN)**.
 
@@ -49,6 +50,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
   - Quản lý trạng thái thẻ: khóa/mở khóa khẩn cấp độc lập với chế tài Danh sách đen; mở khóa khẩn cấp không xóa số lần vi phạm.
   - Có thể xét gỡ khỏi Danh sách đen bằng thao tác riêng; lịch sử vi phạm vẫn được bảo toàn.
   - Quyền xóa vĩnh viễn các tài khoản vi phạm nghiêm trọng khỏi CSDL.
+  - Tra cứu nhật ký kiểm toán append-only theo sách, độc giả, nhân viên, loại sự kiện và thời gian; xem/khôi phục sách đã xóa mềm.
 
 ---
 

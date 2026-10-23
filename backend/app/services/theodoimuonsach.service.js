@@ -1,4 +1,5 @@
 const { ObjectId } = require("mongodb");
+const AuditLogService = require("./audit-log.service");
 
 const publicFields = {
     _id: 1,
@@ -25,6 +26,7 @@ class TheoDoiMuonSachService {
         this.Sach = client.db().collection("sach");
         this.DocGia = client.db().collection("docgia");
         this.NhanVien = client.db().collection("nhanvien");
+        this.AuditLog = new AuditLogService(client);
     }
 
     // Service đăng ký mượn sách - Completed
@@ -69,7 +71,7 @@ class TheoDoiMuonSachService {
         }
 
         // 3. Kiểm tra sách và tồn kho
-        const sach = await this.Sach.findOne({ MaSach: maSach });
+        const sach = await this.Sach.findOne({ MaSach: maSach, deleted: { $ne: true } });
         if (!sach) {
             throw new Error(`Cuốn sách với mã '${maSach}' không tồn tại.`);
         }
@@ -114,6 +116,13 @@ class TheoDoiMuonSachService {
         };
 
         const result = await this.TheoDoi.insertOne(record);
+        await this.AuditLog.record({
+            action: "BORROW_REQUESTED", entityType: "borrow", entityId: String(result.insertedId),
+            MaSach: sach.MaSach, TenSach: sach.TenSach, MaDocGia: docGia.MaDocGia,
+            TenDocGia: [docGia.HoLot, docGia.Ten].filter(Boolean).join(" "),
+            actorType: "reader", actorId: docGia.MaDocGia,
+            Details: { from: null, to: "ChoDuyet" },
+        });
         return await this.findById(result.insertedId);
     }
 
@@ -133,7 +142,7 @@ class TheoDoiMuonSachService {
         }
 
         // Kiểm tra lại tồn kho sách trước khi duyệt
-        const sach = await this.Sach.findOne({ MaSach: record.MaSach });
+        const sach = await this.Sach.findOne({ MaSach: record.MaSach, deleted: { $ne: true } });
         if (!sach || sach.SoQuyen <= 0) {
             throw new Error(`Sách '${record.MaSach}' đã hết trong kho, không thể duyệt.`);
         }
@@ -161,11 +170,22 @@ class TheoDoiMuonSachService {
             },
             { returnDocument: "after" }
         );
-        return result ? this.findById(String(record._id)) : null;
+        const updatedRecord = result ? await this.findById(String(record._id)) : null;
+        if (updatedRecord) {
+            const reader = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } });
+            await this.AuditLog.record({
+                action: "BORROW_APPROVED", entityType: "borrow", entityId: String(record._id),
+                MaSach: record.MaSach, TenSach: sach.TenSach, MaDocGia: record.MaDocGia,
+                TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+                actorType: "staff", actorId: msnv,
+                Details: { from: "ChoDuyet", to: "DangMuon" },
+            });
+        }
+        return updatedRecord;
     }
 
     // Từ chối kèm lý do - Completed
-    async tuChoi(id, lyDo) {
+    async tuChoi(id, lyDo, msnv) {
         if (!lyDo || String(lyDo).trim() === "") {
             throw new Error("Vui lòng cung cấp lý do từ chối phiếu mượn.");
         }
@@ -190,11 +210,24 @@ class TheoDoiMuonSachService {
             },
             { returnDocument: "after" }
         );
-        return result ? this.findById(String(record._id)) : null;
+        const updatedRecord = result ? await this.findById(String(record._id)) : null;
+        if (updatedRecord) {
+            const [sach, reader] = await Promise.all([
+                this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } }),
+                this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } }),
+            ]);
+            await this.AuditLog.record({
+                action: "BORROW_REJECTED", entityType: "borrow", entityId: String(record._id),
+                MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+                TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+                actorType: "staff", actorId: msnv, Details: { from: "ChoDuyet", to: "TuChoi", reason: String(lyDo).trim() },
+            });
+        }
+        return updatedRecord;
     }
 
     // Xác nhận trả sách có check có trễ hay không - Completed
-    async xacNhanTra(id) {
+    async xacNhanTra(id, msnv) {
         const record = await this.findById(id);
         if (!record) {
             throw new Error("Không tìm thấy phiếu mượn.");
@@ -210,6 +243,7 @@ class TheoDoiMuonSachService {
         const isLate = record.NgayHenTra && todayStr > record.NgayHenTra;
 
         // Cộng hoàn 1 cuốn về kho
+        const sach = await this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } });
         await this.Sach.updateOne({ MaSach: record.MaSach }, { $inc: { SoQuyen: 1 }, $set: { UpdatedAt: new Date() } });
 
         // Cập nhật phiếu mượn
@@ -239,11 +273,22 @@ class TheoDoiMuonSachService {
             }
         }
 
-        return result ? this.findById(String(record._id)) : null;
+        const updatedRecord = result ? await this.findById(String(record._id)) : null;
+        if (updatedRecord) {
+            const reader = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } });
+            await this.AuditLog.record({
+                action: "BOOK_RETURNED", entityType: "borrow", entityId: String(record._id),
+                MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+                TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+                actorType: "staff", actorId: msnv,
+                Details: { from: "DangMuon", to: "DaTra", overdue: Boolean(isLate) },
+            });
+        }
+        return updatedRecord;
     }
 
     // Do thủ thư thực hiện - Completed
-    async baoMat(id, ghiChu) {
+    async baoMat(id, ghiChu, msnv) {
         if (!ghiChu || String(ghiChu).trim() === "") {
             throw new Error("Vui lòng cung cấp biên bản hoặc ghi chú lý do báo mất sách.");
         }
@@ -287,7 +332,18 @@ class TheoDoiMuonSachService {
             );
         }
 
-        return result ? this.findById(String(record._id)) : null;
+        const updatedRecord = result ? await this.findById(String(record._id)) : null;
+        if (updatedRecord) {
+            const reader = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } });
+            await this.AuditLog.record({
+                action: "BOOK_REPORTED_LOST", entityType: "borrow", entityId: String(record._id),
+                MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+                TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+                actorType: "staff", actorId: msnv,
+                Details: { from: "DangMuon", to: "MatSach", compensation: giaTriBoiThuong },
+            });
+        }
+        return updatedRecord;
     }
 
     // Tìm theo mã độc giả, mã sách và trạng thái - Completed
@@ -313,9 +369,24 @@ class TheoDoiMuonSachService {
     }
 
     // Xóa phiếu mượn - Completed
-    async delete(id) {
+    async delete(id, msnv) {
         if (!ObjectId.isValid(id)) return null;
-        return await this.TheoDoi.findOneAndDelete({ _id: new ObjectId(id) });
+        const current = await this.TheoDoi.findOne({ _id: new ObjectId(id) });
+        if (!current) return null;
+        const [sach, docGia] = await Promise.all([
+            this.Sach.findOne({ MaSach: current.MaSach }, { projection: { TenSach: 1 } }),
+            this.DocGia.findOne({ MaDocGia: current.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } }),
+        ]);
+        const result = await this.TheoDoi.findOneAndDelete({ _id: current._id });
+        if (result) {
+            await this.AuditLog.record({
+                action: "BORROW_RECORD_DELETED", entityType: "borrow", entityId: String(current._id),
+                MaSach: current.MaSach, TenSach: sach?.TenSach,
+                MaDocGia: current.MaDocGia, TenDocGia: [docGia?.HoLot, docGia?.Ten].filter(Boolean).join(" "),
+                actorType: "staff", actorId: msnv, Details: { from: current.TrangThai, to: null },
+            });
+        }
+        return result;
     }
 }
 

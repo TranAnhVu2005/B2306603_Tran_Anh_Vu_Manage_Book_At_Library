@@ -1,4 +1,5 @@
 const { ObjectId } = require("mongodb");
+const AuditLogService = require("./audit-log.service");
 
 const publicFields = {
     _id: 1,
@@ -37,6 +38,7 @@ class SachService {
         this.Sach = client.db().collection("sach");
         this.NhaXuatBan = client.db().collection("nhaxuatban");
         this.TheoDoi = client.db().collection("theodoimuonsach");
+        this.AuditLog = new AuditLogService(client);
     }
 
     // Sinh mã sách tự động - Completed
@@ -85,7 +87,7 @@ class SachService {
     }
 
     // Thêm sách mới - Completed
-    async create(payload) {
+    async create(payload, actor = {}) {
         const data = this.extractData(payload, true);
 
         if (!data.TenSach || data.DonGia === undefined || data.SoQuyen === undefined || !data.MaNXB || !data.TacGia) {
@@ -107,16 +109,24 @@ class SachService {
         }
 
         data.MaSach = await this.generateMaSach();
+        data.deleted = false;
         data.CreatedAt = new Date();
         data.UpdatedAt = new Date();
 
         const result = await this.Sach.insertOne(data);
+        await this.AuditLog.record({
+            action: "BOOK_CREATED", entityType: "book", entityId: data.MaSach,
+            MaSach: data.MaSach, TenSach: data.TenSach,
+            actorType: actor.type, actorId: actor.username,
+            Details: { createdFields: Object.keys(data).filter((field) => !["_id", "CreatedAt", "UpdatedAt", "deleted"].includes(field)) },
+        });
         return await this.findById(result.insertedId);
     }
 
     // Tìm kiếm sách, bộ lọc và sắp xếp - Completed
     async find(filter = {}) {
-        const query = {};
+        const includeDeleted = filter.includeDeleted === "true";
+        const query = includeDeleted ? { deleted: true } : { deleted: { $ne: true } };
         if (filter.tenSach) {
             query.TenSach = { $regex: new RegExp(filter.tenSach, "i") };
         }
@@ -134,7 +144,8 @@ class SachService {
             query.$or = [{ TenSach: regex }, { TacGia: regex }, { MaSach: regex }];
         }
 
-        const cursor = await this.Sach.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
+        const projection = includeDeleted ? { ...publicFields, deleted: 1, DeletedAt: 1, DeletedBy: 1 } : publicFields;
+        const cursor = await this.Sach.find(query, { projection }).sort({ CreatedAt: -1, _id: -1 });
         return await cursor.toArray();
     }
 
@@ -146,11 +157,11 @@ class SachService {
         } else {
             query = { MaSach: id };
         }
-        return await this.Sach.findOne(query, { projection: publicFields });
+        return await this.Sach.findOne({ ...query, deleted: { $ne: true } }, { projection: publicFields });
     }
 
     // Cập nhật thông tin sách - Completed
-    async update(id, payload) {
+    async update(id, payload, actor = {}) {
         const data = this.extractData(payload, false);
         delete data.MaSach; // Không sửa MaSach
 
@@ -177,16 +188,31 @@ class SachService {
             filter = { MaSach: id };
         }
 
+        const current = await this.Sach.findOne({ ...filter, deleted: { $ne: true } });
+        if (!current) return null;
+        const changes = {};
+        for (const [key, value] of Object.entries(data)) {
+            if (key === "UpdatedAt" || JSON.stringify(current[key]) === JSON.stringify(value)) continue;
+            changes[key] = { from: current[key] ?? null, to: value };
+        }
+
         const result = await this.Sach.findOneAndUpdate(
-            filter,
+            { _id: current._id, deleted: { $ne: true } },
             { $set: data },
             { returnDocument: "after" }
         );
+        if (result && Object.keys(changes).length) {
+            await this.AuditLog.record({
+                action: "BOOK_UPDATED", entityType: "book", entityId: current.MaSach,
+                MaSach: current.MaSach, TenSach: result.TenSach,
+                actorType: actor.type, actorId: actor.username, Details: { changes },
+            });
+        }
         return result ? this.findById(id) : null;
     }
 
     // Xóa sách có ràng buộc không xóa nếu sách đang có người mượn - Completed
-    async delete(id) {
+    async delete(id, actor = {}) {
         let filter = {};
         if (ObjectId.isValid(id)) {
             filter = { $or: [{ _id: new ObjectId(id) }, { MaSach: id }] };
@@ -194,7 +220,7 @@ class SachService {
             filter = { MaSach: id };
         }
 
-        const current = await this.Sach.findOne(filter);
+        const current = await this.Sach.findOne({ ...filter, deleted: { $ne: true } });
         if (!current) return null;
 
         // Ràng buộc toàn vẹn: Không xóa nếu sách đang có người mượn hoặc chờ duyệt
@@ -207,8 +233,39 @@ class SachService {
             throw new Error(`Không thể xóa cuốn sách '${current.TenSach}' vì đang có ${borrowingCount} phiếu mượn dở dang.`);
         }
 
-        const result = await this.Sach.findOneAndDelete({ _id: current._id });
-        return result;
+        const deletedAt = new Date();
+        const result = await this.Sach.updateOne(
+            { _id: current._id, deleted: { $ne: true } },
+            { $set: { deleted: true, DeletedAt: deletedAt, DeletedBy: String(actor.username || ""), UpdatedAt: deletedAt } }
+        );
+        if (!result.modifiedCount) return null;
+        await this.AuditLog.record({
+            action: "BOOK_SOFT_DELETED", entityType: "book", entityId: current.MaSach,
+            MaSach: current.MaSach, TenSach: current.TenSach,
+            actorType: actor.type, actorId: actor.username,
+        });
+        return { MaSach: current.MaSach };
+    }
+
+    async restore(id, actor = {}) {
+        const filter = ObjectId.isValid(id)
+            ? { $or: [{ _id: new ObjectId(id) }, { MaSach: id }], deleted: true }
+            : { MaSach: id, deleted: true };
+        const current = await this.Sach.findOne(filter);
+        if (!current) return null;
+
+        const restoredAt = new Date();
+        const result = await this.Sach.updateOne(
+            { _id: current._id, deleted: true },
+            { $set: { deleted: false, UpdatedAt: restoredAt }, $unset: { DeletedAt: "", DeletedBy: "" } }
+        );
+        if (!result.modifiedCount) return null;
+        await this.AuditLog.record({
+            action: "BOOK_RESTORED", entityType: "book", entityId: current.MaSach,
+            MaSach: current.MaSach, TenSach: current.TenSach,
+            actorType: actor.type, actorId: actor.username,
+        });
+        return { MaSach: current.MaSach };
     }
 
     // Cập nhật số quyển - Completed !!! Chưa được gọi ở bất kỳ đâu

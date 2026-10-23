@@ -32,6 +32,8 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | **TC-PROFILE-02** | Nhân viên/Admin tự cập nhật hồ sơ | PUT hồ sơ nhân viên có JWT; thử thiếu token và cập nhật hồ sơ người khác | HTTP 200 cho đúng chủ; HTTP 401/403 khi thiếu quyền; chỉ `HoTenNV`, `SoDienThoai`, `DiaChi` thay đổi, không lộ/sửa `MSNV`, `ChucVu` hoặc mật khẩu | ✅ PASSED |
 | **TC-BOOK-01** | Thêm sách mới hợp lệ | Đầy đủ thông tin, `SoQuyen: 10 >= 0` | HTTP 201, sách lưu vào DB | ✅ PASSED |
 | **TC-BOOK-02** | Thêm sách trùng `MaSach` | `MaSach: "TEST_SACH_99"` đã tồn tại | HTTP 400: Báo trùng mã sách | ✅ PASSED |
+| TC-BOOK-SOFT-DELETE-01 | Xóa mềm sách và khôi phục | MANAGER xóa sách không có phiếu mở; Admin xem `includeDeleted=true` và khôi phục; MANAGER thử xem bản đã xóa | Document vẫn tồn tại với `deleted=true`; GET công khai/chi tiết và đăng ký mượn không tìm thấy; Admin khôi phục được; MANAGER không được xem dữ liệu đã xóa | 🟡 Chưa chạy |
+| TC-AUDIT-01 | Nhật ký thao tác sách | MANAGER thêm, sửa, xóa mềm; Admin đọc log và thử ghi/xóa log | Có actor/nhân viên, action, snapshot mã/tên sách, trường trước/sau và thời gian; chỉ Admin GET; không có API sửa/xóa | 🟡 Chưa chạy |
 | **TC-BORROW-01**| Độc giả gửi phiếu yêu cầu mượn | Độc giả kiểm thử tạm thời, `TEST_SACH_99` | HTTP 201, trạng thái `ChoDuyet`, response chỉ có trường CDM của phiếu | ✅ PASSED |
 | **TC-BORROW-02**| Mượn sách khi đã hết kho | Độc giả kiểm thử tạm thời, `SACH-000003` (`SoQuyen: 0`) | HTTP 400: Báo hết sách trong kho | ✅ PASSED |
 | **TC-BORROW-03**| Mượn sách vượt hạn mức 3 cuốn | Độc giả đã có 3 cuốn chưa trả | HTTP 400: Chặn vượt hạn mức | ✅ PASSED |
@@ -45,6 +47,7 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | **TC-ADMIN-01** | Admin nâng cấp quyền người dùng | Độc giả kiểm thử, gán `VaiTro = MANAGER` | HTTP 200, độc giả có `VaiTro = MANAGER`, không có trường ngoài CDM | ✅ PASSED |
 | **TC-ADMIN-02** | Admin xét gỡ khỏi danh sách đen | Độc giả kiểm thử `DanhSachDen`; thử mở khóa khẩn cấp rồi xét gỡ riêng | Mở khóa khẩn cấp bị từ chối; xét gỡ chuyển sang `HoatDong` nhưng giữ `SoLanViPham = 3` | ✅ PASSED |
 | **TC-ADMIN-03** | Admin khóa/mở khóa khẩn cấp | Thẻ hoạt động có 2 vi phạm; khóa/mở khóa rồi thử ở ngưỡng 3 lần | Thao tác giữ nguyên vi phạm; mở khóa ở ngưỡng 3 chuyển trạng thái về `DanhSachDen` | ✅ PASSED |
+| TC-AUDIT-02 | Kiểm toán vòng đời mượn-trả | Độc giả đăng ký; nhân viên duyệt, từ chối, xác nhận trả/báo mất; Admin đọc log | Mỗi sự kiện ghi actor đúng, mã/tên độc giả+sách, nhân viên thao tác, trạng thái và thời gian; USER/MANAGER không đọc được log | 🟡 Chưa chạy |
 
 ### Bổ sung ma trận kiểm thử bảo mật (chưa chạy — yêu cầu cho đợt triển khai bảo mật)
 
@@ -103,5 +106,7 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc 
 | UI-19 | Dùng ADMIN mở từng route nghiệp vụ và route Admin | ADMIN truy cập được `/manager/*` và `/admin/users`; MANAGER không vào `/admin/users`; menu phản ánh cùng ma trận |
 | UI-20 | Tra cứu danh mục và chi tiết sách từ cổng quản lý | `/catalog` và `/catalog/books/:id` chạy cùng origin `frontend_manage`; tìm theo tên/tác giả/mã không dấu, lọc NXB/tồn kho, xem chi tiết, refresh; không có nút đăng ký mượn |
 | UI-21 | Điều hướng `Cổng độc giả` từ cổng quản lý | Link dùng `VITE_USER_APP_URL`; thao tác hồ sơ/mượn yêu cầu phiên độc giả riêng vì localStorage không chia sẻ; trang nhân viên ở tab hiện tại giữ phiên |
-| UI-21 | So sánh Header/Footer hai cổng | Banner, logo, màu, kiểu menu tài khoản, footer và nhịp bố cục đồng nhất với thiết kế cổng độc giả; chỉ khác link/nhãn theo quyền |
-| UI-22 | Kiểm tra responsive hai cổng tại 320, 375, 768, 1024, 1440px | Không tràn ngang toàn trang; header dùng menu mobile, footer xếp cột; form/nút xuống dòng; bảng chỉ cuộn trong wrapper; dialog vừa viewport |
+| UI-22 | So sánh Header/Footer hai cổng | Banner, logo, màu, kiểu menu tài khoản, footer và nhịp bố cục đồng nhất với thiết kế cổng độc giả; chỉ khác link/nhãn theo quyền |
+| UI-23 | Kiểm tra responsive hai cổng tại 320, 375, 768, 1024, 1440px | Không tràn ngang toàn trang; header dùng menu mobile, footer xếp cột; form/nút xuống dòng; bảng chỉ cuộn trong wrapper; dialog vừa viewport |
+| UI-24 | Admin lọc nhật ký và tải thêm | `/admin/audit-logs` lọc theo hành động, mã sách/độc giả/nhân viên, loại đối tượng, ngày; tải các trang tiếp theo | Dữ liệu đúng bộ lọc, actor và chi tiết dễ đọc; bảng cuộn riêng trên mobile; không có nút sửa/xóa | 🟡 Chưa chạy |
+| UI-25 | Quản lý sách xóa mềm | MANAGER xóa sách; Admin xem danh sách đã xóa và phục hồi | Sách giữ lại trong DB, bị ẩn khỏi tra cứu/mượn; Admin xem marker/thời điểm xóa và khôi phục; hành động xuất hiện trong audit log | 🟡 Chưa chạy |

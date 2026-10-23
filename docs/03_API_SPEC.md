@@ -32,6 +32,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 - Không trả trường `MatKhau` trong response vì đây là dữ liệu xác thực nhạy cảm.
 - Các lớp bao giao thức như `message`, `data`, `token` và response do MoMo quy định không phải trường collection, nên giữ nguyên.
 - Response phiếu mượn chỉ gồm trường của collection `theodoimuonsach`, không nhúng thông tin sách, độc giả hoặc nhân viên.
+- Metadata `deleted`, `DeletedAt`, `DeletedBy` không có trong response sách đang hoạt động. Chỉ Admin dùng `/api/sach?includeDeleted=true` để xem/khôi phục sách đã xóa; nhật ký dùng schema riêng của `auditlogs`.
 
 ---
 
@@ -99,11 +100,13 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ## 2. Quản Lý Sách (`/api/sach`)
 
-* `GET /api/sach`: Lấy danh sách sách (Hỗ trợ query: `?search=...&maNxb=...&availableOnly=true`).
-* `GET /api/sach/:id`: Chi tiết 1 cuốn sách theo ObjectId hoặc `MaSach`.
+* `GET /api/sach`: Lấy danh sách sách đang hoạt động (mặc định ẩn `deleted=true`; hỗ trợ `?search=...&maNxb=...&availableOnly=true`).
+* `GET /api/sach/:id`: Chi tiết sách đang hoạt động theo ObjectId hoặc `MaSach`; sách đã xóa mềm trả 404.
+* `GET /api/sach?includeDeleted=true`: [Admin] Lấy danh sách sách đã xóa mềm; response kèm `deleted`, `DeletedAt`, `DeletedBy` để quản trị/phục hồi.
 * `POST /api/sach`: [Manager/Admin] Thêm sách mới (`TenSach`, `DonGia`, `SoQuyen`, `NamXuatBan`, `MaNXB`, `TacGia`, `HinhAnh`, `MoTa`). Tự động sinh `MaSach: SACH-000001`.
 * `PUT /api/sach/:id`: [Manager/Admin] Cập nhật thông tin sách / điều chỉnh số lượng tồn kho.
-* `DELETE /api/sach/:id`: [Manager/Admin] Xóa sách (Chặn xóa nếu sách đang có phiếu mượn `DangMuon` hoặc `ChoDuyet`).
+* `DELETE /api/sach/:id`: [Manager/Admin] Xóa mềm; chặn nếu sách đang có phiếu `DangMuon` hoặc `ChoDuyet`; document được giữ lại và actor được ghi log.
+* `PUT /api/sach/:id/restore`: [Admin] Khôi phục sách đã xóa mềm về danh mục hoạt động; log người thực hiện.
 
 ---
 
@@ -171,7 +174,16 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ---
 
-## 6. Thanh toán trực tuyến MoMo (đặc tả tương lai, chưa triển khai)
+## 6. Nhật Ký Kiểm Toán (`/api/audit-logs`)
+
+* `GET /api/audit-logs`: [Admin] Endpoint chỉ đọc; hỗ trợ lọc `Action`, `EntityType`, `MaSach`, `MaDocGia`, `MSNV`, `from`, `to`, `limit`, `skip`; tối đa 300 bản ghi/trang.
+* Response: `{ "items": [ ... ], "total": 123, "limit": 50, "skip": 0 }`. Mỗi item có actor (mã/tên/loại), đối tượng, snapshot sách/độc giả/nhân viên liên quan, `Details` và `OccurredAt`.
+* Sự kiện ghi: thêm/sửa/xóa mềm/khôi phục sách; độc giả gửi yêu cầu mượn; nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất; Admin xóa phiếu lưu trữ.
+* Nhật ký append-only, không có API cập nhật/xóa; không ghi token/mật khẩu. Chỉ ADMIN được đọc; USER/MANAGER bị từ chối.
+
+---
+
+## 7. Thanh toán trực tuyến MoMo (đặc tả tương lai, chưa triển khai)
 
 Các route dưới đây là yêu cầu nghiệp vụ dự kiến; hiện backend không mount `/api/payment` và chưa có service/controller MoMo. Không gọi đây là API hoạt động cho tới khi triển khai.
 

@@ -47,7 +47,7 @@ exports.tuChoiMuon = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
         const { lyDo } = req.body;
-        const result = await service.tuChoi(req.params.id, lyDo);
+        const result = await service.tuChoi(req.params.id, lyDo, req.user?.username);
         return res.json({
             message: "Đã từ chối yêu cầu mượn sách.",
             data: result,
@@ -61,7 +61,7 @@ exports.tuChoiMuon = async (req, res, next) => {
 exports.xacNhanTra = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
-        const result = await service.xacNhanTra(req.params.id);
+        const result = await service.xacNhanTra(req.params.id, req.user?.username);
         return res.json({
             message: "Xác nhận trả sách thành công. Đã hoàn trả 1 cuốn về kho.",
             data: result,
@@ -75,7 +75,7 @@ exports.baoMat = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
         const { ghiChu } = req.body;
-        const result = await service.baoMat(req.params.id, ghiChu);
+        const result = await service.baoMat(req.params.id, ghiChu, req.user?.username);
         return res.json({
             message: "Đã ghi nhận sự cố mất sách và tính tiền bồi thường.",
             data: result,
@@ -119,7 +119,7 @@ exports.findOne = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
-        const result = await service.delete(req.params.id);
+        const result = await service.delete(req.params.id, req.user?.username);
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy phiếu mượn để xóa."));
         }

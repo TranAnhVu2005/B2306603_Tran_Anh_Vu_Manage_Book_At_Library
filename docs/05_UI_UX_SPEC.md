@@ -111,6 +111,13 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
    * Thẻ `DanhSachDen` có thao tác **Xét gỡ khỏi danh sách đen** riêng; khi được duyệt, trạng thái trở về `HoatDong` nhưng lịch sử vi phạm không bị xóa.
    * Nút **Nâng cấp (Promote)**: Thăng cấp Độc giả → Quản lý/Thủ thư.
    * Nút **Hạ cấp (Demote)**: Thu hồi quyền quản lý về lại Độc giả.
+2. **Nhật ký kiểm toán (`/admin/audit-logs`)**:
+   * Chỉ ADMIN được xem lịch sử sách và phiếu mượn; lọc theo hành động, mã sách, độc giả, nhân viên, loại đối tượng và khoảng thời gian.
+   * Hiển thị thời điểm, hành động, tên/mã sách, tên/mã độc giả, nhân viên chịu trách nhiệm và chi tiết trạng thái/thay đổi; hỗ trợ tải thêm theo trang.
+   * Nhật ký chỉ đọc; giao diện không có thao tác sửa/xóa log.
+3. **Xóa mềm sách (`/manager/books`)**:
+   * Nút xóa chuyển sách sang `deleted=true`; sách biến mất khỏi tra cứu/mượn mới nhưng giữ nguyên dữ liệu và lịch sử.
+   * Chỉ ADMIN có thể mở danh sách đã xóa mềm và khôi phục sách.
 
 ---
 
@@ -140,7 +147,7 @@ Các component cần xây dựng/cập nhật theo skill mới:
 ## 5. Bản đồ route theo frontend
 
 - `frontend_user/`: `/`, `/books`, `/books/:id`, `/profile`, `/login`, `/register`, trang 404 dành cho độc giả. Không đăng ký các route `/manager/*` hoặc `/admin/*`.
-- `frontend_manage/`: `/catalog` và `/catalog/books/:id` để tra cứu danh mục/chi tiết (không đăng ký mượn), `/login` dành cho nhân viên, `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; ADMIN có thêm route quản trị.
+- `frontend_manage/`: `/catalog` và `/catalog/books/:id` để tra cứu danh mục/chi tiết (không đăng ký mượn), `/login` dành cho nhân viên, `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/admin/audit-logs`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; route log chỉ ADMIN.
 - Hồ sơ nhân viên (`nhanvien`) và độc giả (`docgia`) là hai danh tính độc lập. MANAGER/ADMIN có thể tra cứu sách công khai qua cổng độc giả, nhưng các thao tác cá nhân độc giả yêu cầu phiên đăng nhập USER riêng cho đến khi có tính năng liên kết hồ sơ.
 - Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config cho các luồng cần đổi ứng dụng. Tra cứu sách của nhân viên phải dùng route nội bộ `/catalog` để giữ origin/phiên nhân viên.
 - Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.

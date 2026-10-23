@@ -11,6 +11,9 @@
         </h1>
       </div>
       <div class="d-flex flex-wrap gap-2">
+        <button v-if="isAdmin" class="ath-btn-outline" type="button" @click="toggleDeletedView">
+          {{ showDeleted ? "Xem sách đang hoạt động" : "Sách đã xóa mềm" }}
+        </button>
         <button class="ath-btn-primary" @click="openCreateModal">
           <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
@@ -89,7 +92,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="book in filteredBooks" :key="book._id">
+              <tr v-for="book in filteredBooks" :key="book._id" :class="{ 'manager-book-deleted-row': book.deleted }">
                 <td style="width: 50px;">
                   <div class="manager-book-thumbnail ath-book-spine">
                     <span class="manager-book-thumbnail-fallback" aria-hidden="true">
@@ -107,6 +110,7 @@
                 <td>
                   <strong class="font-serif-headline text-dark d-block" style="font-size: 0.95rem;">{{ book.TenSach
                     }}</strong>
+                  <span v-if="book.deleted" class="badge bg-secondary-subtle text-secondary-emphasis">Đã xóa mềm · {{ formatDate(book.DeletedAt) }}</span>
                   <small class="text-muted fst-italic">{{ book.TacGia }}</small>
                 </td>
                 <td>
@@ -116,7 +120,8 @@
                 </td>
                 <td class="small text-nowrap">{{ book.NamXuatBan || '—' }}</td>
                 <td>
-                  <div class="d-flex align-items-center">
+                  <span v-if="book.deleted" class="text-muted small">Đã ẩn khỏi mượn/tra cứu</span>
+                  <div v-else class="d-flex align-items-center">
                     <button class="ath-action-btn py-0 px-2 me-1" :disabled="book.SoQuyen <= 0"
                       @click="quickAdjustStock(book, -1)" title="Bớt 1 cuốn">
                       -
@@ -134,6 +139,10 @@
                 <td class="font-mono-code small text-nowrap">{{ formatCurrency(book.DonGia) }}</td>
                 <td class="text-end">
                   <div class="d-flex align-items-center justify-content-end gap-1 flex-nowrap">
+                    <button v-if="book.deleted && isAdmin" class="ath-action-btn px-2" @click="restoreBook(book)" title="Khôi phục sách">
+                      <i class="fas fa-rotate-left" aria-hidden="true"></i> Khôi phục
+                    </button>
+                    <template v-else-if="!book.deleted">
                     <button class="ath-action-btn px-2" @click="openEditModal(book)" title="Chỉnh sửa">
                       <svg class="ui-icon text-secondary" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 20h9" />
@@ -146,6 +155,7 @@
                         <path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3" />
                       </svg> Xóa
                     </button>
+                    </template>
                   </div>
                 </td>
               </tr>
@@ -247,6 +257,7 @@
 import ToastNotification from "../components/ToastNotification.vue";
 import sachService from "../services/sach.service";
 import nxbService from "../services/nhaxuatban.service";
+import authService from "../services/auth.service";
 
 export default {
   name: "ManagerBooks",
@@ -259,6 +270,7 @@ export default {
       publishers: [],
       loading: false,
       search: "",
+      showDeleted: false,
       showModal: false,
       isEditing: false,
       saving: false,
@@ -276,8 +288,9 @@ export default {
     };
   },
   computed: {
+    isAdmin() { return authService.isAdmin(); },
     totalQuantity() {
-      return this.books.reduce((acc, b) => acc + (b.SoQuyen || 0), 0);
+      return this.books.filter((book) => !book.deleted).reduce((acc, book) => acc + (book.SoQuyen || 0), 0);
     },
     filteredBooks() {
       if (!this.search.trim()) return this.books;
@@ -320,7 +333,7 @@ export default {
       this.loading = true;
       try {
         const [booksRes, nxbRes] = await Promise.all([
-          sachService.getAll(),
+          sachService.getAll(this.showDeleted && this.isAdmin ? { includeDeleted: "true" } : {}),
           nxbService.getAll(),
         ]);
         this.books = booksRes;
@@ -337,6 +350,23 @@ export default {
     formatCurrency(val) {
       if (!val) return "0 ₫";
       return Number(val).toLocaleString("vi-VN") + " ₫";
+    },
+    formatDate(value) {
+      return value ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(new Date(value)) : "";
+    },
+    toggleDeletedView() {
+      this.showDeleted = !this.showDeleted;
+      this.fetchData();
+    },
+    async restoreBook(book) {
+      if (!confirm(`Khôi phục sách '${book.TenSach}' (${book.MaSach}) vào danh mục đang hoạt động?`)) return;
+      try {
+        await sachService.restore(book._id || book.MaSach);
+        this.$refs.toast.show("Đã khôi phục sách.");
+        this.fetchData();
+      } catch (err) {
+        this.$refs.toast.show(err.response?.data?.message || "Không thể khôi phục sách.", "error");
+      }
     },
     getPublisherName(maNxb) {
       const p = this.publishers.find(item => item.MaNXB === maNxb);
@@ -432,7 +462,7 @@ export default {
       if (!confirm(`Xác nhận xóa cuốn sách '${book.TenSach}' (${book.MaSach})?`)) return;
       try {
         await sachService.delete(book._id || book.MaSach);
-        this.$refs.toast.show("Đã xóa cuốn sách.");
+        this.$refs.toast.show("Đã chuyển sách sang trạng thái xóa mềm.");
         this.fetchData();
       } catch (err) {
         const msg = err.response?.data?.message || err.message || "Không thể xóa sách.";

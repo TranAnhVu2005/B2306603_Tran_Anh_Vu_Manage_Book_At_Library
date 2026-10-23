@@ -11,6 +11,7 @@ const routes = [
   { path: "/manager/books", name: "manager.books", component: () => import("@/views/ManagerBooks.vue"), meta: { role: "staff" } },
   { path: "/manager/publishers", name: "manager.publishers", component: () => import("@/views/ManagerPublishers.vue"), meta: { role: "staff" } },
   { path: "/admin/users", name: "admin.users", component: () => import("@/views/AdminUsers.vue"), meta: { role: "admin" } },
+  { path: "/admin/audit-logs", name: "admin.audit-logs", component: () => import("@/views/AdminAuditLogs.vue"), meta: { role: "admin" } },
   { path: "/:pathMatch(.*)*", name: "notfound", component: () => import("@/views/NotFound.vue") },
 ];
 
