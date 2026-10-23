@@ -27,7 +27,12 @@ export default (baseURL = "") => {
     instance.interceptors.request.use(
         (config) => {
             const token = localStorage.getItem("token");
-            if (token) {
+            // Public catalogue reads must not inherit a stale/foreign session token.
+            if (config.skipAuth) {
+                delete config.headers.Authorization;
+                delete config.headers.authorization;
+                delete config.skipAuth;
+            } else if (token) {
                 config.headers["Authorization"] = `Bearer ${token}`;
             }
             return config;
@@ -39,7 +44,8 @@ export default (baseURL = "") => {
     instance.interceptors.response.use(
         (response) => response,
         (error) => {
-            if (error.response?.status === 401) {
+            const authorization = error.config?.headers?.Authorization || error.config?.headers?.authorization;
+            if (error.response?.status === 401 && authorization) {
                 // Token hết hạn hoặc không hợp lệ → xóa dữ liệu phiên
                 const isAuthRoute = error.config?.url?.includes("/auth/login") ||
                     error.config?.url?.includes("/auth/register") ||

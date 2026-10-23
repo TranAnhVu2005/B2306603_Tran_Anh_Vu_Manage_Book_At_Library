@@ -2,7 +2,7 @@
 
 Dự án áp dụng **Skill thiết kế Vanguard UI/UX Architect (Awwwards-Tier)** được định nghĩa tại `.agents/skills/high-end-visual-design/SKILL.md`. Agent bắt buộc đọc và tuân thủ 100% skill đó trước khi viết bất kỳ dòng code frontend nào.
 
-> **Lưu ý quan trọng:** Header (`AppHeader.vue`), Footer (`AppFooter.vue`), trang đăng nhập (`LoginView.vue`) và đăng ký (`RegisterView.vue`) đã được người dùng tùy chỉnh riêng và **KHÔNG được phép thay đổi thiết kế**. Agent chỉ áp dụng skill thiết kế mới cho tất cả các màn hình/component còn lại chưa hoàn thiện.
+> Header, Footer, trang đăng nhập và đăng ký đang có thiết kế hiện hữu. Có thể sửa trạng thái đăng nhập, nội dung, điều hướng, khả năng responsive và typography khi cần để khớp quyền/phiên; giữ nguyên nhận diện và bố cục cốt lõi trừ khi yêu cầu mới chỉ rõ khác.
 
 Frontend sử dụng đúng tên trường CDM từ API (`VaiTro`, `ChucVu`, `TENNXB`, `GiaTriBoiThuong`, ...). Các phiếu mượn chỉ chứa `MaDocGia` và `MaSach`; màn hình cần tên hoặc thông tin tham chiếu phải tra cứu collection độc giả/sách ở phía frontend, không kỳ vọng API trả object lồng ghép.
 
@@ -13,11 +13,13 @@ Frontend là hai ứng dụng Vue/Vite độc lập, dùng chung Backend API nh�
 | App | Vai trò và màn hình | Local dev |
 |:---|:---|:---:|
 | `frontend_user/` | Độc giả (`USER`): trang chủ, tra cứu/chi tiết sách, đăng ký mượn, hồ sơ cá nhân và lịch sử | `http://localhost:3001` |
-| `frontend_manage/` | Thủ thư (`MANAGER`) và Admin (`ADMIN`): quản lý kho/NXB, mượn-trả, quản trị tài khoản | `http://localhost:3002` |
+| `frontend_manage/` | Thủ thư (`MANAGER`) và Admin (`ADMIN`): tra cứu sách, quản lý kho/NXB, mượn-trả, quản trị tài khoản | `http://localhost:3002` |
 
 Backend chạy tại `http://localhost:3000`; mỗi app proxy `/api` về backend. Production domain được cấu hình riêng theo môi trường, không hardcode; API CORS allowlist chỉ nhận các origin của hai app. Các trang sau đăng nhập điều hướng tới domain đúng vai trò. Vì localStorage không dùng chung giữa các origin, người dùng phải đăng nhập riêng trên từng app; không giả định frontend có thể đọc token ở origin còn lại. Backend vẫn là nơi duy nhất thực thi vai trò và quyền sở hữu.
 
-Ứng dụng cũ đã được đổi tên thành `frontend_user/`. Ứng dụng này chỉ giữ các trang độc giả; các màn hình quản trị nằm trong `frontend_manage/`. Mỗi app có cấu hình Vite, package và build độc lập.
+Ứng dụng cũ đã được đổi tên thành `frontend_user/`. Ứng dụng này giữ luồng độc giả; `frontend_manage/` có bản tra cứu danh mục và chi tiết sách riêng dùng cùng API, styles và hành vi tìm kiếm của cổng độc giả. Mỗi app có cấu hình Vite, package và build độc lập. Menu `Tra cứu sách` của cổng quản lý đi tới `/catalog` trên cùng origin nên giữ nguyên phiên nhân viên; liên kết `Cổng độc giả` chỉ dành cho các thao tác cá nhân độc giả. Mỗi cổng xác thực phiên độc lập. Request đọc sách/NXB công khai không gửi JWT; lỗi 401 của request không mang Authorization không được xóa phiên cục bộ.
+
+**Nhận diện hai cổng:** `frontend_user` là nguồn chuẩn cho thiết kế Header/Footer và trang tra cứu. `frontend_manage` phải dùng cùng banner sách, màu xanh rêu, logo, nhịp khoảng cách, hình dáng menu tài khoản/footer và giao diện tra cứu danh mục/chi tiết sách. Khác biệt nằm ở chức năng theo quyền: tra cứu nội bộ tại `/catalog`, thêm menu thủ thư/Admin; không hiển thị thao tác đăng ký mượn trong ứng dụng quản lý.
 
 ---
 
@@ -30,7 +32,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 - **Font chính thức**: `Be Vietnam Pro` là sans-serif chính và font mặc định trên toàn website, bao gồm Header, Footer, LoginView và RegisterView. Thay thế các font sans-serif đang dùng; giữ monospace cho mã/định danh nếu cần và có fallback sans-serif hệ thống.
 - **Nạp font**: Dùng một nguồn khai báo thống nhất, chỉ tải các weight cần thiết và fallback tốt nếu font ngoài không tải được. Tránh khai báo lặp ở `index.html` và stylesheet.
 - **Ưu tiên yêu cầu**: Quy định Be Vietnam Pro này thay thế danh sách font cũ trong tài liệu/skill khi có xung đột. Với Header, Footer, LoginView, RegisterView chỉ đổi font/typography; giữ nguyên bố cục và thiết kế tùy chỉnh.
-- **Icons**: Chỉ dùng ultra-light, precise-line icons (Phosphor Light, Remix Line). Nghiêm cấm FontAwesome thick-stroke.
+- **Icons**: Giữ đúng bộ icon đang có trong thiết kế cổng độc giả để hai Header/Footer đồng nhất; nếu bổ sung icon mới thì ưu tiên nét mảnh, kích thước và độ tương phản phải khớp. Không đổi riêng cổng quản lý sang bộ icon khác.
 - **Spacing**: Section padding tối thiểu `py-24`, cho phép design thở nặng.
 - **Borders & Shadows**: Không dùng `1px solid gray` thông thường, không dùng `rgba(0,0,0,0.3)` drop-shadow. Dùng hairline ring hoặc ambient glow.
 
@@ -48,6 +50,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 - Khoảng cách vùng nội dung dùng nhịp co giãn theo viewport; trang chủ không tự ép chiều cao bằng `100vh` bên trong layout đã có Header/Footer.
 - Card quản trị và modal dùng vỏ + lõi riêng; bảng nhiều cột chỉ cuộn ngang trong wrapper của bảng. Các form, bộ lọc và nút hành động phải co giãn hoặc xuống dòng trên màn hình hẹp.
 - Tôn trọng `prefers-reduced-motion`; nội dung không được làm tràn ngang ở chiều rộng tối thiểu 320px.
+- QA responsive tối thiểu tại 320px, 375px, 768px, 1024px và 1440px: header mở/đóng menu được, footer không tràn, form/nút xếp hàng dễ thao tác; bảng cuộn riêng trong vùng bảng và dialog vừa viewport.
 
 ---
 
@@ -82,7 +85,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 ---
 
 ### 2.2. Phân Hệ Quản Lý / Thủ Thư (Manager Portal - `/manager`)
-* **Layout tổng thể**: Sidebar bên trái cố định + content area bên phải. Sidebar dùng Double-Bezel panel.
+* **Layout tổng thể**: Dùng cùng Header/Footer của cổng độc giả; vùng nội dung đặt trong cùng `.container` và dùng các component/bảng của design system. Không thêm sidebar cố định gây co hẹp nội dung trên tablet/mobile.
 1. **Quản lý Mượn - Trả & Phê Duyệt (`/manager/borrows`)**:
    * **Tab 1: Chờ duyệt**: Danh sách yêu cầu mượn từ độc giả. Nút **[Duyệt mượn]** (trừ kho tự động) / **[Từ chối]**.
    * **Tab 2: Đang mượn**: Bảng theo dõi, hiển thị số ngày còn lại, badge màu theo mức độ khẩn cấp.
@@ -100,6 +103,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 ---
 
 ### 2.3. Phân Hệ Quản Trị Tối Cao (Super Admin Portal - `/admin`)
+Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộng thêm các màn hình quản trị chỉ dành cho ADMIN. Không ẩn các liên kết `/manager/*` khi đăng nhập bằng tài khoản ADMIN.
 1. **Quản lý Người Dùng & Phân Quyền (`/admin/users`)**:
    * Danh sách tất cả tài khoản độc giả và nhân viên.
    * Bộ lọc trạng thái riêng cho `DanhSachDen` và thẻ bị khóa (`Khoa`); hiển thị trạng thái thẻ thực tế, không gộp hai trạng thái.
@@ -112,7 +116,7 @@ Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md
 
 ## 3. Các Thành Phần Giao Diện Tái Sử Dụng (Vue Components)
 
-> ⚠️ Các component dưới đây ĐÃ được thiết kế sẵn và **KHÔNG thay đổi**: `AppHeader.vue`, `AppFooter.vue`, `LoginView.vue`, `RegisterView.vue`.
+Header cổng quản lý phải phản ánh phiên đang đăng nhập: khi xác thực thành công hiển thị tên và nhãn vai trò (`Thủ thư` hoặc `Quản trị viên`), điều hướng nghiệp vụ phù hợp và nút `Đăng xuất`; chỉ hiển thị `Đăng nhập nhân viên` khi chưa có phiên nhân viên. Khi tải lại trang, đồng bộ người dùng với API để tránh trạng thái header cũ. Cung cấp liên kết `Cổng độc giả` dùng URL từ env.
 
 Các component cần xây dựng/cập nhật theo skill mới:
 
@@ -136,6 +140,7 @@ Các component cần xây dựng/cập nhật theo skill mới:
 ## 5. Bản đồ route theo frontend
 
 - `frontend_user/`: `/`, `/books`, `/books/:id`, `/profile`, `/login`, `/register`, trang 404 dành cho độc giả. Không đăng ký các route `/manager/*` hoặc `/admin/*`.
-- `frontend_manage/`: `/login` dành cho nhân viên, `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/profile` nhân viên và trang 404 quản trị. Route Admin chỉ hiện với `ADMIN`; route nghiệp vụ thủ thư chỉ dành `MANAGER`/`ADMIN`.
-- Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config. Không dùng đường dẫn tương đối để điều hướng xuyên domain.
+- `frontend_manage/`: `/catalog` và `/catalog/books/:id` để tra cứu danh mục/chi tiết (không đăng ký mượn), `/login` dành cho nhân viên, `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; ADMIN có thêm route quản trị.
+- Hồ sơ nhân viên (`nhanvien`) và độc giả (`docgia`) là hai danh tính độc lập. MANAGER/ADMIN có thể tra cứu sách công khai qua cổng độc giả, nhưng các thao tác cá nhân độc giả yêu cầu phiên đăng nhập USER riêng cho đến khi có tính năng liên kết hồ sơ.
+- Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config cho các luồng cần đổi ứng dụng. Tra cứu sách của nhân viên phải dùng route nội bộ `/catalog` để giữ origin/phiên nhân viên.
 - Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.

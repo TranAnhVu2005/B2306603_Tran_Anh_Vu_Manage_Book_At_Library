@@ -42,6 +42,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 
 ### 2.3. Quản trị viên Tối cao (Super Admin / ADMIN)
 - Kế thừa toàn bộ quyền hạn nghiệp vụ của Thủ thư.
+- Có thể tra cứu sách/NXB công khai như mọi vai trò; nghiệp vụ thủ thư luôn hiện trong menu Admin.
 - **Đặc quyền phân quyền & nhân sự**:
   - Quản lý toàn bộ danh sách tài khoản người dùng và nhân viên trong hệ thống.
   - **Thăng cấp** Độc giả thông thường (`USER`) lên làm Thủ thư (`MANAGER`) hoặc **Hạ cấp** Thủ thư về lại Độc giả.
@@ -56,7 +57,9 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Backend**: Node.js v22+, Express.js (v5), MongoDB Native Driver v6+, BcryptJS, Dotenv.
 - **Frontend**: Hai ứng dụng Vue 3/Vite riêng, cùng gọi Backend API:
   - `frontend_user/`: cổng Độc giả (`USER`), là thư mục đổi tên từ frontend cũ; chỉ chứa luồng và giao diện dành cho độc giả.
-  - `frontend_manage/`: cổng Thủ thư (`MANAGER`) và Quản trị viên (`ADMIN`), chứa màn hình quản lý nghiệp vụ và quản trị.
+  - `frontend_manage/`: cổng Thủ thư (`MANAGER`) và Quản trị viên (`ADMIN`), gồm tra cứu danh mục/chi tiết sách, màn hình nghiệp vụ và quản trị.
+- MANAGER có toàn bộ chức năng nghiệp vụ thủ thư; ADMIN có toàn bộ chức năng MANAGER cộng các chức năng quản trị. Tra cứu sách được triển khai trực tiếp trên cả hai cổng; nghiệp vụ mượn cá nhân chỉ ở cổng độc giả, quản lý kho ở cổng quản lý.
+- Hồ sơ nhân viên và hồ sơ độc giả hiện đăng nhập độc lập, lưu phiên riêng theo domain. Các chức năng cá nhân của độc giả (mượn, lịch sử, hồ sơ thẻ) cần đăng nhập phiên USER; chưa hỗ trợ liên kết nhân viên với hồ sơ độc giả.
   - Môi trường phát triển: Backend API `http://localhost:3000`, `frontend_user` tại `http://localhost:3001`, `frontend_manage` tại `http://localhost:3002`; mỗi app proxy `/api` đến Backend.
   - Mỗi ứng dụng có cấu hình/build/deploy riêng và một domain/origin riêng trong production. Tên domain thực tế lấy từ cấu hình triển khai; backend chỉ cho phép hai origin được khai báo trong CORS allowlist.
   - Hai app không chia sẻ localStorage/cookie/session qua domain. Người dùng xác thực riêng trên từng origin; mọi endpoint vẫn xác minh JWT, vai trò và quyền sở hữu ở backend.
@@ -67,6 +70,6 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 | Ứng dụng | Vai trò | Phạm vi chính | Cổng phát triển |
 |:---|:---|:---|:---:|
 | `frontend_user/` | `USER` | Trang chủ/tra cứu, chi tiết sách, đăng ký mượn, hồ sơ độc giả, lịch sử mượn | `3001` |
-| `frontend_manage/` | `MANAGER`, `ADMIN` | Kho sách, NXB, duyệt mượn-trả, quản lý tài khoản và quyền Admin | `3002` |
+| `frontend_manage/` | `MANAGER`, `ADMIN` | Tra cứu sách, kho sách, NXB, duyệt mượn-trả, quản lý tài khoản và quyền Admin | `3002` |
 
 Backend API dùng chung ở cổng `3000`. Các trang đăng nhập/điều hướng phải dẫn tới đúng domain ứng dụng theo vai trò; không dùng route guard làm cơ chế bảo mật. Việc tách domain không thay thế RBAC backend.

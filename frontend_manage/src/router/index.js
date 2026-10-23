@@ -2,7 +2,9 @@ import { createRouter, createWebHistory } from "vue-router";
 import authService from "@/services/auth.service";
 
 const routes = [
-  { path: "/", redirect: "/manager/borrows" },
+  { path: "/", redirect: "/catalog" },
+  { path: "/catalog", name: "manager.catalog", component: () => import("@/views/ManagerCatalog.vue"), meta: { role: "staff" } },
+  { path: "/catalog/books/:id", name: "manager.catalog.book", component: () => import("@/views/ManagerBookDetail.vue"), meta: { role: "staff" } },
   { path: "/login", name: "login", component: () => import("@/views/StaffLoginView.vue") },
   { path: "/profile", name: "profile", component: () => import("@/views/ProfileView.vue"), meta: { role: "staff" } },
   { path: "/manager/borrows", name: "manager.borrows", component: () => import("@/views/ManagerBorrows.vue"), meta: { role: "staff" } },

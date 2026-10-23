@@ -1,5 +1,5 @@
 <script>
-  import AppHeader from './components/ManagerHeader.vue';
+  import AppHeader from './components/AppHeader.vue';
   import AppFooter from './components/AppFooter.vue';
 
   export default {

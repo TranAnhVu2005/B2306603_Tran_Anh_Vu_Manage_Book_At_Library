@@ -59,14 +59,14 @@
           >
             Thông Tin Liên Hệ
           </h6>
-          <p class="small text-muted mb-1" style="color: #a8a29e !important">
+          <p class="small text-muted mb-1 footer-contact" style="color: #a8a29e !important">
             <i class="fas fa-map-marker-alt me-2"></i> Khu II, Đường 3/2, P.
             Xuân Khánh, Q. Ninh Kiều, TP. Cần Thơ
           </p>
-          <p class="small text-muted mb-1" style="color: #a8a29e !important">
+          <p class="small text-muted mb-1 footer-contact" style="color: #a8a29e !important">
             <i class="fas fa-envelope me-2"></i> trananhvu314159@gmail.com
           </p>
-          <p class="small text-muted mb-0" style="color: #a8a29e !important">
+          <p class="small text-muted mb-0 footer-contact" style="color: #a8a29e !important">
             <i class="fas fa-phone-alt me-2"></i> 0359906510
           </p>
         </div>
@@ -87,3 +87,7 @@ export default {
   name: "AppFooter",
 };
 </script>
+
+<style scoped>
+.footer-contact { overflow-wrap: anywhere; }
+</style>

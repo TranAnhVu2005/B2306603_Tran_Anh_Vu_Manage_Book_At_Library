@@ -8,7 +8,9 @@
         <div class="text-truncate pe-2">
           <span class="fw-bold text-uppercase fw-bold banner-text-shadow d-inline-flex align-items-center"
             style="font-size: clamp(1.1rem, 2vw, 1.75rem); color: #cbe3d6; letter-spacing: 0.08em;">
-            <i class="fas fa-university me-2.5 text-success-emphasis"></i>Library Book Management System
+            <i class="fas fa-university me-2.5 text-success-emphasis"></i>
+            <span class="d-none d-sm-inline">Library Book Management System</span>
+            <span class="d-inline d-sm-none">Library</span>
           </span>
         </div>
       </div>
@@ -34,8 +36,7 @@
       <!-- Cột 2: Cụm điều hướng chính (Căn giữa thanh thoát) -->
       <nav class="d-none d-lg-flex align-items-center mx-auto" style="gap: 0.35rem;">
         <!-- Tra cứu sách -->
-        <router-link to="/" class="ath-nav-link text-nowrap d-inline-flex align-items-center"
-          active-class="active fw-semibold text-primary bg-light" exact>
+        <router-link to="/catalog" class="ath-nav-link text-nowrap d-inline-flex align-items-center">
           Tra cứu sách
         </router-link>
 
@@ -112,11 +113,11 @@
               <i v-else class="fas fa-user-circle me-2 text-secondary fs-5"></i>
               <span class="fw-bold text-truncate" style="max-width: 120px;">{{ authService.getDisplayName(user) ||
                 authService.getIdentifier(user) }}</span>
-              <span v-if="authService.getRole(user) === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1"
+              <span v-if="authService.getRole(user) === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1 d-none d-md-inline"
                 style="font-size: 0.65rem;">QUẢN TRỊ VIÊN</span>
-              <span v-else-if="authService.getRole(user) === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1"
+              <span v-else-if="authService.getRole(user) === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1 d-none d-md-inline"
                 style="font-size: 0.65rem;">THỦ THƯ</span>
-              <span v-else class="badge bg-light text-dark border ms-2 d-none d-sm-inline px-2 py-1"
+              <span v-else class="badge bg-light text-dark border ms-2 d-none d-md-inline px-2 py-1"
                 style="font-size: 0.65rem;">ĐỘC GIẢ</span>
             </button>
             <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 rounded-3 p-2 animate-fade"
@@ -161,18 +162,20 @@
         <template v-else>
           <router-link to="/login"
             class="me-lg-2 btn btn-outline-secondary text-decoration-none py-1.5 px-3 rounded-pill d-inline-flex align-items-center">
-            <i class="fas fa-sign-in-alt me-1.5"></i> Đăng nhập
+            <i class="fas fa-sign-in-alt me-1.5"></i>
+            <span class="d-none d-sm-inline">Đăng nhập nhân viên</span>
+            <span class="d-inline d-sm-none">Đăng nhập</span>
           </router-link>
-          <router-link to="/register"
+          <a :href="readerPortalUrl" target="_blank" rel="noopener noreferrer"
             class="btn btn-primary text-decoration-none py-1.5 px-3 rounded-pill d-none d-sm-inline-flex align-items-center shadow-sm">
-            <i class="fas fa-id-card me-1.5"></i> Đăng ký
-          </router-link>
+            <i class="fas fa-book-open me-1.5"></i> Cổng độc giả
+          </a>
         </template>
 
         <!-- Mobile Hamburger Button -->
         <button class="btn btn-outline-secondary d-lg-none py-1.5 px-2.5 rounded-2"
           style="border-color: var(--paper-border)" type="button" @click="isMobileNavOpen = !isMobileNavOpen"
-          aria-label="Toggle navigation">
+          aria-label="Toggle navigation" :aria-expanded="isMobileNavOpen" aria-controls="mobile-navigation">
           <i :class="isMobileNavOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
         </button>
       </div>
@@ -183,10 +186,11 @@
       style="z-index: 1025;" @click="isMobileNavOpen = false"></div>
 
     <!-- Mobile Navigation Drawer -->
-    <div v-if="isMobileNavOpen" class="d-lg-none border-top px-4 py-3 shadow-lg bg-white position-absolute w-100"
+    <div v-if="isMobileNavOpen" id="mobile-navigation"
+      class="d-lg-none border-top px-4 py-3 shadow-lg bg-white position-absolute w-100 mobile-navigation-drawer"
       style="z-index: 1030;">
       <div class="nav flex-column gap-1">
-        <router-link to="/" class="nav-link text-dark py-2.5 px-3 rounded-2" @click="isMobileNavOpen = false">
+        <router-link to="/catalog" class="nav-link text-dark py-2.5 px-3 rounded-2" @click="isMobileNavOpen = false">
           <i class="fas fa-search me-2 text-success"></i> Tra cứu sách
         </router-link>
 
@@ -224,11 +228,11 @@
         </template>
 
         <div v-if="!user" class="pt-3">
-          <router-link to="/register"
+          <a :href="readerPortalUrl" target="_blank" rel="noopener noreferrer"
             class="btn btn-primary w-100 py-2.5 text-decoration-none shadow-sm rounded-pill text-center d-block"
             @click="isMobileNavOpen = false">
-            <i class="fas fa-id-card me-1"></i> Đăng ký thẻ độc giả mới
-          </router-link>
+            <i class="fas fa-book-open me-1"></i> Mở cổng độc giả
+          </a>
         </div>
       </div>
     </div>
@@ -252,6 +256,9 @@ export default {
     };
   },
   computed: {
+    readerPortalUrl() {
+      return import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
+    },
     profileAvatarUrl() {
       if (this.avatarLoadError) return "";
       let path = this.user?.AnhDaiDien;
@@ -348,8 +355,8 @@ export default {
         this.isAdminMenuOpen = false;
       }
     },
-    handleLogout() {
-      authService.logout();
+    async handleLogout() {
+      await authService.logout();
       this.user = null;
       this.isMenuOpen = false;
       this.isManagerMenuOpen = false;
@@ -411,5 +418,16 @@ export default {
 .dropdown-item:hover {
   background-color: #f8fafc;
   color: #0f172a;
+}
+
+.mobile-navigation-drawer {
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 359.98px) {
+  .announcement-banner { padding-block: .8rem !important; }
+  .announcement-banner span { font-size: .9rem !important; letter-spacing: .035em !important; }
 }
 </style>

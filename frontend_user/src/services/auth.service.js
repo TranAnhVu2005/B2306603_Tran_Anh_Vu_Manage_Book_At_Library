@@ -26,7 +26,7 @@ class AuthService {
                 localStorage.setItem("token", response.data.token);
             }
             if (response.data.data) {
-                localStorage.setItem("user", JSON.stringify(response.data.data));
+                this.setUser(response.data.data);
             }
         }
         return response.data;
@@ -53,7 +53,7 @@ class AuthService {
                 localStorage.setItem("token", response.data.token);
             }
             if (response.data.data) {
-                localStorage.setItem("user", JSON.stringify(response.data.data));
+                this.setUser(response.data.data);
             }
         }
         return response.data;
@@ -70,6 +70,7 @@ class AuthService {
         } finally {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
+            window.dispatchEvent(new CustomEvent("auth-user-updated", { detail: null }));
         }
     }
 
@@ -137,15 +138,15 @@ class AuthService {
      * Kiểm tra người dùng có phải Nhân viên hoặc Admin không.
      */
     isStaffOrAdmin(user = this.getUser()) {
-        const role = this.getRole(user);
-        return role === "MANAGER" || role === "ADMIN";
+        // The manage portal authenticates employee records, not reader VaiTro values.
+        return Boolean(user?.ChucVu);
     }
 
     /**
      * Kiểm tra người dùng có phải Admin không.
      */
     isAdmin(user = this.getUser()) {
-        return this.getRole(user) === "ADMIN";
+        return user?.ChucVu === "ADMIN";
     }
 
     /**

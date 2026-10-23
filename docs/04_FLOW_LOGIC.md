@@ -72,12 +72,14 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Đăng ký mượn sách trực tuyến (tối đa 3 quyển).
    - Theo dõi lịch sử mượn trả, hạn trả và tình trạng vi phạm cá nhân.
 2. **Thủ thư (`MANAGER`)**:
-   - Kế thừa toàn bộ quyền của Độc giả.
+   - Có thể truy cập các chức năng công khai của cổng Độc giả (tra cứu sách/NXB); cổng quản lý có liên kết mở cổng Độc giả.
+   - Có toàn bộ chức năng nghiệp vụ thủ thư. Tài khoản nhân viên và tài khoản độc giả là hai hồ sơ/phiên độc lập; các thao tác gắn với thẻ độc giả (đăng ký mượn, hồ sơ, lịch sử cá nhân) chỉ khả dụng khi đăng nhập bằng tài khoản độc giả tương ứng. Chưa có cơ chế liên kết hai hồ sơ.
    - Quản lý kho sách (Thêm, Sửa, Xóa, kiểm kê số lượng).
    - Quản lý danh mục Nhà xuất bản.
    - Xử lý quy trình mượn - trả: Phê duyệt đơn mượn (trừ kho), xác nhận trả (cộng kho), từ chối mượn, báo mất sách.
 3. **Quản trị viên tối cao (`ADMIN`)**:
-   - Kế thừa toàn bộ quyền hạn nghiệp vụ của Thủ thư.
+   - Kế thừa toàn bộ chức năng nghiệp vụ của Thủ thư và có thể truy cập các chức năng công khai của cổng Độc giả.
+   - Tài khoản quản trị vẫn tách khỏi tài khoản độc giả; thao tác hồ sơ/mượn cá nhân cần đăng nhập phiên độc giả riêng nếu có.
    - Quản lý danh sách toàn bộ tài khoản người dùng và nhân viên.
    - Đặc quyền phân quyền: Thăng cấp Độc giả lên Thủ thư (`VaiTro: MANAGER`) hoặc hạ cấp Thủ thư về lại Độc giả (`VaiTro: USER`).
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
@@ -89,7 +91,8 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 | Chức năng | Khách | USER | MANAGER | ADMIN |
 |:---|:---:|:---:|:---:|:---:|
 | Tra cứu sách/NXB công khai | ✓ | ✓ | ✓ | ✓ |
-| Đăng ký mượn, xem/cập nhật hồ sơ của chính mình | — | ✓ | — | — |
+| Tìm kiếm sách/NXB từ cổng quản lý (liên kết sang cổng độc giả) | — | ✓ | ✓ | ✓ |
+| Đăng ký mượn, xem/cập nhật hồ sơ độc giả của chính mình | — | ✓ | —* | —* |
 | Tạo phiếu cho độc giả, đọc danh sách độc giả/phiếu phục vụ nghiệp vụ | — | — | ✓ | ✓ |
 | Thêm/sửa/xóa sách và NXB | — | — | ✓ | ✓ |
 | Duyệt/từ chối/trả/báo mất phiếu | — | — | ✓ | ✓ |
@@ -97,6 +100,8 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 | Cập nhật hồ sơ nhân viên của chính mình | — | — | ✓ | ✓ |
 
 Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở server; vai trò hoặc mã nhân viên gửi từ trình duyệt không được dùng làm nguồn thẩm quyền. Các route guard frontend chỉ hỗ trợ điều hướng.
+
+`—*` áp dụng cho phiên nhân viên: MANAGER/ADMIN hiện đăng nhập bằng hồ sơ `nhanvien`, không có `MaDocGia` và không dùng phiên `docgia`. Muốn thực hiện nghiệp vụ cá nhân của độc giả phải đăng nhập tài khoản độc giả riêng trên domain cổng độc giả. Không cấp quyền giả lập hồ sơ độc giả từ quyền nhân viên.
 
 ## 6. Nguyên tắc bảo mật ứng dụng
 
@@ -110,6 +115,6 @@ Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở s
 ## 7. Luồng truy cập hai frontend/domain
 
 - Độc giả truy cập `frontend_user/` (local `http://localhost:3001`, production domain riêng) để tra cứu sách, đăng ký mượn và quản lý hồ sơ cá nhân.
-- Thủ thư/Admin truy cập `frontend_manage/` (local `http://localhost:3002`, production domain riêng) để thực hiện nghiệp vụ quản lý. Route Admin chỉ dành `ADMIN`; route thủ thư dành `MANAGER` và `ADMIN`.
+- Thủ thư/Admin truy cập `frontend_manage/` (local `http://localhost:3002`, production domain riêng) để thực hiện nghiệp vụ quản lý. MANAGER có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư cộng quản trị. Cổng quản lý cung cấp liên kết sang cổng độc giả để dùng chức năng công khai hoặc đăng nhập phiên độc giả riêng.
 - Cả hai ứng dụng gọi chung Backend API tại cổng `3000` khi phát triển; CORS production chỉ cho phép hai origin được cấu hình. Khi đăng nhập, frontend điều hướng tới đúng cổng/domain theo vai trò.
 - Mỗi domain có browser storage riêng; không phụ thuộc vào chia sẻ localStorage/cookie giữa hai app. Nếu token không tồn tại ở app đích, yêu cầu đăng nhập lại tại app đó. Backend luôn xác thực token và quyền, bất kể request đến từ domain nào.

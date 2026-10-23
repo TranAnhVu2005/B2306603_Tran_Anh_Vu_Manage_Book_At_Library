@@ -8,7 +8,9 @@
         <div class="text-truncate pe-2">
           <span class="fw-bold text-uppercase fw-bold banner-text-shadow d-inline-flex align-items-center"
             style="font-size: clamp(1.1rem, 2vw, 1.75rem); color: #cbe3d6; letter-spacing: 0.08em;">
-            <i class="fas fa-university me-2.5 text-success-emphasis"></i>Library Book Management System
+            <i class="fas fa-university me-2.5 text-success-emphasis"></i>
+            <span class="d-none d-sm-inline">Library Book Management System</span>
+            <span class="d-inline d-sm-none">Library</span>
           </span>
         </div>
       </div>
@@ -112,11 +114,11 @@
               <i v-else class="fas fa-user-circle me-2 text-secondary fs-5"></i>
               <span class="fw-bold text-truncate" style="max-width: 120px;">{{ authService.getDisplayName(user) ||
                 authService.getIdentifier(user) }}</span>
-              <span v-if="authService.getRole(user) === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1"
+              <span v-if="authService.getRole(user) === 'ADMIN'" class="badge bg-danger ms-2 px-2 py-1 d-none d-md-inline"
                 style="font-size: 0.65rem;">QUẢN TRỊ VIÊN</span>
-              <span v-else-if="authService.getRole(user) === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1"
+              <span v-else-if="authService.getRole(user) === 'MANAGER'" class="badge bg-success ms-2 px-2 py-1 d-none d-md-inline"
                 style="font-size: 0.65rem;">THỦ THƯ</span>
-              <span v-else class="badge bg-light text-dark border ms-2 d-none d-sm-inline px-2 py-1"
+              <span v-else class="badge bg-light text-dark border ms-2 d-none d-md-inline px-2 py-1"
                 style="font-size: 0.65rem;">ĐỘC GIẢ</span>
             </button>
             <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 rounded-3 p-2 animate-fade"
@@ -172,7 +174,7 @@
         <!-- Mobile Hamburger Button -->
         <button class="btn btn-outline-secondary d-lg-none py-1.5 px-2.5 rounded-2"
           style="border-color: var(--paper-border)" type="button" @click="isMobileNavOpen = !isMobileNavOpen"
-          aria-label="Toggle navigation">
+          aria-label="Toggle navigation" :aria-expanded="isMobileNavOpen" aria-controls="mobile-navigation">
           <i :class="isMobileNavOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
         </button>
       </div>
@@ -183,7 +185,8 @@
       style="z-index: 1025;" @click="isMobileNavOpen = false"></div>
 
     <!-- Mobile Navigation Drawer -->
-    <div v-if="isMobileNavOpen" class="d-lg-none border-top px-4 py-3 shadow-lg bg-white position-absolute w-100"
+    <div v-if="isMobileNavOpen" id="mobile-navigation"
+      class="d-lg-none border-top px-4 py-3 shadow-lg bg-white position-absolute w-100 mobile-navigation-drawer"
       style="z-index: 1030;">
       <div class="nav flex-column gap-1">
         <router-link to="/" class="nav-link text-dark py-2.5 px-3 rounded-2" @click="isMobileNavOpen = false">
@@ -411,5 +414,16 @@ export default {
 .dropdown-item:hover {
   background-color: #f8fafc;
   color: #0f172a;
+}
+
+.mobile-navigation-drawer {
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 359.98px) {
+  .announcement-banner { padding-block: .8rem !important; }
+  .announcement-banner span { font-size: .9rem !important; letter-spacing: .035em !important; }
 }
 </style>

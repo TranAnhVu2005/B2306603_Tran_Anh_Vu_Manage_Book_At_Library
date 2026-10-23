@@ -43,7 +43,7 @@ export default {
       try {
         const response = await authService.login(this.identifier, this.password);
         if (!authService.isStaffOrAdmin(response?.data)) {
-          authService.logout();
+          await authService.logout();
           this.password = "";
           this.$refs.toast.show("Tài khoản này không có quyền truy cập cổng nhân viên.", "error");
           return;

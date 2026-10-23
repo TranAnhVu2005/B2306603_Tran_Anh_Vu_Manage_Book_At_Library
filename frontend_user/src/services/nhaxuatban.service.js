@@ -6,11 +6,11 @@ class NhaXuatBanService {
     }
 
     async getAll(params = {}) {
-        return (await this.api.get("/", { params })).data;
+        return (await this.api.get("/", { params, skipAuth: true })).data;
     }
 
     async get(id) {
-        return (await this.api.get(`/${id}`)).data;
+        return (await this.api.get(`/${id}`, { skipAuth: true })).data;
     }
 
     async create(data) {

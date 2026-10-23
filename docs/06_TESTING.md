@@ -95,7 +95,13 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc 
 |:---:|:---|:---|
 | UI-12 | Khởi động `frontend_user/` và `frontend_manage/` đồng thời | User bind `localhost:3001`, Manage bind `localhost:3002`, không xung đột cổng; cả hai proxy API tới `localhost:3000` |
 | UI-13 | Mở `frontend_user/` và kiểm tra menu/router | Chỉ có giao diện/route độc giả; không hiển thị màn hình/quyền quản lý hoặc Admin |
-| UI-14 | Mở `frontend_manage/` bằng tài khoản USER/MANAGER/ADMIN | USER bị từ chối; MANAGER chỉ vào chức năng quản lý; ADMIN vào được quản trị; API cũng trả 401/403 tương ứng |
-| UI-15 | Điều hướng qua lại giữa hai ứng dụng | Dùng domain gốc theo cấu hình; không giả định localStorage dùng chung; app đích yêu cầu đăng nhập nếu không có phiên riêng |
+| UI-14 | Mở `frontend_manage/` bằng tài khoản USER/MANAGER/ADMIN | USER bị từ chối; MANAGER có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư và chức năng Admin; API cũng trả 401/403 tương ứng |
+| UI-15 | Điều hướng qua lại giữa hai ứng dụng | Dùng domain gốc theo cấu hình; không giả định localStorage dùng chung; cổng quản lý có liên kết cổng độc giả; app đích yêu cầu đăng nhập nếu không có phiên riêng |
 | UI-16 | Gọi API từ hai origin local và hai origin production đã cấu hình | CORS cho phép origin đã allowlist và chặn origin không khai báo; RBAC backend giữ nguyên dù đổi origin |
 | UI-17 | Build/deploy từng frontend độc lập | Mỗi app build từ thư mục/package riêng và nhận API URL/domain từ env phù hợp; không cần build chung một artifact |
+| UI-18 | Kiểm tra header sau đăng nhập nhân viên và tải lại `/manager/borrows` | Header hiển thị tên + nhãn Thủ thư/Quản trị viên, menu đúng quyền, nút Đăng xuất; không còn CTA “Đăng nhập nhân viên” khi phiên hợp lệ; nếu `/me` thất bại thì không làm sai lệch quyền backend |
+| UI-19 | Dùng ADMIN mở từng route nghiệp vụ và route Admin | ADMIN truy cập được `/manager/*` và `/admin/users`; MANAGER không vào `/admin/users`; menu phản ánh cùng ma trận |
+| UI-20 | Tra cứu danh mục và chi tiết sách từ cổng quản lý | `/catalog` và `/catalog/books/:id` chạy cùng origin `frontend_manage`; tìm theo tên/tác giả/mã không dấu, lọc NXB/tồn kho, xem chi tiết, refresh; không có nút đăng ký mượn |
+| UI-21 | Điều hướng `Cổng độc giả` từ cổng quản lý | Link dùng `VITE_USER_APP_URL`; thao tác hồ sơ/mượn yêu cầu phiên độc giả riêng vì localStorage không chia sẻ; trang nhân viên ở tab hiện tại giữ phiên |
+| UI-21 | So sánh Header/Footer hai cổng | Banner, logo, màu, kiểu menu tài khoản, footer và nhịp bố cục đồng nhất với thiết kế cổng độc giả; chỉ khác link/nhãn theo quyền |
+| UI-22 | Kiểm tra responsive hai cổng tại 320, 375, 768, 1024, 1440px | Không tràn ngang toàn trang; header dùng menu mobile, footer xếp cột; form/nút xuống dòng; bảng chỉ cuộn trong wrapper; dialog vừa viewport |
