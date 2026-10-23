@@ -4,6 +4,28 @@
 * **Format**: JSON (`Content-Type: application/json`)
 * **Kiến trúc**: Phân lớp chuẩn mực (Routes -> Controllers -> Services -> MongoDB Native Driver).
 
+## Origin và kết nối hai frontend
+
+- Backend API phát triển tại `http://localhost:3000/api`.
+- `frontend_user/` chạy mặc định tại `http://localhost:3001`; `frontend_manage/` chạy mặc định tại `http://localhost:3002`. Mỗi Vite server proxy `/api` về backend `3000`.
+- Production dùng hai domain/origin riêng được lấy từ cấu hình môi trường; không hardcode host vào service. CORS backend allowlist chỉ các origin đã cấu hình. Nếu cần credentials, chỉ bật cho origin cụ thể và triển khai chính sách CSRF tương ứng.
+- JWT Bearer/localStorage là độc lập trên mỗi origin. Điều hướng giữa cổng User và Manage phải mở app/domain tương ứng; không thiết kế API dựa trên việc một app đọc storage của app kia.
+- Domain không phải ranh giới phân quyền: mọi endpoint đặc quyền vẫn phải xác thực JWT và áp dụng RBAC/kiểm tra quyền sở hữu ở server.
+
+## Yêu cầu bảo mật áp dụng cho mọi endpoint
+
+- **RBAC theo chức năng**: Mỗi endpoint ghi rõ quyền `public`, `USER`, `MANAGER` hoặc `ADMIN`; backend xác thực JWT và kiểm tra vai trò/quyền sở hữu ngay tại route/controller. Không xem Vue Router guard là biện pháp phân quyền. Endpoint thao tác dữ liệu phải dùng whitelist trường và kiểm tra trạng thái hiện tại trước khi cập nhật.
+- **Xác thực input và NoSQL injection**: Chỉ nhận JSON với schema, kiểu và giới hạn kích thước rõ ràng; không gán trực tiếp `req.body` vào MongoDB query/update, không nhận toán tử MongoDB do client gửi, không tạo query bằng nối chuỗi. Dùng MongoDB Native Driver có cấu trúc. SQL injection không áp dụng trực tiếp vì dự án không dùng SQL; cần giữ quy tắc tương đương nếu bổ sung SQL sau này.
+- **XSS**: Trả dữ liệu theo JSON, không phản chiếu HTML không tin cậy; dữ liệu UI phải được render/encode theo ngữ cảnh, HTML rich text (nếu có) phải sanitize allowlist. Cấu hình CSP và security headers ở backend.
+- **CSRF/XSRF**: Với JWT truyền trong `Authorization` header và không dùng cookie xác thực, trình duyệt không tự gắn token nên CSRF cổ điển được giảm thiểu; bảo vệ XSS vẫn bắt buộc. Nếu dùng cookie, bật `HttpOnly`, `Secure`, `SameSite`, CSRF token cho request thay đổi trạng thái và kiểm tra `Origin`/`Referer`.
+- **Broken authentication/session**: Bcrypt; phản hồi lỗi đăng nhập chung; rate limit đăng nhập/đăng ký/Google auth (bộ đếm hiện giữ trong bộ nhớ tiến trình); JWT dùng secret từ env, thuật toán allowlist, hạn dùng và xác minh claim. Hiện có thu hồi token khi logout; thu hồi khi đổi mật khẩu/khóa tài khoản và khoá phiên phân tán nhiều instance vẫn cần hoàn thiện. Không log thông tin xác thực; HTTPS bắt buộc ở triển khai.
+- **XXE**: API hiện không có nhu cầu nhận XML. Từ chối XML nếu không được hỗ trợ; nếu bổ sung parser XML phải tắt DTD, external entities, XInclude và truy cập file/network bên ngoài, giới hạn kích thước/độ sâu.
+- **SSRF**: Backend hiện không có tính năng fetch URL do client cung cấp; ảnh sách/avatar được upload vào storage cục bộ, Google auth xác minh token qua thư viện cấu hình sẵn. Nếu bổ sung outbound request (bao gồm MoMo tương lai), phải allowlist host/protocol, kiểm tra IP sau DNS resolution, chặn loopback/private/link-local/metadata, giới hạn redirect/timeout/response size.
+- **CORS, headers, lỗi và vận hành**: CORS allowlist theo môi trường, body size limit, HTTPS, security headers/CSP, lỗi production không lộ stack/secret, secrets trong biến môi trường; audit các thao tác nhạy cảm mà không ghi token/mật khẩu.
+- **Upload**: MIME/đuôi file không đủ để xác minh; kiểm tra chữ ký file và allowlist định dạng, random filename, giới hạn dung lượng, không thực thi file upload và không chấp nhận SVG/HTML chưa sanitize.
+
+Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ thống đã đáp ứng. Mọi thay đổi cần cập nhật API/testing docs và kiểm thử cả trường hợp được phép lẫn bị từ chối.
+
 ## Quy Ước Dữ Liệu Response
 
 - Dữ liệu của 5 collection chỉ trả các trường được định nghĩa trong sơ đồ CDM của báo cáo; không thêm alias, tên trường tự đặt hoặc metadata ngoài sơ đồ.
@@ -149,7 +171,9 @@
 
 ---
 
-## 6. Phân Hệ Thanh Toán Trực Tuyến MoMo (`/api/payment`)
+## 6. Thanh toán trực tuyến MoMo (đặc tả tương lai, chưa triển khai)
+
+Các route dưới đây là yêu cầu nghiệp vụ dự kiến; hiện backend không mount `/api/payment` và chưa có service/controller MoMo. Không gọi đây là API hoạt động cho tới khi triển khai.
 
 ### 📌 `POST /api/payment/momo/create` (Khởi tạo phiên thanh toán bồi thường)
 * **Request Body**: `{ "borrowId": "670...", "amount": 85000, "orderInfo": "Bồi hoàn mất sách" }`

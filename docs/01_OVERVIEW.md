@@ -14,8 +14,8 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Số hóa toàn diện**: Thay thế sổ sách thủ công bằng nền tảng ứng dụng web tập trung với ngăn xếp công nghệ MEVN Stack (MongoDB, Express.js 5, Vue.js 3, Node.js).
 - **Kiểm soát kho tồn theo thời gian thực**: Trừ kho tức thì khi duyệt mượn sách, cộng hoàn kho khi độc giả hoàn trả đúng hạn.
 - **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; đưa thẻ vào `DanhSachDen` khi vi phạm đạt 3 lần.
-- **Bảo mật và an toàn dữ liệu**: Mật khẩu độc giả và nhân viên được mã hóa an toàn bằng thuật toán Bcrypt.
-- **Khả năng mở rộng**: Tích hợp module thanh toán trực tuyến tiền bồi hoàn sách mất qua MoMo và đăng nhập nhanh bằng tài khoản Google OAuth 2.0.
+- **Bảo mật và an toàn dữ liệu**: Bảo vệ mật khẩu bằng Bcrypt; kiểm soát quyền theo chức năng ở backend; xác thực và quản lý phiên; kiểm tra dữ liệu chống NoSQL injection; giảm thiểu XSS, CSRF/XSRF, XXE và SSRF phù hợp với kiến trúc MongoDB/JSON hiện tại. Các biện pháp này là yêu cầu cần triển khai và xác minh, không được xem là hoàn tất chỉ từ mô tả tài liệu.
+- **Tích hợp**: Đăng nhập Google OAuth 2.0 đã có trong mã nguồn. Thanh toán MoMo là yêu cầu tài liệu/định hướng còn chờ triển khai; hiện chưa có payment route/service trong backend.
 - **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (MANAGER)**, và **Quản trị viên hệ thống (ADMIN)**.
 
 ---
@@ -54,5 +54,19 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 ## 3. Kiến Trúc Kỹ Thuật (MEVN Stack)
 
 - **Backend**: Node.js v22+, Express.js (v5), MongoDB Native Driver v6+, BcryptJS, Dotenv.
-- **Frontend**: Vue 3, Vite, Vue Router 4, Axios, Bootstrap 4.6.2, FontAwesome 6 Free.
-- **Thẩm mỹ UI**: Phong cách thiết kế học thuật cổ điển **Athenaeum Editorial** (Newsreader, Work Sans, JetBrains Mono, Soft Structuralism, Micro-motions).
+- **Frontend**: Hai ứng dụng Vue 3/Vite riêng, cùng gọi Backend API:
+  - `frontend_user/`: cổng Độc giả (`USER`), là thư mục đổi tên từ frontend cũ; chỉ chứa luồng và giao diện dành cho độc giả.
+  - `frontend_manage/`: cổng Thủ thư (`MANAGER`) và Quản trị viên (`ADMIN`), chứa màn hình quản lý nghiệp vụ và quản trị.
+  - Môi trường phát triển: Backend API `http://localhost:3000`, `frontend_user` tại `http://localhost:3001`, `frontend_manage` tại `http://localhost:3002`; mỗi app proxy `/api` đến Backend.
+  - Mỗi ứng dụng có cấu hình/build/deploy riêng và một domain/origin riêng trong production. Tên domain thực tế lấy từ cấu hình triển khai; backend chỉ cho phép hai origin được khai báo trong CORS allowlist.
+  - Hai app không chia sẻ localStorage/cookie/session qua domain. Người dùng xác thực riêng trên từng origin; mọi endpoint vẫn xác minh JWT, vai trò và quyền sở hữu ở backend.
+- **Thẩm mỹ UI**: Phong cách thiết kế học thuật cổ điển **Athenaeum Editorial**, dùng `Be Vietnam Pro` làm font sans-serif chính toàn website; monospace có thể giữ cho mã/định danh. Đổi font không yêu cầu thay bố cục Header, Footer, LoginView hoặc RegisterView.
+
+### 3.1. Phân định phạm vi hai frontend
+
+| Ứng dụng | Vai trò | Phạm vi chính | Cổng phát triển |
+|:---|:---|:---|:---:|
+| `frontend_user/` | `USER` | Trang chủ/tra cứu, chi tiết sách, đăng ký mượn, hồ sơ độc giả, lịch sử mượn | `3001` |
+| `frontend_manage/` | `MANAGER`, `ADMIN` | Kho sách, NXB, duyệt mượn-trả, quản lý tài khoản và quyền Admin | `3002` |
+
+Backend API dùng chung ở cổng `3000`. Các trang đăng nhập/điều hướng phải dẫn tới đúng domain ứng dụng theo vai trò; không dùng route guard làm cơ chế bảo mật. Việc tách domain không thay thế RBAC backend.

@@ -1,0 +1,48 @@
+import createApiClient from "./api.service";
+
+class DocGiaService {
+    constructor(baseUrl = "/api/docgia") {
+        this.api = createApiClient(baseUrl);
+    }
+
+    async getAll(params = {}) {
+        return (await this.api.get("/", { params })).data;
+    }
+
+    async get(id) {
+        return (await this.api.get(`/${id}`)).data;
+    }
+
+    async create(data) {
+        return (await this.api.post("/", data)).data;
+    }
+
+    async update(id, data) {
+        const isFormData = data instanceof FormData;
+        return (await this.api.put(`/${id}`, data, {
+            headers: isFormData ? { "Content-Type": "multipart/form-data" } : {}
+        })).data;
+    }
+
+    async updateRole(id, role) {
+        return (await this.api.put(`/${id}/role`, { role })).data;
+    }
+
+    async lock(id) {
+        return (await this.api.put(`/${id}/lock`)).data;
+    }
+
+    async unblock(id) {
+        return (await this.api.put(`/${id}/unblock`)).data;
+    }
+
+    async reinstate(id) {
+        return (await this.api.put(`/${id}/reinstate`)).data;
+    }
+
+    async delete(id) {
+        return (await this.api.delete(`/${id}`)).data;
+    }
+}
+
+export default new DocGiaService();

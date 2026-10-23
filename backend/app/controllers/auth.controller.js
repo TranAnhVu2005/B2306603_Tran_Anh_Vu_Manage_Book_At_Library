@@ -4,6 +4,7 @@ const googleAuthService = require("../services/google-auth.service");
 const JwtUtil = require("../utils/jwt.util");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
+const TokenRevocation = require("../utils/token-revocation.util");
 
 /**
  * POST /api/auth/login    - Đăng nhập => trả JWT
@@ -178,8 +179,6 @@ class AuthController {
                 const nhanVienService = new NhanVienService(MongoDB.client);
                 const staff = await nhanVienService.findById(id);
                 if (!staff) return next(new ApiError(404, "Không tìm thấy tài khoản nhân viên."));
-                const vaiTro = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
-
                 userData = {
                     _id: String(staff._id),
                     MSNV: staff.MSNV,
@@ -188,7 +187,6 @@ class AuthController {
                     SoDienThoai: staff.SoDienThoai,
                     DiaChi: staff.DiaChi,
                     AnhDaiDien: staff.AnhDaiDien,
-                    VaiTro: vaiTro,
                 };
             } else {
                 const docGiaService = new DocGiaService(MongoDB.client);
@@ -214,6 +212,15 @@ class AuthController {
             return res.json({ data: userData });
         } catch (error) {
             return next(new ApiError(500, "Không thể lấy thông tin người dùng."));
+        }
+    }
+
+    async logout(req, res, next) {
+        try {
+            await TokenRevocation.revoke(req.authToken, req.user.exp);
+            return res.json({ message: "Đăng xuất thành công." });
+        } catch (error) {
+            return next(new ApiError(500, "Không thể thu hồi phiên đăng nhập."));
         }
     }
 }

@@ -58,9 +58,9 @@ stateDiagram-v2
    - **Không cộng hoàn trả kho** `SoQuyen` (sách bị mất thật sự).
    - Tự động gán tiền bồi hoàn: `GiaTriBoiThuong = Sach.DonGia`.
    - Tăng số lần vi phạm của độc giả lên 1: `SoLanViPham = SoLanViPham + 1`. Nếu đạt 3 lần, thẻ độc giả bị đưa vào `DanhSachDen`.
-2. **Tích hợp thanh toán bồi hoàn qua MoMo**:
-   - Hệ thống hỗ trợ tạo đường dẫn thanh toán MoMo QR Code / App Deeplink để độc giả thanh toán trực tuyến tiền bồi thường.
-   - Khi máy chủ MoMo gọi Webhook IPN, hệ thống tự động cập nhật trạng thái đã nộp phạt bồi hoàn.
+2. **Thanh toán bồi hoàn qua MoMo (chưa triển khai)**:
+   - Tài liệu nghiệp vụ dự kiến tạo đường dẫn MoMo QR Code / App Deeplink và xác thực Webhook IPN.
+   - Backend hiện chưa có payment route/service/controller; không hiển thị đây là luồng đã hoạt động cho tới khi được triển khai và kiểm thử.
 
 ---
 
@@ -83,3 +83,33 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
    - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); giữ nguyên `SoLanViPham` để bảo toàn lịch sử. Vi phạm mới tiếp tục cộng dồn và sẽ áp dụng lại chế tài khi đạt ngưỡng.
    - Quyền xóa tài khoản vi phạm vĩnh viễn khỏi CSDL.
+
+### Ma trận quyền theo chức năng (thực thi bắt buộc tại Backend)
+
+| Chức năng | Khách | USER | MANAGER | ADMIN |
+|:---|:---:|:---:|:---:|:---:|
+| Tra cứu sách/NXB công khai | ✓ | ✓ | ✓ | ✓ |
+| Đăng ký mượn, xem/cập nhật hồ sơ của chính mình | — | ✓ | — | — |
+| Tạo phiếu cho độc giả, đọc danh sách độc giả/phiếu phục vụ nghiệp vụ | — | — | ✓ | ✓ |
+| Thêm/sửa/xóa sách và NXB | — | — | ✓ | ✓ |
+| Duyệt/từ chối/trả/báo mất phiếu | — | — | ✓ | ✓ |
+| Thăng/hạ quyền, khóa/mở khóa, xét gỡ danh sách đen, xóa tài khoản | — | — | — | ✓ |
+| Cập nhật hồ sơ nhân viên của chính mình | — | — | ✓ | ✓ |
+
+Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở server; vai trò hoặc mã nhân viên gửi từ trình duyệt không được dùng làm nguồn thẩm quyền. Các route guard frontend chỉ hỗ trợ điều hướng.
+
+## 6. Nguyên tắc bảo mật ứng dụng
+
+- Dự án dùng MongoDB Native Driver, vì vậy kiểm soát injection tập trung vào NoSQL injection: input theo schema, allowlist trường, truy vấn có cấu trúc, từ chối toán tử `$`/object không mong đợi; SQLi chỉ phát sinh nếu sau này thêm cơ sở dữ liệu SQL.
+- Đối với XSS, chỉ render dữ liệu người dùng như text; không render HTML chưa sanitize. Áp dụng CSP/security headers.
+- Xác thực hiện dùng JWT Bearer. Không dùng cookie thì CSRF cổ điển được giảm thiểu do token không tự gửi; nếu chuyển token sang cookie phải bổ sung SameSite/Secure/HttpOnly, CSRF token và kiểm tra Origin.
+- Bảo vệ đăng nhập bằng bcrypt, lỗi chung, rate limiting, JWT có hạn dùng và khả năng thu hồi khi logout/đổi mật khẩu/khóa tài khoản; không ghi thông tin bí mật vào log.
+- API không xử lý XML: không bật parser XML. Nếu có chức năng XML mới, phải tắt DTD/external entities/XInclude và chặn truy cập file/mạng.
+- Không fetch URL tùy ý từ client. Tích hợp outbound chỉ dùng host allowlist và chống truy cập loopback/private/link-local/metadata để ngăn SSRF.
+
+## 7. Luồng truy cập hai frontend/domain
+
+- Độc giả truy cập `frontend_user/` (local `http://localhost:3001`, production domain riêng) để tra cứu sách, đăng ký mượn và quản lý hồ sơ cá nhân.
+- Thủ thư/Admin truy cập `frontend_manage/` (local `http://localhost:3002`, production domain riêng) để thực hiện nghiệp vụ quản lý. Route Admin chỉ dành `ADMIN`; route thủ thư dành `MANAGER` và `ADMIN`.
+- Cả hai ứng dụng gọi chung Backend API tại cổng `3000` khi phát triển; CORS production chỉ cho phép hai origin được cấu hình. Khi đăng nhập, frontend điều hướng tới đúng cổng/domain theo vai trò.
+- Mỗi domain có browser storage riêng; không phụ thuộc vào chia sẻ localStorage/cookie giữa hai app. Nếu token không tồn tại ở app đích, yêu cầu đăng nhập lại tại app đó. Backend luôn xác thực token và quyền, bất kể request đến từ domain nào.

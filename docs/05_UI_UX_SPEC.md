@@ -6,15 +6,30 @@ Dự án áp dụng **Skill thiết kế Vanguard UI/UX Architect (Awwwards-Tier
 
 Frontend sử dụng đúng tên trường CDM từ API (`VaiTro`, `ChucVu`, `TENNXB`, `GiaTriBoiThuong`, ...). Các phiếu mượn chỉ chứa `MaDocGia` và `MaSach`; màn hình cần tên hoặc thông tin tham chiếu phải tra cứu collection độc giả/sách ở phía frontend, không kỳ vọng API trả object lồng ghép.
 
+## 0. Phân tách ứng dụng và domain
+
+Frontend là hai ứng dụng Vue/Vite độc lập, dùng chung Backend API nhưng có domain/origin riêng:
+
+| App | Vai trò và màn hình | Local dev |
+|:---|:---|:---:|
+| `frontend_user/` | Độc giả (`USER`): trang chủ, tra cứu/chi tiết sách, đăng ký mượn, hồ sơ cá nhân và lịch sử | `http://localhost:3001` |
+| `frontend_manage/` | Thủ thư (`MANAGER`) và Admin (`ADMIN`): quản lý kho/NXB, mượn-trả, quản trị tài khoản | `http://localhost:3002` |
+
+Backend chạy tại `http://localhost:3000`; mỗi app proxy `/api` về backend. Production domain được cấu hình riêng theo môi trường, không hardcode; API CORS allowlist chỉ nhận các origin của hai app. Các trang sau đăng nhập điều hướng tới domain đúng vai trò. Vì localStorage không dùng chung giữa các origin, người dùng phải đăng nhập riêng trên từng app; không giả định frontend có thể đọc token ở origin còn lại. Backend vẫn là nơi duy nhất thực thi vai trò và quyền sở hữu.
+
+Ứng dụng cũ đã được đổi tên thành `frontend_user/`. Ứng dụng này chỉ giữ các trang độc giả; các màn hình quản trị nằm trong `frontend_manage/`. Mỗi app có cấu hình Vite, package và build độc lập.
+
 ---
 
 ## 1. Quy Chuẩn Thiết Kế Áp Dụng (Design System)
 
 Tham chiếu đầy đủ tại: `.agents/skills/high-end-visual-design/SKILL.md`
 
-### 1.1. Tóm tắt Hệ Thống Màu & Kiểu chữ (Áp dụng cho phần còn lại của dự án)
+### 1.1. Tóm tắt Hệ Thống Màu & Kiểu chữ (Áp dụng toàn website)
 - **Vibe & Texture Archetype**: Agent tự chọn 1 trong 3 archetype (Ethereal Glass / Editorial Luxury / Soft Structuralism) phù hợp với ngữ cảnh từng màn hình, đảm bảo tính nhất quán xuyên suốt ứng dụng.
-- **Fonts được phép**: `Geist`, `Clash Display`, `PP Editorial New`, `Plus Jakarta Sans` (tuyệt đối không dùng Inter, Roboto, Arial, Open Sans, Helvetica).
+- **Font chính thức**: `Be Vietnam Pro` là sans-serif chính và font mặc định trên toàn website, bao gồm Header, Footer, LoginView và RegisterView. Thay thế các font sans-serif đang dùng; giữ monospace cho mã/định danh nếu cần và có fallback sans-serif hệ thống.
+- **Nạp font**: Dùng một nguồn khai báo thống nhất, chỉ tải các weight cần thiết và fallback tốt nếu font ngoài không tải được. Tránh khai báo lặp ở `index.html` và stylesheet.
+- **Ưu tiên yêu cầu**: Quy định Be Vietnam Pro này thay thế danh sách font cũ trong tài liệu/skill khi có xung đột. Với Header, Footer, LoginView, RegisterView chỉ đổi font/typography; giữ nguyên bố cục và thiết kế tùy chỉnh.
 - **Icons**: Chỉ dùng ultra-light, precise-line icons (Phosphor Light, Remix Line). Nghiêm cấm FontAwesome thick-stroke.
 - **Spacing**: Section padding tối thiểu `py-24`, cho phép design thở nặng.
 - **Borders & Shadows**: Không dùng `1px solid gray` thông thường, không dùng `rgba(0,0,0,0.3)` drop-shadow. Dùng hairline ring hoặc ambient glow.
@@ -107,3 +122,20 @@ Các component cần xây dựng/cập nhật theo skill mới:
 4. **`ManagerSidebar.vue`** (nếu chưa có): Sidebar quản lý dùng Double-Bezel panel, nav items có hover animation với custom cubic-bezier.
 5. **Bảng dữ liệu (Tables)**: Dùng thiết kế thoáng, hairline borders (`border-white/10` hoặc `border-black/5`), row hover animation nhẹ.
 6. **Form inputs**: Kiểu floating label hoặc pill input với ring hairline, focus state dùng glow thay vì outline mặc định.
+
+---
+
+## 4. Yêu cầu bảo mật giao diện
+
+- Nội dung từ API/người dùng phải được Vue render như text; không dùng `v-html` với dữ liệu không tin cậy. Nếu có nội dung HTML, chỉ render sau khi sanitize theo allowlist.
+- Không đưa token, mật khẩu, bí mật OAuth hay thông tin thanh toán vào URL, HTML, console hoặc thông báo lỗi. Dữ liệu UI trong localStorage không phải nguồn tin cậy để quyết định quyền.
+- Router guards dùng cho điều hướng và trải nghiệm; endpoint backend luôn là nơi thực thi xác thực, vai trò và quyền sở hữu.
+- Frontend hiện gửi JWT qua `Authorization: Bearer`. Nếu đổi sang cookie, thiết kế đồng thời CSRF token, `SameSite`, `HttpOnly`, `Secure` và kiểm tra origin; không dựa vào CORS để thay thế CSRF protection.
+- Bảo đảm CSP/security headers tương thích với nguồn Google Identity Services/font được cho phép; tránh `unsafe-inline` nếu không có nhu cầu được xem xét.
+
+## 5. Bản đồ route theo frontend
+
+- `frontend_user/`: `/`, `/books`, `/books/:id`, `/profile`, `/login`, `/register`, trang 404 dành cho độc giả. Không đăng ký các route `/manager/*` hoặc `/admin/*`.
+- `frontend_manage/`: `/login` dành cho nhân viên, `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/profile` nhân viên và trang 404 quản trị. Route Admin chỉ hiện với `ADMIN`; route nghiệp vụ thủ thư chỉ dành `MANAGER`/`ADMIN`.
+- Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config. Không dùng đường dẫn tương đối để điều hướng xuyên domain.
+- Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.

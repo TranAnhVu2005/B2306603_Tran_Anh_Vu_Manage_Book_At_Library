@@ -1,7 +1,9 @@
 const express = require("express");
 const controller = require("../controllers/nhanvien.controller");
-const { authenticate } = require("../middleware/auth.middleware");
+const { authenticate, authorizeAdmin, authorizeStaff } = require("../middleware/auth.middleware");
 const createUploader = require("../middleware/upload.middleware");
+const { validateImageUpload } = require("../middleware/upload.middleware");
+const { allowFields } = require("../middleware/security.middleware");
 
 
 const router = express.Router();
@@ -9,12 +11,12 @@ const router = express.Router();
 const upload = createUploader("avatars")
 
 router.route("/")
-    .get(controller.findAll) // Chưa dùng ở frontend
-    .post(upload.single("AnhDaiDien"), controller.create); //Chưa dùng ở frontend
+    .get(authenticate, authorizeAdmin, controller.findAll)
+    .post(authenticate, authorizeAdmin, upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoTenNV", "ChucVu", "MatKhau", "SoDienThoai", "DiaChi"), controller.create);
 
 router.route("/:id")
-    .get(controller.findOne)  // Chưa dùng ở frontend
-    .put(authenticate, upload.single("AnhDaiDien"), controller.update)
-    .delete(controller.delete);
+    .get(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.findOne)
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoTenNV", "SoDienThoai", "DiaChi"), controller.update)
+    .delete(authenticate, authorizeAdmin, controller.delete);
 
 module.exports = router;

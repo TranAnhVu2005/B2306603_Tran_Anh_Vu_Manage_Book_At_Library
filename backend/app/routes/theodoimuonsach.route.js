@@ -1,28 +1,29 @@
 const express = require("express");
 const controller = require("../controllers/theodoimuonsach.controller");
-const { authenticate, authorizeStaff } = require("../middleware/auth.middleware");
+const { authenticate, authorizeReader, authorizeStaff, authorizeAdmin } = require("../middleware/auth.middleware");
+const { allowFields } = require("../middleware/security.middleware");
 
 const router = express.Router();
 
 router.route("/")
-    .get(controller.findAll)
-    .post(controller.dangKyMuon);
+    .get(authenticate, controller.findAll)
+    .post(authenticate, authorizeReader, allowFields("MaDocGia", "MaSach", "GhiChu"), controller.dangKyMuon);
 
 router.route("/:id")
-    .get(controller.findOne)
-    .delete(controller.delete);
+    .get(authenticate, controller.findOne)
+    .delete(authenticate, authorizeAdmin, controller.delete);
     
 
 router.route("/:id/duyet")
     .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.duyetMuon);
 
 router.route("/:id/tu-choi")
-    .put(controller.tuChoiMuon);
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), allowFields("lyDo"), controller.tuChoiMuon);
 
 router.route("/:id/tra-sach")
-    .put(controller.xacNhanTra);
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.xacNhanTra);
 
 router.route("/:id/bao-mat")
-    .put(controller.baoMat);
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), allowFields("ghiChu"), controller.baoMat);
 
 module.exports = router;

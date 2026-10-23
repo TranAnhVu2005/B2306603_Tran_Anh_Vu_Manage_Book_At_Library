@@ -1,5 +1,8 @@
 const express = require("express");
 const controller = require("../controllers/sach.controller");
+const { authenticate, authorizeStaff } = require("../middleware/auth.middleware");
+const { allowFields } = require("../middleware/security.middleware");
+const { validateImageUpload } = require("../middleware/upload.middleware");
 
 const router = express.Router();
 const createUploader = require("../middleware/upload.middleware");
@@ -9,11 +12,11 @@ const upload = createUploader("books")
 // Gắn middleware upload.single("HinhAnh") vào route POST (Thêm) và PUT (Sửa)
 router.route("/")
     .get(controller.findAll)
-    .post(upload.single("HinhAnh"), controller.create);
+    .post(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"), controller.create);
 
 router.route("/:id")
     .get(controller.findOne)
-    .put(upload.single("HinhAnh"), controller.update)
-    .delete(controller.delete);
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"), controller.update)
+    .delete(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.delete);
 
 module.exports = router;

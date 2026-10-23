@@ -6,7 +6,10 @@ const ApiError = require("../api-error");
 exports.dangKyMuon = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
-        const result = await service.createDangKy(req.body);
+        if (req.body.MaDocGia && req.body.MaDocGia !== req.user.username) {
+            return next(new ApiError(403, "Chỉ có thể đăng ký mượn bằng tài khoản độc giả đang đăng nhập."));
+        }
+        const result = await service.createDangKy({ ...req.body, MaDocGia: req.user.username });
         return res.status(201).json({
             message: "Đăng ký mượn sách thành công! Đơn đang chờ thủ thư xét duyệt.",
             data: result,
@@ -86,7 +89,9 @@ exports.baoMat = async (req, res, next) => {
 exports.findAll = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
-        const results = await service.find(req.query);
+        const filters = { ...req.query };
+        if (req.user.type === "reader") filters.maDocGia = req.user.username;
+        const results = await service.find(filters);
         return res.json(results);
     } catch (error) {
         return next(new ApiError(500, "Lỗi xảy ra khi lấy danh sách mượn sách."));
@@ -100,6 +105,9 @@ exports.findOne = async (req, res, next) => {
         const result = await service.findById(req.params.id);
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy phiếu mượn."));
+        }
+        if (req.user.type === "reader" && result.MaDocGia !== req.user.username) {
+            return next(new ApiError(403, "Bạn không có quyền xem phiếu mượn của độc giả khác."));
         }
         return res.json(result);
     } catch (error) {

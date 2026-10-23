@@ -41,12 +41,35 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | **TC-RETURN-02**| Trả sách trễ hạn | Đơn mượn có `NgayTra > NgayHenTra` | HTTP 200, `SoLanViPham` tăng +1 | ✅ PASSED |
 | **TC-RETURN-03**| Tự động đưa vào danh sách đen sau 3 lần trễ | Vi phạm lần thứ 3 | `TrangThaiThe` tự động đổi sang `DanhSachDen` | ✅ PASSED |
 | **TC-LOSS-01**  | Báo mất sách | `id` đơn mượn, nhấn Báo mất | Trạng thái `MatSach`, kho giữ nguyên, phạt `GiaTriBoiThuong = DonGia` | ✅ PASSED |
-| **TC-PAY-01**   | Khởi tạo thanh toán MoMo | `borrowId` của đơn báo mất sách | HTTP 200, tạo `payUrl` MoMo | ✅ PASSED |
+| **TC-PAY-01**   | Khởi tạo thanh toán MoMo | `borrowId` của đơn báo mất sách | HTTP 200, tạo `payUrl` MoMo | ❌ Chưa triển khai; endpoint trả 404 |
 | **TC-ADMIN-01** | Admin nâng cấp quyền người dùng | Độc giả kiểm thử, gán `VaiTro = MANAGER` | HTTP 200, độc giả có `VaiTro = MANAGER`, không có trường ngoài CDM | ✅ PASSED |
 | **TC-ADMIN-02** | Admin xét gỡ khỏi danh sách đen | Độc giả kiểm thử `DanhSachDen`; thử mở khóa khẩn cấp rồi xét gỡ riêng | Mở khóa khẩn cấp bị từ chối; xét gỡ chuyển sang `HoatDong` nhưng giữ `SoLanViPham = 3` | ✅ PASSED |
 | **TC-ADMIN-03** | Admin khóa/mở khóa khẩn cấp | Thẻ hoạt động có 2 vi phạm; khóa/mở khóa rồi thử ở ngưỡng 3 lần | Thao tác giữ nguyên vi phạm; mở khóa ở ngưỡng 3 chuyển trạng thái về `DanhSachDen` | ✅ PASSED |
 
+### Bổ sung ma trận kiểm thử bảo mật (chưa chạy — yêu cầu cho đợt triển khai bảo mật)
+
+| Mã TC | Kiểm thử | Kết quả mong đợi |
+|:---:|:---|:---|
+| SEC-RBAC-01 | Gọi từng endpoint đặc quyền khi thiếu JWT, dùng JWT USER/MANAGER không đủ quyền, hoặc sửa ID tài nguyên sang người khác | HTTP 401/403; dữ liệu không đổi; quyền được kiểm tra ở backend |
+| SEC-IN-01 | Gửi `$ne`, `$gt`, object/array thay cho scalar trong body/query/path | HTTP 400; không mở rộng truy vấn, không truy cập/sửa ngoài phạm vi |
+| SEC-IN-02 | Gửi trường đặc quyền không thuộc whitelist trong POST/PUT/PATCH | Từ chối hoặc bỏ qua theo quy ước API; không thay đổi role, trạng thái, mã, tiền hay chủ sở hữu |
+| SEC-XSS-01 | Lưu và đọc chuỗi HTML/script/event handler trong tên, mô tả, ghi chú | API/UI không thực thi script; nội dung được render an toàn; CSP có hiệu lực |
+| SEC-CSRF-01 | Gửi request thay đổi dữ liệu từ origin không được phép khi cấu hình cookie auth (nếu có) | Bị từ chối do CSRF token/origin/SameSite; CORS không mở rộng tùy ý |
+| SEC-AUTH-01 | Brute-force đăng nhập; token sai chữ ký, hết hạn, sai thuật toán/claim; token sau logout/đổi mật khẩu/khóa tài khoản | Rate limit; HTTP 401; token bị thu hồi theo chính sách; không lộ tài khoản/mật khẩu |
+| SEC-XXE-01 | Gửi XML có DOCTYPE, external entity hoặc XInclude | XML bị từ chối hoặc parser an toàn; không đọc file nội bộ/gọi mạng |
+| SEC-SSRF-01 | Thử URL loopback, private, link-local, cloud metadata, redirect tới IP cấm và DNS rebinding | Không phát sinh request tới đích cấm; outbound host chỉ nằm trong allowlist |
+| SEC-UPLOAD-01 | Upload MIME giả, file không phải ảnh, SVG/HTML, file quá lớn và filename/path traversal | Bị từ chối; file không được thực thi/ghi đè đường dẫn; phản hồi không lộ đường dẫn nội bộ |
+| SEC-OPS-01 | Kiểm tra CORS, security headers/CSP, body quá lớn và lỗi 500 trong production mode | CORS allowlist; headers theo chính sách; HTTP 413 khi vượt giới hạn; không lộ stack/secret |
+
+Do backend dùng MongoDB Native Driver và không có parser XML, các ca SQLi/XXE phải được ghi nhận đúng phạm vi: kiểm tra NoSQL injection hiện tại; xác nhận XML không được chấp nhận. Nếu bổ sung SQL/XML sau này, mở rộng kiểm thử tương ứng.
+
 Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc giả tạm thời trong lúc chạy, sau đó dọn dữ liệu kiểm thử. Assertions kiểm tra response hồ sơ, sách, nhà xuất bản và phiếu mượn không chứa trường ngoài CDM; `MatKhau` không được trả về.
+
+### Kết quả lần chạy gần nhất
+
+- `frontend_user` và `frontend_manage`: `npm run build` thành công. `frontend_manage` khởi động dev server tại `http://localhost:3002` sau khi cài dependencies.
+- `backend`: `node test_api.js` đạt 19 ca, còn 1 ca lỗi là `TC-PAY-01` vì endpoint MoMo chưa được triển khai; các kiểm thử cần MongoDB local.
+- Các ca `SEC-*` và kiểm thử trình duyệt `UI-12`–`UI-17` chưa được chạy; bảng ma trận là kế hoạch xác minh, không phải kết quả nghiệm thu.
 
 ---
 
@@ -65,3 +88,14 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc 
 | **UI-09** | Độc giả chỉnh sửa hồ sơ `/profile` | Mở form, sửa thông tin cá nhân, lưu thành công cập nhật thẻ hồ sơ và phiên; lỗi từ API được thông báo | 🟡 Build verified; chưa chạy trình duyệt |
 | **UI-10** | Nhân viên/Admin chỉnh sửa hồ sơ `/profile` | Hiển thị hồ sơ nhân viên; tự cập nhật họ tên, số điện thoại, địa chỉ và đồng bộ phiên; không cho sửa chức vụ/mã nhân viên | 🟡 Build verified; chưa chạy trình duyệt |
 | **UI-11** | Kiểm tra bố cục responsive toàn hệ thống | Ở chiều rộng 320–768px không tràn ngang trang; bảng cuộn trong wrapper riêng; form, bộ lọc, modal và nút hành động không chồng lấn | 🟡 Build verified; cần kiểm thử trình duyệt trên đủ breakpoint |
+
+### Kiểm thử kiến trúc hai frontend/domain (cần chạy sau khi tách ứng dụng)
+
+| Mã UI | Luồng kiểm thử | Kết quả mong đợi |
+|:---:|:---|:---|
+| UI-12 | Khởi động `frontend_user/` và `frontend_manage/` đồng thời | User bind `localhost:3001`, Manage bind `localhost:3002`, không xung đột cổng; cả hai proxy API tới `localhost:3000` |
+| UI-13 | Mở `frontend_user/` và kiểm tra menu/router | Chỉ có giao diện/route độc giả; không hiển thị màn hình/quyền quản lý hoặc Admin |
+| UI-14 | Mở `frontend_manage/` bằng tài khoản USER/MANAGER/ADMIN | USER bị từ chối; MANAGER chỉ vào chức năng quản lý; ADMIN vào được quản trị; API cũng trả 401/403 tương ứng |
+| UI-15 | Điều hướng qua lại giữa hai ứng dụng | Dùng domain gốc theo cấu hình; không giả định localStorage dùng chung; app đích yêu cầu đăng nhập nếu không có phiên riêng |
+| UI-16 | Gọi API từ hai origin local và hai origin production đã cấu hình | CORS cho phép origin đã allowlist và chặn origin không khai báo; RBAC backend giữ nguyên dù đổi origin |
+| UI-17 | Build/deploy từng frontend độc lập | Mỗi app build từ thư mục/package riêng và nhận API URL/domain từ env phù hợp; không cần build chung một artifact |

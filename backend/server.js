@@ -7,6 +7,7 @@ async function startServer() {
         console.log("Đang khởi tạo kết nối cơ sở dữ liệu MongoDB...");
         await MongoDB.connect(config.db.uri);
         console.log(`-> Kết nối CSDL thành công tại: ${config.db.uri}`);
+        await MongoDB.client.db().collection("jwt_revocations").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
         const PORT = config.app.port;
         const server = app.listen(PORT, () => {

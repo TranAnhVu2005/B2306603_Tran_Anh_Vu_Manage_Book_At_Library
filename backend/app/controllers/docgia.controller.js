@@ -31,6 +31,11 @@ exports.findAll = async (req, res, next) => {
 // Tìm một độc giả - Completed
 exports.findOne = async (req, res, next) => {
     try {
+        const isSelf = req.user?.type === "reader" &&
+            (req.user.id === req.params.id || req.user.username === req.params.id);
+        if (!isSelf && req.user?.type !== "staff") {
+            return next(new ApiError(403, "Bạn chỉ có thể xem hồ sơ của chính mình."));
+        }
         const service = new DocGiaService(MongoDB.client);
         const result = await service.findById(req.params.id);
         if (!result) {

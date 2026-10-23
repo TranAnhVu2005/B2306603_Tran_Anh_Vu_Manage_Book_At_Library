@@ -317,12 +317,12 @@ class DocGiaService {
         return result ? this.findById(id) : null;
     }
 
-    // Xét gỡ khỏi danh sách đen, reset lịch sử vi phạm - Completed
+    // Xét gỡ khỏi danh sách đen, giữ nguyên lịch sử vi phạm.
     async reinstate(id) {
         const filter = this.buildIdFilter(id);
         const result = await this.DocGia.findOneAndUpdate(
             { ...filter, TrangThaiThe: "DanhSachDen" },
-            { $set: { TrangThaiThe: "HoatDong", SoLanViPham: 0, UpdatedAt: new Date() } },
+            { $set: { TrangThaiThe: "HoatDong", UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
         return result ? this.findById(id) : null;
