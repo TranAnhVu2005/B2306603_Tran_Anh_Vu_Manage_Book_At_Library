@@ -19,6 +19,15 @@ Backend chạy tại `http://localhost:3000`; mỗi app proxy `/api` về backen
 
 Ứng dụng cũ đã được đổi tên thành `frontend_user/`. Ứng dụng này giữ luồng độc giả; `frontend_manage/` có bản tra cứu danh mục và chi tiết sách riêng dùng cùng API, styles và hành vi tìm kiếm của cổng độc giả. Mỗi app có cấu hình Vite, package và build độc lập. Menu `Tra cứu sách` của cổng quản lý đi tới `/catalog` trên cùng origin nên giữ nguyên phiên nhân viên; liên kết `Cổng độc giả` chỉ dành cho các thao tác cá nhân độc giả. Mỗi cổng xác thực phiên độc lập. Request đọc sách/NXB công khai không gửi JWT; lỗi 401 của request không mang Authorization không được xóa phiên cục bộ.
 
+### Bộ lọc và nhập thể loại sách
+- Trang tra cứu sách ở cả hai cổng có bộ lọc thể loại lấy từ `GET /api/theloai` và mức giá (dưới 50.000; 50.000–dưới 100.000; 100.000–dưới 250.000; từ 250.000 đồng), phối hợp với từ khóa, NXB và tồn kho; nút xóa bộ lọc đặt lại toàn bộ điều kiện.
+- Ô tìm kiếm nằm thành một hàng rộng phía trên khu vực catalog. Bộ lọc NXB, thể loại, khoảng giá và tình trạng kho nằm trong sidebar bên trái trên desktop; số bộ lọc đang bật được thể hiện cạnh nút.
+- Dưới 768px, sidebar được thu gọn sau nút “Bộ lọc”; người dùng có thể mở/đóng panel mà không làm giảm chiều rộng ô tìm kiếm hay danh sách sách.
+- Sidebar có khoảng đệm thoáng, nhãn/tiêu đề phân cấp rõ; nhãn nhỏ dùng nền vàng thương hiệu và chữ mực, select dùng nền giấy ấm, nút đặt lại trung tính. Tím chỉ làm màu trạng thái hover/focus để không lấn át palette vàng–mực; select vừa phải, focus bàn phím dễ nhận biết.
+- Màn quản lý kho có bộ lọc thể loại và cột thể loại. Form thêm/sửa sách yêu cầu chọn một thể loại chính; hiển thị tên thể loại từ mã tham chiếu, không nhập văn bản tự do.
+- Sidebar và catalog xếp đúng thứ tự, các điều khiển không gây tràn ngang toàn trang.
+- NXB, thể loại và khoảng giá dùng chung kiểu popover có chiều cao giới hạn (tối đa 280px) và cuộn bên trong; menu nổi trên nội dung, không bị khung sidebar cắt và không để số lượng lựa chọn phủ toàn màn hình.
+
 **Nhận diện hai cổng:** `frontend_user` là nguồn chuẩn cho cấu trúc Header/Footer và trang tra cứu. Hai cổng cùng dùng palette Neo-brutalist, hình thức viền/bóng, logo và nhịp khoảng cách; vẫn phân biệt chức năng bằng menu theo quyền. `frontend_manage` tra cứu nội bộ tại `/catalog`, có menu thủ thư/Admin và không hiển thị thao tác đăng ký mượn.
 
 **Header hai cổng:** Giữ ảnh nền `/bookshelf.jpg` có thể nhận biết rõ; phủ ảnh bằng tông mực trung tính để chữ sáng dễ đọc, tránh overlay tím bão hòa làm ảnh ngả magenta. Thanh điều hướng dùng nền giấy ngà `#FFFDF2`, chữ mực, trạng thái đang chọn màu vàng `#FDC800`, và viền/bóng mực cứng. Ở desktop, logo nằm bên trái, điều hướng cân giữa và hành động phiên/tài khoản bên phải; ở mobile, giữ logo bên trái và gom hành động cùng nút menu bên phải. Cấu trúc, màu sắc và chiều cao hai header phải đồng nhất, chỉ khác đường dẫn/nội dung theo quyền.
@@ -92,7 +101,7 @@ Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
 ---
 
 ### 2.2. Phân Hệ Quản Lý / Thủ Thư (Manager Portal - `/manager`)
-* **Layout tổng thể**: Dùng cùng Header/Footer của cổng độc giả; vùng nội dung đặt trong cùng `.container` và dùng các component/bảng của design system. Không thêm sidebar cố định gây co hẹp nội dung trên tablet/mobile.
+* **Layout tổng thể**: Dùng cùng Header/Footer của cổng độc giả; vùng nội dung đặt trong cùng `.container` và dùng các component/bảng của design system. Sidebar catalog chỉ tham gia layout desktop, không fixed; thu gọn thành nút mở/đóng trên màn hình nhỏ để giữ chiều rộng nội dung.
 1. **Quản lý Mượn - Trả & Phê Duyệt (`/manager/borrows`)**:
    * **Tab 1: Chờ duyệt**: Danh sách yêu cầu mượn từ độc giả. Nút **[Duyệt mượn]** (trừ kho tự động) / **[Từ chối]**.
    * **Tab 2: Đang mượn**: Bảng theo dõi, hiển thị số ngày còn lại, badge màu theo mức độ khẩn cấp.
@@ -162,6 +171,12 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 - Hồ sơ nhân viên (`nhanvien`) và độc giả (`docgia`) là hai danh tính độc lập. MANAGER/ADMIN có thể tra cứu sách công khai qua cổng độc giả, nhưng các thao tác cá nhân độc giả yêu cầu phiên đăng nhập USER riêng cho đến khi có tính năng liên kết hồ sơ.
 - Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config cho các luồng cần đổi ứng dụng. Tra cứu sách của nhân viên phải dùng route nội bộ `/catalog` để giữ origin/phiên nhân viên.
 - Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.
+
+## 6. Bộ lọc và nhập thể loại sách
+- Catalog ở cả hai cổng có bộ lọc thể loại lấy từ `GET /api/theloai` và khoảng giá, phối hợp với từ khóa, NXB và tồn kho; thao tác xóa bộ lọc đặt lại mọi điều kiện.
+- Ô tìm kiếm rộng đặt phía trên; sidebar bộ lọc nằm bên trái trên desktop và thu gọn sau nút điều khiển trên màn hình dưới 768px.
+- Màn quản lý kho có bộ lọc thể loại và cột thể loại. Form thêm/sửa sách yêu cầu chọn một thể loại chính; hiển thị tên từ mã tham chiếu, không nhập văn bản tự do.
+- Select và hàng lọc phải xuống dòng có kiểm soát ở màn nhỏ, không gây tràn ngang toàn trang.
 # Hộp thư thông báo
 
 - Cả hai cổng hiển thị nút chuông nhỏ trong header khi có phiên đăng nhập; huy hiệu đỏ thể hiện số chưa đọc (giới hạn hiển thị `99+`). Khách chưa đăng nhập không thấy nút.

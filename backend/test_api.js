@@ -6,6 +6,7 @@ const JwtUtil = require("./app/utils/jwt.util");
 const DocGiaService = require("./app/services/docgia.service");
 const NhanVienService = require("./app/services/nhanvien.service");
 const ThongBaoService = require("./app/services/thongbao.service");
+const TheLoaiService = require("./app/services/theloai.service");
 
 let server = null;
 
@@ -59,6 +60,7 @@ async function runTests() {
 
     // Khởi động kết nối MongoDB và máy chủ kiểm thử nếu chưa chạy
     await MongoDB.connect(config.db.uri);
+    await new TheLoaiService(MongoDB.client).ensureDefaults();
     server = await new Promise((resolve) => {
         const s = app.listen(config.app.port, () => resolve(s));
     });
@@ -400,6 +402,19 @@ async function runTests() {
         }
     });
 
+    await assert("TC-GENRE-01: Danh mục thể loại và bộ lọc sách", async () => {
+        const genres = await request("GET", "/api/theloai");
+        if (genres.status !== 200 || !genres.data.some((item) => item.MaTheLoai === "TL-0002" && item.TenTheLoai === "Công nghệ thông tin")) {
+            throw new Error(`Danh mục thể loại chưa sẵn sàng, nhận HTTP ${genres.status}`);
+        }
+        const baseBook = { TenSach: "Kiểm thử thể loại", DonGia: 10000, SoQuyen: 1, MaNXB: "NXB-0001", TacGia: "Tester" };
+        const missingGenre = await request("POST", "/api/sach", baseBook, { Authorization: `Bearer ${temporaryStaffToken}` });
+        const unknownGenre = await request("POST", "/api/sach", { ...baseBook, MaTheLoai: "TL-9999" }, { Authorization: `Bearer ${temporaryStaffToken}` });
+        if (missingGenre.status !== 400 || unknownGenre.status !== 400) {
+            throw new Error(`Backend phải từ chối thiếu/mã thể loại không tồn tại; nhận ${missingGenre.status}/${unknownGenre.status}`);
+        }
+    });
+
     // TC-BOOK-01: Thêm sách mới hợp lệ
     await assert("TC-BOOK-01: Thêm sách mới hợp lệ", async () => {
         const newBook = {
@@ -408,6 +423,7 @@ async function runTests() {
             SoQuyen: 10,
             NamXuatBan: 2024,
             MaNXB: "NXB-0001",
+            MaTheLoai: "TL-0002",
             TacGia: "Nhóm Tester CTU",
             MoTa: "Tài liệu phục vụ kiểm thử hệ thống"
         };
@@ -416,9 +432,15 @@ async function runTests() {
         if (
             res.status !== 201 ||
             !testBookCode ||
-            !hasOnlyFields(res.data.data, ["_id", "MaSach", "TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"])
+            res.data.data.MaTheLoai !== "TL-0002" ||
+            !hasOnlyFields(res.data.data, ["_id", "MaSach", "TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "MaTheLoai", "TacGia", "HinhAnh", "MoTa"])
         ) {
             throw new Error(`Kỳ vọng HTTP 201, nhận status=${res.status}`);
+        }
+
+        const filtered = await request("GET", "/api/sach?maTheLoai=TL-0002");
+        if (filtered.status !== 200 || !filtered.data.some((book) => book.MaSach === testBookCode)) {
+            throw new Error("Bộ lọc sách theo MaTheLoai không trả về sách phù hợp.");
         }
 
         const publisher = await request("GET", "/api/nhaxuatban/NXB-0001");
@@ -452,6 +474,7 @@ async function runTests() {
             SoQuyen: 0,
             NamXuatBan: 2024,
             MaNXB: "NXB-0001",
+            MaTheLoai: "TL-0017",
             TacGia: "Kiểm thử",
             MoTa: "Fixture tự tạo",
         }, { Authorization: `Bearer ${temporaryStaffToken}` });

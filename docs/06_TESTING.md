@@ -132,3 +132,15 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên và độc 
 | UI-NOTI-01 | Header khi đã đăng nhập ở hai cổng | Chuông, badge, panel và thao tác đọc hiển thị đúng; guest không thấy chuông |
 | UI-NOTI-02 | Panel tại viewport 320/375/768/1024/1440px | Không tràn ngang trang; nội dung dài cuộn bên trong panel |
 | UI-AUTH-STAFF-01 | Mở màn đăng nhập cổng quản lý | Nhãn yêu cầu số điện thoại; input tel; đăng nhập bằng số đã đăng ký |
+## Thể loại sách
+| Mã | Kịch bản | Kết quả mong đợi |
+|---|---|---|
+| API-GENRE-01 | Lấy danh mục; tạo sách thiếu thể loại hoặc dùng mã không tồn tại | GET 200; hai yêu cầu tạo bị từ chối 400 |
+| API-GENRE-02 | Tạo sách có thể loại và lọc `maTheLoai` | Response có `MaTheLoai`; bộ lọc chỉ trả sách đúng mã |
+| UI-GENRE-01 | Catalog hai cổng kết hợp lọc thể loại với từ khóa/NXB/tồn kho | Kết quả đúng; xóa lọc đặt lại “Tất cả thể loại” |
+| UI-GENRE-02 | Form tạo/sửa sách và lọc kho ở 320/375/768/1024/1440px | Chọn thể loại bắt buộc, bố cục không tràn ngang |
+| UI-CATALOG-PRICE-01 | Kết hợp lọc thể loại và bốn khoảng giá ở cả hai catalog | Sách trong đúng ngưỡng giá xuất hiện; các ngưỡng không chồng lấn; xóa lọc trả toàn bộ bộ lọc về mặc định |
+| UI-CATALOG-LAYOUT-01 | Trang catalog ở 320/375/768/1024/1440px | Search rộng phía trên; sidebar trái ở desktop; mobile mở/đóng bằng nút “Bộ lọc”; không tràn ngang, kết quả vẫn đọc được |
+| UI-CATALOG-FILTER-STYLE-01 | Sidebar lọc ở hai cổng | Khoảng đệm cân đối; nhãn và tiêu đề dễ phân biệt; nút đặt lại không cạnh tranh màu; select không quá cao/nặng; focus bàn phím rõ; không tràn ngang ở 320/375/768px |
+| UI-CATALOG-FILTER-COLOR-01 | Màu sidebar ở hai cổng | Nền giấy ấm, chữ mực, nhấn vàng `#FDC800`; tím chỉ dùng cho hover/focus; checkbox/nhãn đồng bộ design token và đạt tương phản |
+| UI-CATALOG-FILTER-POPOVER-01 | Mở NXB, thể loại và khoảng giá ở hai cổng | Cả ba dùng cùng kiểu popover; tối đa 280px, cuộn trong danh sách, nổi khỏi khung sidebar không bị cắt; chọn bằng chuột/bàn phím; Escape/nhấp ngoài đóng menu |

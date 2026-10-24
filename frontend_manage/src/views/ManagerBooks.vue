@@ -34,7 +34,7 @@
     <div class="vg-shell manager-filter-shell">
       <div class="vg-core p-3 p-md-4">
         <div class="row align-items-center">
-          <div class="col-md-6 mb-2 mb-md-0">
+          <div class="col-md-5 mb-2 mb-md-0">
             <div class="input-group">
               <span class="input-group-text bg-white" style="border-color: var(--paper-border);">
                 <svg class="ui-icon text-muted" viewBox="0 0 24 24" aria-hidden="true">
@@ -52,7 +52,14 @@
               </button>
             </div>
           </div>
-          <div class="col-md-6 text-md-end small text-muted">
+          <div class="col-md-4 mb-2">
+            <label class="small fw-bold mb-1" for="book-genre-filter">Lọc theo thể loại</label>
+            <select id="book-genre-filter" class="ath-input" v-model="selectedGenre">
+              <option value="all">Tất cả thể loại</option>
+              <option v-for="genre in genres" :key="genre.MaTheLoai" :value="genre.MaTheLoai">{{ genre.TenTheLoai }}</option>
+            </select>
+          </div>
+          <div class="col-md-3 text-md-end small text-muted">
             Tổng số đầu sách: <strong>{{ books.length }}</strong> • Tổng số lượng trong kho: <strong
               class="text-success">{{ totalQuantity }} quyển</strong>
           </div>
@@ -85,6 +92,7 @@
                 <th style="min-width: 120px;">Mã</th>
                 <th>Tên sách & Tác giả</th>
                 <th>NXB</th>
+                <th>Thể loại</th>
                 <th>Năm XB</th>
                 <th style="min-width: 140px;">Tồn kho</th>
                 <th style="min-width: 110px;">Đơn giá</th>
@@ -118,6 +126,7 @@
                     {{ getPublisherName(book.MaNXB) }}
                   </span>
                 </td>
+                <td><span class="badge bg-light text-dark border">{{ getGenreName(book.MaTheLoai) }}</span></td>
                 <td class="small text-nowrap">{{ book.NamXuatBan || '—' }}</td>
                 <td>
                   <span v-if="book.deleted" class="text-muted small">Đã ẩn khỏi mượn/tra cứu</span>
@@ -183,6 +192,14 @@
                 <input type="text" class="ath-input" v-model="form.TenSach" placeholder="VD: Lập trình Vue 3..."
                   required />
               </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="small fw-bold mb-1" for="book-genre">Thể loại:</label>
+              <select id="book-genre" class="ath-input" v-model="form.MaTheLoai" required>
+                <option disabled value="">Chọn thể loại</option>
+                <option v-for="genre in genres" :key="genre.MaTheLoai" :value="genre.MaTheLoai">{{ genre.TenTheLoai }}</option>
+              </select>
             </div>
 
             <div class="row">
@@ -257,6 +274,7 @@
 import ToastNotification from "../components/ToastNotification.vue";
 import sachService from "../services/sach.service";
 import nxbService from "../services/nhaxuatban.service";
+import theloaiService from "../services/theloai.service";
 import authService from "../services/auth.service";
 
 export default {
@@ -268,8 +286,10 @@ export default {
     return {
       books: [],
       publishers: [],
+      genres: [],
       loading: false,
       search: "",
+      selectedGenre: "all",
       showDeleted: false,
       showModal: false,
       isEditing: false,
@@ -279,6 +299,7 @@ export default {
         TenSach: "",
         TacGia: "",
         MaNXB: "",
+        MaTheLoai: "",
         SoQuyen: 5,
         DonGia: 85000,
         NamXuatBan: 2024,
@@ -293,9 +314,10 @@ export default {
       return this.books.filter((book) => !book.deleted).reduce((acc, book) => acc + (book.SoQuyen || 0), 0);
     },
     filteredBooks() {
-      if (!this.search.trim()) return this.books;
+      const selectedBooks = this.selectedGenre === "all" ? this.books : this.books.filter((book) => book.MaTheLoai === this.selectedGenre);
+      if (!this.search.trim()) return selectedBooks;
       const q = this.search.toLowerCase();
-      return this.books.filter(b =>
+      return selectedBooks.filter(b =>
         b.TenSach.toLowerCase().includes(q) ||
         b.TacGia.toLowerCase().includes(q) ||
         b.MaSach.toLowerCase().includes(q) ||
@@ -332,12 +354,14 @@ export default {
     async fetchData() {
       this.loading = true;
       try {
-        const [booksRes, nxbRes] = await Promise.all([
+        const [booksRes, nxbRes, genresRes] = await Promise.all([
           sachService.getAll(this.showDeleted && this.isAdmin ? { includeDeleted: "true" } : {}),
           nxbService.getAll(),
+          theloaiService.getAll(),
         ]);
         this.books = booksRes;
         this.publishers = nxbRes;
+        this.genres = genresRes;
         if (this.publishers.length > 0 && !this.form.MaNXB) {
           this.form.MaNXB = this.publishers[0].MaNXB;
         }
@@ -372,6 +396,9 @@ export default {
       const p = this.publishers.find(item => item.MaNXB === maNxb);
       return p ? p.TENNXB : (maNxb || "—");
     },
+    getGenreName(code) {
+      return this.genres.find((genre) => genre.MaTheLoai === code)?.TenTheLoai || "Chưa phân loại";
+    },
     async quickAdjustStock(book, delta) {
       const newStock = (book.SoQuyen || 0) + delta;
       if (newStock < 0) return;
@@ -403,6 +430,7 @@ export default {
         TenSach: "",
         TacGia: "",
         MaNXB: this.publishers[0]?.MaNXB || "",
+        MaTheLoai: this.genres[0]?.MaTheLoai || "",
         SoQuyen: 5,
         DonGia: 100000,
         NamXuatBan: new Date().getFullYear(),
@@ -429,6 +457,7 @@ export default {
         formData.append("TenSach", this.form.TenSach);
         formData.append("TacGia", this.form.TacGia);
         formData.append("MaNXB", this.form.MaNXB);
+        formData.append("MaTheLoai", this.form.MaTheLoai);
         formData.append("SoQuyen", this.form.SoQuyen);
         formData.append("DonGia", this.form.DonGia);
 

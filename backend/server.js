@@ -1,6 +1,7 @@
 const app = require("./app");
 const config = require("./app/config");
 const MongoDB = require("./app/utils/mongodb.util");
+const TheLoaiService = require("./app/services/theloai.service");
 
 async function startServer() {
     try {
@@ -8,6 +9,9 @@ async function startServer() {
         await MongoDB.connect(config.db.uri);
         console.log(`-> Kết nối CSDL thành công tại: ${config.db.uri}`);
         await MongoDB.client.db().collection("jwt_revocations").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+        const genres = new TheLoaiService(MongoDB.client);
+        await genres.ensureDefaults();
+        await MongoDB.client.db().collection("theloai").createIndex({ MaTheLoai: 1 }, { unique: true });
         const auditLogs = MongoDB.client.db().collection("nhatkykiemtoan");
         await Promise.all([
             auditLogs.createIndex({ ThoiGian: -1, _id: -1 }),

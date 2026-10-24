@@ -73,37 +73,14 @@
                 </button>
               </div>
 
-              <!-- Divider -->
-              <span class="search-divider" aria-hidden="true"></span>
-
-              <!-- Publisher select -->
-              <div class="search-select-wrap">
-                <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 6h16M7 12h10M10 18h4"/>
-                </svg>
-                <select class="search-select" v-model="selectedPublisher">
-                  <option value="all">Tất cả NXB</option>
-                  <option v-for="nxb in publishers" :key="nxb.MaNXB" :value="nxb.MaNXB">
-                    {{ nxb.TENNXB }}
-                  </option>
-                </select>
-              </div>
-
-              <!-- Available checkbox -->
-              <label class="search-check-label" for="availCheck">
-                <input
-                  type="checkbox"
-                  id="availCheck"
-                  class="search-check-input"
-                  v-model="availableOnly"
-                />
-                <span class="search-check-box" aria-hidden="true"></span>
-                Còn trong kho
-              </label>
             </div>
 
-            <!-- Active filter bar -->
-            <div v-if="hasActiveFilters" class="filter-status">
+            <div class="search-toolbar">
+              <button class="catalog-filter-toggle" type="button" aria-controls="catalog-filters" :aria-expanded="showFilters" @click="showFilters = !showFilters">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+                Bộ lọc <span v-if="activeFilterCount">{{ activeFilterCount }}</span>
+              </button>
+              <div v-if="hasActiveFilters" class="filter-status">
               <span class="filter-status-text">
                 <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
@@ -111,12 +88,15 @@
                 Đang lọc —
                 <em v-if="searchKeyword">"{{ searchKeyword }}"</em>
                 <span v-if="selectedPublisher !== 'all'"> · {{ selectedPublisher }}</span>
+                <span v-if="selectedGenre !== 'all'"> · {{ getGenreName(selectedGenre) }}</span>
+                <span v-if="selectedPriceRange !== 'all'"> · {{ getPriceRangeName(selectedPriceRange) }}</span>
                 <span v-if="availableOnly"> · Còn kho</span>
                 &nbsp;·&nbsp;tìm thấy <strong>{{ filteredBooks.length }}</strong> tác phẩm
               </span>
               <button class="filter-clear-btn" type="button" @click="resetFilters">
                 Xóa bộ lọc
               </button>
+              </div>
             </div>
           </div>
         </div>
@@ -125,7 +105,26 @@
 
     <!-- ===== BOOKS CATALOG SECTION ===== -->
     <section class="catalog-section">
-      <div>
+      <div class="catalog-layout">
+        <aside id="catalog-filters" class="vg-shell catalog-filter-shell" :class="{ 'is-open': showFilters }" aria-label="Bộ lọc sách">
+          <div class="vg-core catalog-filter-core">
+            <div class="catalog-filter-heading">
+              <div><span class="catalog-filter-kicker">Tùy chọn</span><h2>Lọc sách</h2></div>
+              <button class="catalog-filter-reset" type="button" @click="resetFilters">Đặt lại</button>
+            </div>
+            <div class="catalog-filter-field"><span>Nhà xuất bản</span>
+              <CatalogFilterSelect v-model="selectedPublisher" :options="publisherFilterOptions" aria-label="Nhà xuất bản" />
+            </div>
+            <div class="catalog-filter-field"><span>Thể loại</span>
+              <CatalogFilterSelect v-model="selectedGenre" :options="genreFilterOptions" aria-label="Thể loại" />
+            </div>
+            <div class="catalog-filter-field"><span>Khoảng giá</span>
+              <CatalogFilterSelect v-model="selectedPriceRange" :options="priceFilterOptions" aria-label="Khoảng giá" />
+            </div>
+            <label class="catalog-stock-filter"><input type="checkbox" v-model="availableOnly" /> <span>Chỉ sách còn trong kho</span></label>
+          </div>
+        </aside>
+        <div class="catalog-results">
         <!-- Section header -->
         <div class="catalog-header reveal" data-reveal>
           <div>
@@ -174,8 +173,9 @@
             :class="`reveal-d${Math.min(idx % 6 + 1, 4)}`"
             data-reveal
           >
-            <BookCard :book="book" :publisher-name="getPublisherName(book.MaNXB)" />
+            <BookCard :book="book" :publisher-name="getPublisherName(book.MaNXB)" :genre-name="getGenreName(book.MaTheLoai)" />
           </div>
+        </div>
         </div>
       </div>
     </section>
@@ -189,25 +189,55 @@
 import ToastNotification from "../components/ToastNotification.vue";
 import sachService from "../services/sach.service";
 import nxbService from "../services/nhaxuatban.service";
+import theloaiService from "../services/theloai.service";
 import BookCard from "../components/CatalogBookCard.vue";
+import CatalogFilterSelect from "../components/CatalogFilterSelect.vue";
 
 export default {
   name: "ManagerCatalog",
-  components: { BookCard, ToastNotification },
+  components: { BookCard, CatalogFilterSelect, ToastNotification },
   data() {
     return {
       books: [],
       publishers: [],
+      genres: [],
       loading: false,
       searchKeyword: "",
+      showFilters: false,
       selectedPublisher: "all",
+      selectedGenre: "all",
+      selectedPriceRange: "all",
       availableOnly: false,
       revealObserver: null,
     };
   },
   computed: {
+    publisherFilterOptions() {
+      return [
+        { value: "all", label: "Tất cả NXB" },
+        ...this.publishers.map((publisher) => ({ value: publisher.MaNXB, label: publisher.TENNXB })),
+      ];
+    },
+    genreFilterOptions() {
+      return [
+        { value: "all", label: "Tất cả thể loại" },
+        ...this.genres.map((genre) => ({ value: genre.MaTheLoai, label: genre.TenTheLoai })),
+      ];
+    },
+    priceFilterOptions() {
+      return [
+        { value: "all", label: "Tất cả mức giá" },
+        { value: "under-50000", label: "Dưới 50.000 ₫" },
+        { value: "50000-100000", label: "50.000–dưới 100.000 ₫" },
+        { value: "100000-250000", label: "100.000–dưới 250.000 ₫" },
+        { value: "250000-up", label: "Từ 250.000 ₫" },
+      ];
+    },
+    activeFilterCount() {
+      return Number(this.selectedPublisher !== "all") + Number(this.selectedGenre !== "all") + Number(this.selectedPriceRange !== "all") + Number(this.availableOnly);
+    },
     hasActiveFilters() {
-      return !!this.searchKeyword.trim() || this.selectedPublisher !== "all" || this.availableOnly;
+      return !!this.searchKeyword.trim() || this.selectedPublisher !== "all" || this.selectedGenre !== "all" || this.selectedPriceRange !== "all" || this.availableOnly;
     },
     availableBooksCount() {
       return this.books.filter((b) => b.SoQuyen > 0).length;
@@ -221,8 +251,10 @@ export default {
           this.normalizeSearchText(field).includes(keyword)
         );
         const matchesPublisher = this.selectedPublisher === "all" || book.MaNXB === this.selectedPublisher;
+        const matchesGenre = this.selectedGenre === "all" || book.MaTheLoai === this.selectedGenre;
+        const matchesPrice = this.matchesPriceRange(book.DonGia, this.selectedPriceRange);
         const matchesAvailability = !this.availableOnly || Number(book.SoQuyen) > 0;
-        return matchesKeyword && matchesPublisher && matchesAvailability;
+        return matchesKeyword && matchesPublisher && matchesGenre && matchesPrice && matchesAvailability;
       });
     },
   },
@@ -243,6 +275,21 @@ export default {
   methods: {
     getPublisherName(maNxb) {
       return this.publishers.find((publisher) => publisher.MaNXB === maNxb)?.TENNXB || "";
+    },
+    getGenreName(code) {
+      return this.genres.find((genre) => genre.MaTheLoai === code)?.TenTheLoai || "Chưa phân loại";
+    },
+    getPriceRangeName(range) {
+      return ({ "under-50000": "Dưới 50.000 ₫", "50000-100000": "50.000–dưới 100.000 ₫", "100000-250000": "100.000–dưới 250.000 ₫", "250000-up": "Từ 250.000 ₫" })[range] || "Tất cả mức giá";
+    },
+    matchesPriceRange(value, range) {
+      if (range === "all") return true;
+      const price = Number(value);
+      if (!Number.isFinite(price)) return false;
+      if (range === "under-50000") return price < 50000;
+      if (range === "50000-100000") return price >= 50000 && price < 100000;
+      if (range === "100000-250000") return price >= 100000 && price < 250000;
+      return range === "250000-up" && price >= 250000;
     },
     initReveal() {
       if (typeof IntersectionObserver === "undefined") {
@@ -282,9 +329,10 @@ export default {
     async fetchData() {
       this.loading = true;
       try {
-        const [booksRes, nxbRes] = await Promise.all([sachService.getAll(), nxbService.getAll()]);
+        const [booksRes, nxbRes, genresRes] = await Promise.all([sachService.getAll(), nxbService.getAll(), theloaiService.getAll()]);
         this.books = booksRes;
         this.publishers = nxbRes;
+        this.genres = genresRes;
       } catch {
         this.$refs.toast.show("Lỗi khi kết nối đến máy chủ thư viện.", "error");
       } finally {
@@ -307,6 +355,8 @@ export default {
     resetFilters() {
       this.searchKeyword = "";
       this.selectedPublisher = "all";
+      this.selectedGenre = "all";
+      this.selectedPriceRange = "all";
       this.availableOnly = false;
     },
   },
@@ -583,6 +633,28 @@ export default {
 .catalog-section {
   padding-bottom: 5rem;
 }
+.catalog-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.5rem;
+}
+.catalog-filter-shell { position: relative; z-index: 4; min-width: 0; }
+.catalog-filter-core { display: grid; gap: 0.9rem; padding: 1.15rem; overflow: visible; }
+.catalog-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--paper-border); }
+.catalog-filter-kicker { display: inline-block; padding: 0.1rem 0.35rem; background: var(--neo-yellow); color: var(--ink-primary); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; line-height: 1.35; text-transform: uppercase; }
+.catalog-filter-heading h2 { margin: 0.2rem 0 0; color: var(--ink-primary); font-size: 1.2rem; font-weight: 800; line-height: 1.25; }
+.catalog-filter-reset { flex: 0 0 auto; padding: 0.4rem 0.15rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ink-secondary); font: inherit; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: color 160ms ease, border-color 160ms ease; }
+.catalog-filter-reset:hover { color: var(--ink-primary); border-bottom-color: var(--neo-yellow); }
+.catalog-filter-reset:focus-visible { outline: 2px solid var(--neo-violet); outline-offset: 3px; }
+.catalog-filter-field { display: grid; gap: 0.45rem; color: var(--ink-secondary); font-size: 0.78rem; font-weight: 700; }
+.catalog-stock-filter { display: flex; align-items: flex-start; gap: 0.65rem; padding-top: 0.2rem; color: var(--ink-secondary); font-size: 0.8rem; font-weight: 600; line-height: 1.45; cursor: pointer; }
+.catalog-stock-filter input { flex: 0 0 auto; width: 17px; height: 17px; margin: 0.08rem 0 0; accent-color: var(--neo-yellow); }
+.catalog-results { position: relative; z-index: 1; min-width: 0; }
+.search-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-top: 0.5rem; }
+.catalog-filter-toggle { display: none; align-items: center; justify-content: center; gap: 0.55rem; min-height: 42px; padding: 0.5rem 0.8rem; border: 2px solid var(--ink-primary); border-radius: 0.7rem; background: var(--paper); color: var(--ink-primary); font-weight: 700; box-shadow: 3px 3px 0 var(--ink-primary); }
+.catalog-filter-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+.catalog-filter-toggle span { display: inline-grid; place-items: center; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 50%; background: var(--accent-yellow); font-size: 0.75rem; }
 .catalog-header {
   display: flex;
   align-items: flex-end;
@@ -667,6 +739,12 @@ export default {
   .search-divider { display: none; }
   .search-select-wrap { padding: 0.5rem 0.9rem; }
   .search-check-label { margin-left: 0; }
+  .catalog-layout { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; }
+  .catalog-filter-toggle { display: inline-flex; flex: 0 0 auto; }
+  .catalog-filter-shell { display: none; }
+  .catalog-filter-shell.is-open { display: block; }
+  .catalog-filter-core { gap: 0.85rem; padding: 1rem; }
+  .search-toolbar { align-items: stretch; flex-direction: column; }
   .books-grid { grid-template-columns: 1fr; }
   .catalog-section { padding-bottom: 3rem; }
 }

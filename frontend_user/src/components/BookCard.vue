@@ -40,6 +40,7 @@
           <p class="bk-publisher" v-if="publisherName || book.MaNXB">
             <span>{{ publisherName || book.MaNXB }}</span>
           </p>
+          <p class="bk-publisher" v-if="genreName"><span>{{ genreName }}</span></p>
         </div>
       </div>
 
@@ -90,6 +91,7 @@ export default {
       type: String,
       default: "",
     },
+    genreName: { type: String, default: "" },
   },
   emits: ["borrow"],
   data() {

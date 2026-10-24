@@ -2,9 +2,9 @@
 
 * **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
 * **Tên Database**: `quanlymuonsach`
-* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25); `nhatkykiemtoan` là collection kỹ thuật bổ sung cho truy cứu hoạt động.
+* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25), mở rộng thêm collection tham chiếu `theloai`; `nhatkykiemtoan` là collection kỹ thuật bổ sung cho truy cứu hoạt động.
 
-Các trường liệt kê trong 5 collections nghiệp vụ là lược đồ CDM. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `nhatkykiemtoan` có schema riêng, dùng tên trường tiếng Việt và không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
+Các trường nghiệp vụ là lược đồ CDM, bổ sung thể loại tham chiếu riêng `theloai`. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `nhatkykiemtoan` có schema riêng, dùng tên trường tiếng Việt và không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
 
 ---
 
@@ -16,9 +16,10 @@ Các trường liệt kê trong 5 collections nghiệp vụ là lược đồ CD
 | 2 | `nhanvien` | Danh sách tài khoản nhân viên thư viện và quản trị viên |
 | 3 | `nhaxuatban` | Danh mục thông tin các nhà xuất bản |
 | 4 | `sach` | Danh mục thông tin các đầu sách và số lượng tồn kho |
-| 5 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
-| 6 | `nhatkykiemtoan` | Nhật ký kiểm toán append-only, lưu tác nhân, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
-| 7 | `thongbao` | Hộp thư thông báo nghiệp vụ theo từng độc giả/nhân viên; chỉ người nhận được đọc và đánh dấu đã đọc |
+| 5 | `theloai` | Danh mục thể loại sách; sách tham chiếu bằng `MaTheLoai` |
+| 6 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
+| 7 | `nhatkykiemtoan` | Nhật ký kiểm toán append-only, lưu tác nhân, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
+| 8 | `thongbao` | Hộp thư thông báo nghiệp vụ theo từng độc giả/nhân viên; chỉ người nhận được đọc và đánh dấu đã đọc |
 
 ---
 
@@ -77,6 +78,7 @@ Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồ
   "SoQuyen": 5,                       // [Bắt buộc, Integer >= 0] Số lượng sách thực tế còn trong kho
   "NamXuatBan": 2024,                 // [Integer] Năm xuất bản sách
   "MaNXB": "NXB-0001",                // [Khóa ngoại FK] Tham chiếu đến nhaxuatban.MaNXB
+  "MaTheLoai": "TL-0002",              // [Bắt buộc, FK] Tham chiếu đến theloai.MaTheLoai
   "TacGia": "Nguyễn Văn An",          // [Bắt buộc] Tên tác giả hoặc cơ quan biên soạn
   "HinhAnh": "https://...",           // Đường dẫn ảnh bìa sách
   "MoTa": "Giáo trình toàn diện..."  // Tóm tắt nội dung sách
@@ -85,11 +87,29 @@ Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồ
 
 * **Xóa mềm**: `DELETE /api/sach/:id` đặt `deleted=true`, `DeletedAt`, `DeletedBy`, không xóa document. Sách đã xóa bị ẩn khỏi tra cứu/chi tiết và không thể đăng ký/duyệt mượn. Chỉ Admin được xem danh sách xóa mềm và khôi phục (`deleted=false`); mọi thao tác được ghi log. Bản ghi cũ thiếu `deleted` được hiểu là đang hoạt động.
 * **Ràng buộc toàn vẹn**: Không cho phép xóa mềm nếu sách đang có phiếu `DangMuon` hoặc `ChoDuyet`.
+* **Ràng buộc thể loại**: Mỗi đầu sách có một thể loại chính; `MaTheLoai` bắt buộc và phải tồn tại trong `theloai`. Danh mục không nhúng vào document sách.
 * `deleted`, `DeletedAt`, `DeletedBy` là metadata kỹ thuật ngoài CDM; chỉ endpoint danh sách đã xóa dành cho Admin trả các trường này.
 
 ---
 
-### 2.4. Bảng Nhà Xuất Bản (`nhaxuatban`)
+### 2.4. Bảng Thể Loại (`theloai`)
+Danh mục chuẩn để phân loại và lọc đầu sách. Mã thể loại ổn định được lưu trong sách dưới dạng tham chiếu `MaTheLoai`.
+
+```json
+{
+  "_id": "ObjectId",
+  "MaTheLoai": "TL-0002",              // [Duy nhất] Mã định danh thể loại
+  "TenTheLoai": "Công nghệ thông tin", // [Bắt buộc] Tên hiển thị
+  "MoTa": "",
+  "CreatedAt": "Date"
+}
+```
+
+Danh mục mặc định: Giáo trình và tài liệu học tập; Công nghệ thông tin; Khoa học tự nhiên và Toán học; Kỹ thuật và Công nghệ; Kinh tế và Quản trị; Luật và Chính trị; Ngoại ngữ; Giáo dục và Tâm lý; Nông nghiệp và Môi trường; Y học và Sức khỏe; Văn học Việt Nam; Văn học thiếu nhi; Lịch sử và Văn hóa; Triết học và Tôn giáo; Kỹ năng và Phát triển bản thân; Từ điển và Tài liệu tra cứu; Khác. Collection này được seed idempotent khi backend khởi động.
+
+---
+
+### 2.5. Bảng Nhà Xuất Bản (`nhaxuatban`)
 Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho thư viện.
 
 ```json
@@ -179,6 +199,7 @@ erDiagram
     NHANVIEN ||--o{ THEODOIMUONSACH : "chiutrachnhiem (1,n)"
     SACH ||--o{ THEODOIMUONSACH : "cuasach (1,n)"
     NHAXUATBAN ||--o{ SACH : "sachthuocnhaxuatban (1,n)"
+    THELOAI ||--o{ SACH : "phanloai (1,n)"
 
     DOCGIA {
         ObjectId _id PK
@@ -213,6 +234,7 @@ erDiagram
         int SoQuyen
         int NamXuatBan
         string MaNXB FK
+        string MaTheLoai FK
         string TacGia
         string HinhAnh
         string MoTa
@@ -223,6 +245,13 @@ erDiagram
         string MaNXB UK
         string TENNXB
         string DiaChi
+    }
+
+    THELOAI {
+        ObjectId _id PK
+        string MaTheLoai UK
+        string TenTheLoai
+        string MoTa
     }
 
     THEODOIMUONSACH {

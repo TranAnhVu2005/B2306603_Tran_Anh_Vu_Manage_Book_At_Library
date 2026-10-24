@@ -9,6 +9,7 @@ const publicFields = {
     SoQuyen: 1,
     NamXuatBan: 1,
     MaNXB: 1,
+    MaTheLoai: 1,
     TacGia: 1,
     HinhAnh: 1,
     MoTa: 1,
@@ -28,6 +29,7 @@ const publicFields = {
  *   + SoQuyen: Integer (Số lượng sách thực tế còn trong kho)
  *   + NamXuatBan: Integer (Năm xuất bản sách)
  *   + MaNXB: String (Tham chiếu đến nhaxuatban.MaNXB)
+ *   + MaTheLoai: String (Tham chiếu đến theloai.MaTheLoai)
  *   + TacGia: String (Tên tác giả hoặc cơ quan biên soạn)
  *   + HinhAnh: String (Đường dẫn ảnh bìa sách)
  *   + MoTa: String (Tóm tắt nội dung sách)
@@ -37,6 +39,7 @@ class SachService {
     constructor(client) {
         this.Sach = client.db().collection("sach");
         this.NhaXuatBan = client.db().collection("nhaxuatban");
+        this.TheLoai = client.db().collection("theloai");
         this.TheoDoi = client.db().collection("theodoimuonsach");
         this.AuditLog = new AuditLogService(client);
     }
@@ -67,6 +70,10 @@ class SachService {
         if (payload.SoQuyen !== undefined) data.SoQuyen = parseInt(payload.SoQuyen, 10);
         if (payload.NamXuatBan !== undefined) data.NamXuatBan = parseInt(payload.NamXuatBan, 10);
         if (payload.MaNXB !== undefined) data.MaNXB = String(payload.MaNXB).trim();
+        if (payload.MaTheLoai !== undefined) {
+            if (typeof payload.MaTheLoai !== "string") throw new Error("Mã thể loại phải là chuỗi hợp lệ.");
+            data.MaTheLoai = payload.MaTheLoai.trim();
+        }
         if (payload.TacGia !== undefined) data.TacGia = String(payload.TacGia).trim();
         if (payload.HinhAnh !== undefined) data.HinhAnh = String(payload.HinhAnh).trim();
         if (payload.MoTa !== undefined) data.MoTa = String(payload.MoTa).trim();
@@ -90,8 +97,8 @@ class SachService {
     async create(payload, actor = {}) {
         const data = this.extractData(payload, true);
 
-        if (!data.TenSach || data.DonGia === undefined || data.SoQuyen === undefined || !data.MaNXB || !data.TacGia) {
-            throw new Error("Vui lòng điền đầy đủ các thông tin: Tên sách, Đơn giá, Số quyển, Mã NXB và Tác giả.");
+        if (!data.TenSach || data.DonGia === undefined || data.SoQuyen === undefined || !data.MaNXB || !data.TacGia || !data.MaTheLoai) {
+            throw new Error("Vui lòng điền đầy đủ các thông tin: Tên sách, Đơn giá, Số quyển, NXB, thể loại và tác giả.");
         }
 
         if (isNaN(data.DonGia) || data.DonGia < 0) {
@@ -106,6 +113,9 @@ class SachService {
         const nxb = await this.NhaXuatBan.findOne({ MaNXB: data.MaNXB });
         if (!nxb) {
             throw new Error(`Nhà xuất bản có mã '${data.MaNXB}' không tồn tại trong hệ thống.`);
+        }
+        if (!await this.TheLoai.findOne({ MaTheLoai: data.MaTheLoai }, { projection: { _id: 1 } })) {
+            throw new Error(`Thể loại có mã '${data.MaTheLoai}' không tồn tại trong danh mục.`);
         }
 
         data.MaSach = await this.generateMaSach();
@@ -135,6 +145,9 @@ class SachService {
         }
         if (filter.maNxb && filter.maNxb !== "all") {
             query.MaNXB = filter.maNxb;
+        }
+        if (filter.maTheLoai && filter.maTheLoai !== "all") {
+            query.MaTheLoai = String(filter.maTheLoai);
         }
         if (filter.availableOnly === "true" || filter.availableOnly === true) {
             query.SoQuyen = { $gt: 0 };
@@ -177,6 +190,9 @@ class SachService {
             if (!nxb) {
                 throw new Error(`Nhà xuất bản có mã '${data.MaNXB}' không tồn tại.`);
             }
+        }
+        if (data.MaTheLoai && !await this.TheLoai.findOne({ MaTheLoai: data.MaTheLoai }, { projection: { _id: 1 } })) {
+            throw new Error(`Thể loại có mã '${data.MaTheLoai}' không tồn tại trong danh mục.`);
         }
 
         data.UpdatedAt = new Date();

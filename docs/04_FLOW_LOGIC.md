@@ -133,5 +133,6 @@ Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở s
 - Khi Admin khóa/mở khóa thẻ, gỡ danh sách đen hoặc đổi quyền độc giả, backend lưu thông báo vào hộp thư của độc giả đích.
 - Khi Admin tạo tài khoản nhân viên, hệ thống ghi thông báo vào hộp thư nhân viên mới. Thao tác xóa nhân viên không thể gửi thông báo sau khi tài khoản bị xóa; cần thông báo trực tiếp trước khi thu hồi tài khoản nếu quy trình này được bổ sung.
 - Khi Thủ thư/Admin duyệt hoặc từ chối yêu cầu mượn, xác nhận trả hoặc báo mất sách, độc giả nhận thông báo mô tả kết quả và thông tin liên quan. Trả trễ/bị đưa vào Danh sách đen có thông báo riêng.
+- Mỗi sách tham chiếu đúng một thể loại chính qua `sach.MaTheLoai` tới `theloai.MaTheLoai`; backend từ chối mã thể loại không tồn tại. Danh mục được seed idempotent và dùng chung cho form nhập sách, trang quản lý kho và bộ lọc catalog.
 - Hộp thư được lưu trong `thongbao`, không mất khi tải lại trang/đăng nhập lại. Header hai cổng tải số chưa đọc khi đăng nhập, cập nhật khi mở bảng, focus lại hoặc polling 30 giây. Người dùng chỉ đánh dấu đã đọc thông báo của chính mình.
 - Lỗi lưu thông báo không làm đảo ngược nghiệp vụ đã hoàn tất; server ghi lỗi để vận hành theo dõi.

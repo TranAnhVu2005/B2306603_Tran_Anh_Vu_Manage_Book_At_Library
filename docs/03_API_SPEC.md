@@ -110,11 +110,12 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ## 2. Quản Lý Sách (`/api/sach`)
 
-* `GET /api/sach`: Lấy danh sách sách đang hoạt động (mặc định ẩn `deleted=true`; hỗ trợ `?search=...&maNxb=...&availableOnly=true`).
+* `GET /api/sach`: Lấy danh sách sách đang hoạt động (mặc định ẩn `deleted=true`; hỗ trợ `?search=...&maNxb=...&maTheLoai=TL-0002&availableOnly=true`).
 * `GET /api/sach/:id`: Chi tiết sách đang hoạt động theo ObjectId hoặc `MaSach`; sách đã xóa mềm trả 404.
 * `GET /api/sach?includeDeleted=true`: [Admin] Lấy danh sách sách đã xóa mềm; response kèm `deleted`, `DeletedAt`, `DeletedBy` để quản trị/phục hồi.
-* `POST /api/sach`: [Manager/Admin] Thêm sách mới (`TenSach`, `DonGia`, `SoQuyen`, `NamXuatBan`, `MaNXB`, `TacGia`, `HinhAnh`, `MoTa`). Tự động sinh `MaSach: SACH-000001`.
+* `POST /api/sach`: [Manager/Admin] Thêm sách mới (`TenSach`, `DonGia`, `SoQuyen`, `NamXuatBan`, `MaNXB`, `MaTheLoai`, `TacGia`, `HinhAnh`, `MoTa`). `MaTheLoai` bắt buộc và phải tồn tại trong danh mục. Tự động sinh `MaSach: SACH-000001`.
 * `PUT /api/sach/:id`: [Manager/Admin] Cập nhật thông tin sách / điều chỉnh số lượng tồn kho.
+* `GET /api/theloai`: Danh mục thể loại công khai (`_id`, `MaTheLoai`, `TenTheLoai`, `MoTa`); danh mục mặc định được khởi tạo idempotent.
 * `DELETE /api/sach/:id`: [Manager/Admin] Xóa mềm; chặn nếu sách đang có phiếu `DangMuon` hoặc `ChoDuyet`; document được giữ lại và actor được ghi log.
 * `PUT /api/sach/:id/restore`: [Admin] Khôi phục sách đã xóa mềm về danh mục hoạt động; log người thực hiện.
 

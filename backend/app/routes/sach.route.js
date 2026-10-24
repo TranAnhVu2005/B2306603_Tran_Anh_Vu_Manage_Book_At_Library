@@ -20,11 +20,11 @@ router.route("/")
         }
         return next();
     }, controller.findAll)
-    .post(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"), controller.create);
+    .post(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "MaTheLoai", "TacGia", "HinhAnh", "MoTa"), controller.create);
 
 router.route("/:id")
     .get(controller.findOne)
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "TacGia", "HinhAnh", "MoTa"), controller.update)
+    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("HinhAnh"), validateImageUpload, allowFields("TenSach", "DonGia", "SoQuyen", "NamXuatBan", "MaNXB", "MaTheLoai", "TacGia", "HinhAnh", "MoTa"), controller.update)
     .delete(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.delete);
 
 router.route("/:id/restore")
