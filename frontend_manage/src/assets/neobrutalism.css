@@ -36,7 +36,7 @@ a:hover { color: #3020a8; }
 
 /* Cards and panels: flat paper, bold outline, tactile offset shadow. */
 .ath-card, .vg-shell, .vg-stat-card, .vg-section, .vg-sidebar,
-.ath-modal-content, .toast-shell, .bk-shell, .audit-log-card,
+.ath-modal-content, .bk-shell, .audit-log-card,
 .manager-panel, .admin-panel, .profile-panel, .catalog-panel {
   border: var(--neo-border) !important;
   border-radius: var(--radius-card) !important;
@@ -140,7 +140,6 @@ button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity:
   box-shadow: var(--neo-shadow) !important;
   background-color: var(--neo-paper) !important;
 }
-.toast-shell { background: var(--neo-yellow) !important; }
 img { max-width: 100%; }
 
 /* Book cards: constrain every flex/grid child so long Vietnamese values never escape the card. */

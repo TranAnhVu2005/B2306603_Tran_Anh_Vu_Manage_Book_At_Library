@@ -2,9 +2,9 @@
 
 * **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
 * **Tên Database**: `quanlymuonsach`
-* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25); `auditlogs` là collection kỹ thuật bổ sung cho truy cứu hoạt động.
+* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25); `nhatkykiemtoan` là collection kỹ thuật bổ sung cho truy cứu hoạt động.
 
-Các trường liệt kê trong 5 collections nghiệp vụ là lược đồ CDM. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `auditlogs` có schema API riêng, không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
+Các trường liệt kê trong 5 collections nghiệp vụ là lược đồ CDM. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `nhatkykiemtoan` có schema riêng, dùng tên trường tiếng Việt và không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
 
 ---
 
@@ -17,7 +17,8 @@ Các trường liệt kê trong 5 collections nghiệp vụ là lược đồ CD
 | 3 | `nhaxuatban` | Danh mục thông tin các nhà xuất bản |
 | 4 | `sach` | Danh mục thông tin các đầu sách và số lượng tồn kho |
 | 5 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
-| 6 | `auditlogs` | Nhật ký kiểm toán append-only, lưu actor, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
+| 6 | `nhatkykiemtoan` | Nhật ký kiểm toán append-only, lưu tác nhân, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
+| 7 | `thongbao` | Hộp thư thông báo nghiệp vụ theo từng độc giả/nhân viên; chỉ người nhận được đọc và đánh dấu đã đọc |
 
 ---
 
@@ -57,7 +58,7 @@ Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và q
   "HoTenNV": "Nguyễn Quản Trị Viên", // [Bắt buộc] Họ và tên đầy đủ của nhân viên
   "MatKhau": "$2a$10$k9...",          // [Bắt buộc] Mật khẩu đăng nhập hệ thống (Đã mã hóa Bcrypt)
   "ChucVu": "ADMIN",                  // ["THUTHU" | "ADMIN"] Chức danh công tác
-  "SoDienThoai": "0901234567",        // Số điện thoại nhân viên
+  "SoDienThoai": "0901234567",        // [Bắt buộc, duy nhất trong nhanvien] Dùng đăng nhập; MSNV chỉ là mã hồ sơ
   "DiaChi": "Ninh Kiều, Cần Thơ"     // Địa chỉ liên hệ của nhân viên
 }
 ```
@@ -122,31 +123,51 @@ Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữ
 }
 ```
 
-### 2.6. Nhật Ký Kiểm Toán (`auditlogs`)
+### 2.6. Nhật Ký Kiểm Toán (`nhatkykiemtoan`)
 
 Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứu sau khi sách xóa mềm hoặc tên hiển thị thay đổi. Không có API sửa/xóa log.
 
 ```json
 {
   "_id": "ObjectId",
-  "Action": "BORROW_APPROVED",
-  "EntityType": "borrow",
-  "EntityId": "ObjectId hoặc MaSach",
+  "HanhDong": "PHIEU_DUYET_MUON",
+  "LoaiDoiTuong": "phieumuon",
+  "MaDoiTuong": "ObjectId hoặc MaSach",
   "MaSach": "SACH-000001",
   "TenSach": "Lập trình Web Vue.js",
   "MaDocGia": "DG-000001",
   "TenDocGia": "Trần Minh Triết",
   "MSNV": "NV-0002",
   "TenNhanVien": "Nguyễn Thủ Thư",
-  "ActorType": "staff",
-  "ActorId": "NV-0002",
-  "ActorName": "Nguyễn Thủ Thư",
-  "Details": { "from": "ChoDuyet", "to": "DangMuon" },
-  "OccurredAt": "2026-10-23T10:00:00.000Z"
+  "LoaiTacNhan": "nhanvien",
+  "MaTacNhan": "NV-0002",
+  "TenTacNhan": "Nguyễn Thủ Thư",
+  "ChiTiet": { "Tu": "ChoDuyet", "Den": "DangMuon" },
+  "ThoiGian": "2026-10-23T10:00:00.000Z"
 }
 ```
 
-Action gồm `BOOK_CREATED`, `BOOK_UPDATED`, `BOOK_SOFT_DELETED`, `BOOK_RESTORED`, `BORROW_REQUESTED`, `BORROW_APPROVED`, `BORROW_REJECTED`, `BOOK_RETURNED`, `BOOK_REPORTED_LOST` và `BORROW_RECORD_DELETED`. Actor được xác định từ JWT phía server, không tin mã do client tự khai.
+`HanhDong` sử dụng các giá trị `SACH_TAO`, `SACH_CAP_NHAT`, `SACH_XOA_MEM`, `SACH_KHOI_PHUC`, `PHIEU_DANG_KY_MUON`, `PHIEU_DUYET_MUON`, `PHIEU_TU_CHOI_MUON`, `PHIEU_TRA_SACH`, `PHIEU_BAO_MAT_SACH` và `PHIEU_XOA`. `LoaiDoiTuong` là `sach` hoặc `phieumuon`; `LoaiTacNhan` là `docgia`, `nhanvien` hoặc `hethong`. Tác nhân được xác định từ JWT phía server, không tin mã do client tự khai.
+
+### 2.7. Hộp Thư Thông Báo (`thongbao`)
+
+Collection kỹ thuật lưu thông báo cần người dùng biết sau khi Admin/Thủ thư thực hiện nghiệp vụ. Khác nhật ký kiểm toán, người nhận được phép cập nhật `DaDoc`; nội dung và người nhận chỉ do backend tạo, không có API tạo/sửa/xóa tùy ý.
+
+```json
+{
+  "_id": "ObjectId",
+  "NguoiNhanId": "ObjectId của docgia hoặc nhanvien",
+  "LoaiNguoiNhan": "docgia",
+  "LoaiThongBao": "THE_KHOA",
+  "TieuDe": "Thẻ thư viện đã bị khóa",
+  "NoiDung": "Quản trị viên đã khóa thẻ của bạn...",
+  "MaThamChieu": "DG-000001 hoặc mã sách/phiếu",
+  "DaDoc": false,
+  "ThoiGian": "2026-10-24T10:00:00.000Z"
+}
+```
+
+Chỉ mục phục vụ hộp thư: `{ LoaiNguoiNhan, NguoiNhanId, ThoiGian }` và `{ LoaiNguoiNhan, NguoiNhanId, DaDoc }`. Người nhận và loại tài khoản được đối chiếu từ JWT; API không nhận recipient id từ client.
 
 ---
 
@@ -217,14 +238,16 @@ erDiagram
         string GhiChu
     }
 
-    AUDITLOGS {
+    NHATKYKIEMTOAN {
         ObjectId _id PK
-        string Action
-        string EntityType
-        string EntityId
+        string HanhDong
+        string LoaiDoiTuong
+        string MaDoiTuong
         string MaSach
         string MaDocGia
         string MSNV
-        date OccurredAt
+        string LoaiTacNhan
+        string MaTacNhan
+        date ThoiGian
     }
 ```

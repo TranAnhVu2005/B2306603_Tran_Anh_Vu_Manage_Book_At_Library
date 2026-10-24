@@ -32,7 +32,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
   - Xem trạng thái thẻ thư viện và thanh toán tiền phạt / bồi thường bồi hoàn.
 
 ### 2.2. Nhân viên Quản lý / Thủ thư (Staff / MANAGER)
-- **Tài khoản**: Được cấp tài khoản nhân viên thư viện (`MSNV`, `ChucVu`).
+- **Tài khoản**: Được cấp hồ sơ nhân viên (`MSNV`, `ChucVu`) và số điện thoại đăng nhập (`SoDienThoai`); MSNV là mã hồ sơ, không dùng đăng nhập.
 - **Quyền hạn**:
   - Quản lý kho sách (Thêm, Sửa, Xóa sách; kiểm kê số lượng tồn kho `SoQuyen`).
   - Quản lý danh mục Nhà xuất bản (Thêm, Sửa, Xóa NXB).
@@ -61,7 +61,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
   - `frontend_user/`: cổng Độc giả (`USER`), là thư mục đổi tên từ frontend cũ; chỉ chứa luồng và giao diện dành cho độc giả.
   - `frontend_manage/`: cổng Thủ thư (`MANAGER`) và Quản trị viên (`ADMIN`), gồm tra cứu danh mục/chi tiết sách, màn hình nghiệp vụ và quản trị.
 - MANAGER có toàn bộ chức năng nghiệp vụ thủ thư; ADMIN có toàn bộ chức năng MANAGER cộng các chức năng quản trị. Tra cứu sách được triển khai trực tiếp trên cả hai cổng; nghiệp vụ mượn cá nhân chỉ ở cổng độc giả, quản lý kho ở cổng quản lý.
-- Hồ sơ nhân viên và hồ sơ độc giả hiện đăng nhập độc lập, lưu phiên riêng theo domain. Các chức năng cá nhân của độc giả (mượn, lịch sử, hồ sơ thẻ) cần đăng nhập phiên USER; chưa hỗ trợ liên kết nhân viên với hồ sơ độc giả.
+- Hồ sơ nhân viên và hồ sơ độc giả hiện đăng nhập độc lập, lưu phiên riêng theo domain. Các chức năng cá nhân của độc giả (mượn, lịch sử, hồ sơ thẻ) cần đăng nhập phiên USER; header và menu tài khoản cổng độc giả có mục **Hồ sơ cá nhân** dẫn tới `/profile`. Chưa hỗ trợ liên kết nhân viên với hồ sơ độc giả.
   - Môi trường phát triển: Backend API `http://localhost:3000`, `frontend_user` tại `http://localhost:3001`, `frontend_manage` tại `http://localhost:3002`; mỗi app proxy `/api` đến Backend.
   - Mỗi ứng dụng có cấu hình/build/deploy riêng và một domain/origin riêng trong production. Tên domain thực tế lấy từ cấu hình triển khai; backend chỉ cho phép hai origin được khai báo trong CORS allowlist.
   - Hai app không chia sẻ localStorage/cookie/session qua domain. Người dùng xác thực riêng trên từng origin; mọi endpoint vẫn xác minh JWT, vai trò và quyền sở hữu ở backend.

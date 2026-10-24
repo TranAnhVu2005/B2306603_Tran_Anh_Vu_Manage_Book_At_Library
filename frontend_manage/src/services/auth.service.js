@@ -16,7 +16,7 @@ class AuthService {
     }
 
     /**
-     * Đăng nhập bằng số điện thoại / MSNV và mật khẩu.
+     * Đăng nhập nhân viên bằng số điện thoại; độc giả vẫn dùng thông tin đăng nhập của cổng độc giả.
      * Lưu JWT token và thông tin user vào localStorage.
      */
     async login(identifier, password) {

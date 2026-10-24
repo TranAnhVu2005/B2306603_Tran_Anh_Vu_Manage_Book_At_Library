@@ -124,7 +124,14 @@ Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở s
 
 ## 8. Nhật ký kiểm toán và xóa mềm sách
 
-- Mỗi thao tác thành công trên sách được ghi vào `auditlogs`: thêm, sửa (các trường trước/sau), xóa mềm và khôi phục. Actor lấy từ JWT; log có mã/tên nhân viên, mã/tên sách và thời điểm.
+- Mỗi thao tác thành công trên sách được ghi vào `nhatkykiemtoan`: thêm, sửa (các trường trước/sau), xóa mềm và khôi phục. Tác nhân lấy từ JWT; log có mã/tên nhân viên, mã/tên sách và thời điểm.
 - Vòng đời phiếu mượn ghi các sự kiện độc giả đăng ký, nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất và Admin xóa phiếu. Mỗi sự kiện lưu snapshot mã/tên sách, mã/tên độc giả, nhân viên chịu trách nhiệm và trạng thái trước/sau khi phù hợp.
 - API log chỉ đọc, chỉ `ADMIN` được truy cập. Log append-only, không cung cấp route sửa/xóa; không lưu mật khẩu, JWT hoặc credential.
 - Xóa sách đặt `deleted=true` và metadata thời gian/nhân viên, không xóa document khỏi MongoDB. Tra cứu công khai và đăng ký/duyệt mượn loại sách đã xóa; phiếu còn mở ngăn xóa mềm. Admin có thể xem danh sách đã xóa và khôi phục; thao tác khôi phục cũng được ghi log.
+# Thông báo nghiệp vụ đến tài khoản
+
+- Khi Admin khóa/mở khóa thẻ, gỡ danh sách đen hoặc đổi quyền độc giả, backend lưu thông báo vào hộp thư của độc giả đích.
+- Khi Admin tạo tài khoản nhân viên, hệ thống ghi thông báo vào hộp thư nhân viên mới. Thao tác xóa nhân viên không thể gửi thông báo sau khi tài khoản bị xóa; cần thông báo trực tiếp trước khi thu hồi tài khoản nếu quy trình này được bổ sung.
+- Khi Thủ thư/Admin duyệt hoặc từ chối yêu cầu mượn, xác nhận trả hoặc báo mất sách, độc giả nhận thông báo mô tả kết quả và thông tin liên quan. Trả trễ/bị đưa vào Danh sách đen có thông báo riêng.
+- Hộp thư được lưu trong `thongbao`, không mất khi tải lại trang/đăng nhập lại. Header hai cổng tải số chưa đọc khi đăng nhập, cập nhật khi mở bảng, focus lại hoặc polling 30 giây. Người dùng chỉ đánh dấu đã đọc thông báo của chính mình.
+- Lỗi lưu thông báo không làm đảo ngược nghiệp vụ đã hoàn tất; server ghi lỗi để vận hành theo dõi.

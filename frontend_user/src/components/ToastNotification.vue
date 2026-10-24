@@ -60,35 +60,39 @@ export default {
   right: 1.75rem;
   z-index: 2000;
   pointer-events: none;
-  max-width: calc(100vw - 2rem);
+  width: min(420px, calc(100vw - 2rem));
 }
 
-/* Double-Bezel Toast */
 .toast-shell {
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--tray, rgba(28,25,23,0.04));
-  box-shadow: inset 0 0 0 1px var(--hair, rgba(28,25,23,0.08));
+  padding: 3px;
+  border: 2px solid #111;
+  border-radius: 10px;
+  background: #fffdf2;
+  box-shadow: 4px 4px 0 #111;
+  box-sizing: border-box;
+  width: 100%;
   pointer-events: auto;
 }
 
 .toast-core {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.65rem 0.65rem 0.65rem 1rem;
-  border-radius: calc(999px - 4px);
-  min-width: min(260px, calc(100vw - 3rem));
-  max-width: 400px;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), 0 12px 24px -8px rgba(0,0,0,0.3);
+  gap: 0.7rem;
+  padding: 0.8rem 0.65rem 0.8rem 0.85rem;
+  border-radius: 6px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: none;
+  overflow-wrap: anywhere;
 }
 .toast-core.is-success {
-  background: var(--primary, #143529);
-  color: #FBF9F2;
+  background: #087443;
+  color: #fff;
 }
 .toast-core.is-error {
-  background: var(--accent, #8C3D28);
-  color: #FBF9F2;
+  background: #b42318;
+  color: #fff;
 }
 
 .toast-icon {
@@ -97,16 +101,18 @@ export default {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.62);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.16);
   flex-shrink: 0;
 }
 
 .toast-message {
   flex: 1;
-  font-size: 0.84rem;
-  font-weight: 500;
-  font-family: var(--font-sans, system-ui, sans-serif);
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif;
   line-height: 1.4;
 }
 
@@ -114,17 +120,18 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.62);
   background: rgba(255,255,255,0.12);
   color: inherit;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.35s var(--ease-spring);
 }
-.toast-close:hover { background: rgba(255,255,255,0.24); }
+.toast-close:hover { background: rgba(255,255,255,0.26); }
+.toast-close:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
 /* Transition */
 .toast-enter-active {
@@ -148,6 +155,10 @@ export default {
     bottom: 1rem;
   }
 
-  .toast-core { padding-left: 0.75rem; }
+  .toast-core { padding-left: 0.7rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter-active, .toast-leave-active { transition: none; }
 }
 </style>

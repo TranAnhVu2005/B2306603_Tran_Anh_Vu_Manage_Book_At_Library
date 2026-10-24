@@ -5,6 +5,10 @@ class NhanVienService {
         this.api = createApiClient(baseUrl);
     }
 
+    async getAll(params = {}) {
+        return (await this.api.get("/", { params })).data;
+    }
+
     async update(id, data) {
         const isFormData = data instanceof FormData;
         return (await this.api.put(`/${id}`, data, {

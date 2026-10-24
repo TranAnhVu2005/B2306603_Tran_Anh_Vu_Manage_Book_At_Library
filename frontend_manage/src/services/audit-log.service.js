@@ -1,6 +1,6 @@
 import createApiClient from "./api.service";
 
-const api = createApiClient("/api/audit-logs");
+const api = createApiClient("/api/nhatkykiemtoan");
 
 export default {
   async getAll(params = {}) {

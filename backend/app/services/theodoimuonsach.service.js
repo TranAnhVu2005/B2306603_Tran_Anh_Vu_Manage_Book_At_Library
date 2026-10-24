@@ -1,5 +1,6 @@
 const { ObjectId } = require("mongodb");
 const AuditLogService = require("./audit-log.service");
+const ThongBaoService = require("./thongbao.service");
 
 const publicFields = {
     _id: 1,
@@ -27,6 +28,15 @@ class TheoDoiMuonSachService {
         this.DocGia = client.db().collection("docgia");
         this.NhanVien = client.db().collection("nhanvien");
         this.AuditLog = new AuditLogService(client);
+        this.ThongBao = new ThongBaoService(client);
+    }
+
+    async notifyReader(maDocGia, type, title, message, reference) {
+        const reader = await this.DocGia.findOne({ MaDocGia: maDocGia }, { projection: { _id: 1 } });
+        if (!reader) return;
+        await this.ThongBao.createSafely({
+            recipientId: String(reader._id), recipientType: "docgia", type, title, message, reference,
+        });
     }
 
     // Service đăng ký mượn sách - Completed
@@ -172,13 +182,19 @@ class TheoDoiMuonSachService {
         );
         const updatedRecord = result ? await this.findById(String(record._id)) : null;
         if (updatedRecord) {
-            const reader = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } });
+            const reader = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { _id: 1, HoLot: 1, Ten: 1 } });
             await this.AuditLog.record({
                 action: "BORROW_APPROVED", entityType: "borrow", entityId: String(record._id),
                 MaSach: record.MaSach, TenSach: sach.TenSach, MaDocGia: record.MaDocGia,
                 TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
                 actorType: "staff", actorId: msnv,
                 Details: { from: "ChoDuyet", to: "DangMuon" },
+            });
+            await this.ThongBao.createSafely({
+                recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_DUYET_MUON",
+                title: "Yêu cầu mượn sách đã được duyệt",
+                message: `Yêu cầu mượn “${sach.TenSach}” đã được duyệt. Hạn trả dự kiến: ${updatedRecord.NgayHenTra}.`,
+                reference: record.MaSach,
             });
         }
         return updatedRecord;
@@ -214,13 +230,19 @@ class TheoDoiMuonSachService {
         if (updatedRecord) {
             const [sach, reader] = await Promise.all([
                 this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } }),
-                this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } }),
+                this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { _id: 1, HoLot: 1, Ten: 1 } }),
             ]);
             await this.AuditLog.record({
                 action: "BORROW_REJECTED", entityType: "borrow", entityId: String(record._id),
                 MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
                 TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
                 actorType: "staff", actorId: msnv, Details: { from: "ChoDuyet", to: "TuChoi", reason: String(lyDo).trim() },
+            });
+            await this.ThongBao.createSafely({
+                recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_TU_CHOI_MUON",
+                title: "Yêu cầu mượn sách chưa được duyệt",
+                message: `Yêu cầu mượn “${sach?.TenSach || record.MaSach}” bị từ chối. Lý do: ${String(lyDo).trim()}`,
+                reference: record.MaSach,
             });
         }
         return updatedRecord;
@@ -283,6 +305,15 @@ class TheoDoiMuonSachService {
                 actorType: "staff", actorId: msnv,
                 Details: { from: "DangMuon", to: "DaTra", overdue: Boolean(isLate) },
             });
+            await this.notifyReader(record.MaDocGia, "PHIEU_TRA_SACH", "Đã xác nhận trả sách", `Thư viện đã xác nhận bạn trả “${sach?.TenSach || record.MaSach}”.`, record.MaSach);
+            if (isLate) {
+                const readerState = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { SoLanViPham: 1, TrangThaiThe: 1 } });
+                if (readerState?.TrangThaiThe === "DanhSachDen") {
+                    await this.notifyReader(record.MaDocGia, "THE_VAO_DANH_SACH_DEN", "Thẻ đã vào Danh sách đen", "Thẻ của bạn đã đạt ngưỡng vi phạm. Hệ thống tạm dừng đăng ký mượn; vui lòng liên hệ thư viện để được hướng dẫn.", record.MaDocGia);
+                } else {
+                    await this.notifyReader(record.MaDocGia, "VI_PHAM_TRA_TRE", "Phiếu trả sách ghi nhận quá hạn", `Lần trả “${sach?.TenSach || record.MaSach}” được ghi nhận quá hạn. Số lần vi phạm hiện tại: ${readerState?.SoLanViPham || 0}.`, record.MaSach);
+                }
+            }
         }
         return updatedRecord;
     }
@@ -342,6 +373,10 @@ class TheoDoiMuonSachService {
                 actorType: "staff", actorId: msnv,
                 Details: { from: "DangMuon", to: "MatSach", compensation: giaTriBoiThuong },
             });
+            await this.notifyReader(record.MaDocGia, "PHIEU_BAO_MAT_SACH", "Đã ghi nhận báo mất sách", `Thư viện đã ghi nhận “${sach?.TenSach || record.MaSach}” bị mất. Giá trị bồi thường được ghi nhận: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫.`, record.MaSach);
+            if (docGia?.TrangThaiThe === "DanhSachDen") {
+                await this.notifyReader(record.MaDocGia, "THE_VAO_DANH_SACH_DEN", "Thẻ đã vào Danh sách đen", "Thẻ của bạn đã đạt ngưỡng vi phạm. Hệ thống tạm dừng đăng ký mượn; vui lòng liên hệ thư viện để được hướng dẫn.", record.MaDocGia);
+            }
         }
         return updatedRecord;
     }

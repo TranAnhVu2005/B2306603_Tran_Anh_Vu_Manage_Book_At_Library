@@ -68,7 +68,6 @@ class NhanVienService {
         if (isCreating) {
             if (!data.ChucVu) data.ChucVu = "THUTHU";
             if (data.DiaChi === undefined) data.DiaChi = "";
-            if (data.SoDienThoai === undefined) data.SoDienThoai = "";
         }
 
         return data;
@@ -78,8 +77,14 @@ class NhanVienService {
     async create(payload) {
         const data = await this.extractData(payload, true);
 
-        if (!data.HoTenNV || !data.MatKhau) {
-            throw new Error("Vui lòng điền đầy đủ Họ tên nhân viên và Mật khẩu.");
+        if (!data.HoTenNV || !data.MatKhau || !data.SoDienThoai) {
+            throw new Error("Vui lòng điền đầy đủ Họ tên, số điện thoại và mật khẩu nhân viên.");
+        }
+        if (!/^\+?[0-9]{9,15}$/.test(data.SoDienThoai)) {
+            throw new Error("Số điện thoại nhân viên phải có từ 9 đến 15 chữ số.");
+        }
+        if (await this.NhanVien.findOne({ SoDienThoai: data.SoDienThoai }, { projection: { _id: 1 } })) {
+            throw new Error("Số điện thoại nhân viên đã được sử dụng.");
         }
 
         // Tự sinh mã số nhân viên
@@ -123,9 +128,8 @@ class NhanVienService {
     //Xác thực đăng nhập cho nhân viên thủ thư/ quản trị viên - Completed
     async login(identifier, password) {
         const accountIdentifier = String(identifier || "").trim();
-        const staff = await this.NhanVien.findOne({
-            $or: [{ MSNV: accountIdentifier }, { SoDienThoai: accountIdentifier }]
-        });
+        if (!/^\+?[0-9]{9,15}$/.test(accountIdentifier)) return null;
+        const staff = await this.NhanVien.findOne({ SoDienThoai: accountIdentifier });
 
         if (!staff) return null; //Không tìm thấy
 
@@ -150,6 +154,17 @@ class NhanVienService {
         const data = await this.extractData(editablePayload, false);
         if (data.HoTenNV !== undefined && !data.HoTenNV) {
             throw new Error("Họ tên nhân viên không được để trống.");
+        }
+        if (data.SoDienThoai !== undefined) {
+            if (!/^\+?[0-9]{9,15}$/.test(data.SoDienThoai)) {
+                throw new Error("Số điện thoại nhân viên phải có từ 9 đến 15 chữ số.");
+            }
+            let phoneFilter = { SoDienThoai: data.SoDienThoai };
+            if (ObjectId.isValid(id)) phoneFilter._id = { $ne: new ObjectId(id) };
+            else phoneFilter.MSNV = { $ne: id };
+            if (await this.NhanVien.findOne(phoneFilter, { projection: { _id: 1 } })) {
+                throw new Error("Số điện thoại nhân viên đã được sử dụng.");
+            }
         }
 
         data.UpdatedAt = new Date();

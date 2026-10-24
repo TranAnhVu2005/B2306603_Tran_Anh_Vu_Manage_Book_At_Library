@@ -1,6 +1,14 @@
 const DocGiaService = require("../services/docgia.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
+const ThongBaoService = require("../services/thongbao.service");
+
+async function notifyReader(reader, type, title, message) {
+    if (!reader?._id) return;
+    await new ThongBaoService(MongoDB.client).createSafely({
+        recipientId: String(reader._id), recipientType: "docgia", type, title, message, reference: reader.MaDocGia,
+    });
+}
 
 // Thêm một độc giả mới - Completed
 exports.create = async (req, res, next) => {
@@ -88,6 +96,14 @@ exports.updateRole = async (req, res, next) => {
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy người dùng để phân quyền."));
         }
+        await notifyReader(
+            result,
+            "VAI_TRO_CAP_NHAT",
+            "Vai trò tài khoản đã được cập nhật",
+            result.VaiTro === "MANAGER"
+                ? "Tài khoản của bạn đã được cấp quyền Quản lý / Thủ thư."
+                : "Tài khoản của bạn hiện có quyền Độc giả."
+        );
         return res.json({
             message: `Phân quyền thành công vai trò '${role}'.`,
             data: result,
@@ -109,6 +125,14 @@ exports.unblock = async (req, res, next) => {
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy thẻ đang khóa để mở khóa."));
         }
+        await notifyReader(
+            result,
+            "THE_MO_KHOA",
+            result.TrangThaiThe === "DanhSachDen" ? "Thẻ vẫn thuộc danh sách đen" : "Thẻ thư viện đã được mở khóa",
+            result.TrangThaiThe === "DanhSachDen"
+                ? "Quản trị viên đã mở khóa khẩn cấp. Thẻ vẫn ở Danh sách đen do lịch sử vi phạm; vui lòng liên hệ thư viện để được xem xét."
+                : "Quản trị viên đã mở khóa thẻ. Bạn có thể đăng ký mượn sách trở lại."
+        );
         return res.json({
             message: result.TrangThaiThe === "DanhSachDen"
                 ? "Đã mở khóa khẩn cấp; thẻ vẫn thuộc danh sách đen do có từ 3 lần vi phạm."
@@ -132,6 +156,7 @@ exports.lock = async (req, res, next) => {
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy độc giả để khóa thẻ."));
         }
+        await notifyReader(result, "THE_KHOA", "Thẻ thư viện đã bị khóa", "Quản trị viên đã khóa thẻ của bạn. Bạn vẫn có thể xem hồ sơ và lịch sử; việc đăng ký mượn sẽ bị tạm dừng. Vui lòng liên hệ thư viện nếu cần hỗ trợ.");
         return res.json({
             message: "Đã khóa thẻ khẩn cấp. Số lần vi phạm được giữ nguyên.",
             data: result,
@@ -153,6 +178,7 @@ exports.reinstate = async (req, res, next) => {
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy độc giả đang ở trạng thái danh sách đen."));
         }
+        await notifyReader(result, "THE_GO_DANH_SACH_DEN", "Thẻ đã được gỡ khỏi danh sách đen", "Quản trị viên đã xét gỡ thẻ của bạn khỏi Danh sách đen. Lịch sử vi phạm vẫn được lưu; bạn có thể tiếp tục sử dụng các chức năng theo trạng thái thẻ hiện tại.");
         return res.json({
             message: "Đã gỡ thẻ khỏi danh sách đen sau khi xét duyệt. Lịch sử vi phạm được giữ nguyên.",
             data: result,

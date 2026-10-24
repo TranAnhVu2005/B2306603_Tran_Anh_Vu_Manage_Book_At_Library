@@ -11,8 +11,8 @@
             </div>
             <form @submit.prevent="handleLogin">
               <div class="mb-3">
-                <label for="staff-identifier" class="small fw-bold text-dark mb-1">Mã nhân viên</label>
-                <input id="staff-identifier" v-model.trim="identifier" class="form-control ath-input" autocomplete="username" required />
+                <label for="staff-phone" class="small fw-bold text-dark mb-1">Số điện thoại</label>
+                <input id="staff-phone" v-model.trim="phone" class="form-control ath-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="Nhập số điện thoại đã đăng ký" required />
               </div>
               <div class="mb-4">
                 <label for="staff-password" class="small fw-bold text-dark mb-1">Mật khẩu</label>
@@ -36,12 +36,12 @@ import authService from "@/services/auth.service";
 
 export default {
   components: { ToastNotification },
-  data: () => ({ identifier: "", password: "", loading: false }),
+  data: () => ({ phone: "", password: "", loading: false }),
   methods: {
     async handleLogin() {
       this.loading = true;
       try {
-        const response = await authService.login(this.identifier, this.password);
+        const response = await authService.login(this.phone, this.password);
         if (!authService.isStaffOrAdmin(response?.data)) {
           await authService.logout();
           this.password = "";

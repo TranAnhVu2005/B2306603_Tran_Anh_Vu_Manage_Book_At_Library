@@ -8,12 +8,17 @@ async function startServer() {
         await MongoDB.connect(config.db.uri);
         console.log(`-> Kết nối CSDL thành công tại: ${config.db.uri}`);
         await MongoDB.client.db().collection("jwt_revocations").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-        const auditLogs = MongoDB.client.db().collection("auditlogs");
+        const auditLogs = MongoDB.client.db().collection("nhatkykiemtoan");
         await Promise.all([
-            auditLogs.createIndex({ OccurredAt: -1, _id: -1 }),
-            auditLogs.createIndex({ MaSach: 1, OccurredAt: -1 }),
-            auditLogs.createIndex({ MaDocGia: 1, OccurredAt: -1 }),
-            auditLogs.createIndex({ MSNV: 1, OccurredAt: -1 }),
+            auditLogs.createIndex({ ThoiGian: -1, _id: -1 }),
+            auditLogs.createIndex({ MaSach: 1, ThoiGian: -1 }),
+            auditLogs.createIndex({ MaDocGia: 1, ThoiGian: -1 }),
+            auditLogs.createIndex({ MSNV: 1, ThoiGian: -1 }),
+        ]);
+        const notifications = MongoDB.client.db().collection("thongbao");
+        await Promise.all([
+            notifications.createIndex({ LoaiNguoiNhan: 1, NguoiNhanId: 1, ThoiGian: -1 }),
+            notifications.createIndex({ LoaiNguoiNhan: 1, NguoiNhanId: 1, DaDoc: 1 }),
         ]);
 
         const PORT = config.app.port;

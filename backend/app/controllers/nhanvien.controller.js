@@ -1,6 +1,7 @@
 const NhanVienService = require("../services/nhanvien.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
+const ThongBaoService = require("../services/thongbao.service");
 
 // Tạo tài khoản nhân viên - Completed
 exports.create = async (req, res, next) => {
@@ -9,6 +10,14 @@ exports.create = async (req, res, next) => {
 
 
         const result = await service.create(req.body);
+        await new ThongBaoService(MongoDB.client).createSafely({
+            recipientId: String(result._id),
+            recipientType: "nhanvien",
+            type: "TAO_TAI_KHOAN_NHAN_VIEN",
+            title: "Tài khoản nhân viên đã được tạo",
+            message: `Quản trị viên đã tạo tài khoản ${result.MSNV} cho bạn. Bạn có thể đăng nhập vào cổng quản lý bằng thông tin được cấp.`,
+            reference: result.MSNV,
+        });
         return res.status(201).json({
             message: "Tạo tài khoản nhân viên thành công.",
             data: result,

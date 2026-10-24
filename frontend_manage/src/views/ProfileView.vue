@@ -259,7 +259,7 @@
                           <strong>{{ bookName(item.MaSach) }}</strong>
                         </router-link>
                         <span class="font-mono-code text-muted d-block" style="font-size: 0.7rem;">{{ item.MaSach
-                          }}</span>
+                        }}</span>
                       </td>
                       <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.NgayMuon || '—' }}</td>
                       <td class="text-nowrap">
@@ -286,15 +286,6 @@
                           <div class="boi-thuong fw-bold">
                             {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
                           </div>
-                          <button class="ath-action-btn ath-action-btn-danger mt-1.5" @click="openMoMoPayment(item)"
-                            type="button">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                              stroke-width="1.5" aria-hidden="true">
-                              <rect width="20" height="14" x="2" y="5" rx="2" />
-                              <path d="M2 10h20" />
-                            </svg>
-                            Thanh toán MoMo
-                          </button>
                         </template>
                       </td>
                     </tr>
@@ -322,7 +313,7 @@
                 <div class="reader-info-row border-0">
                   <span class="reader-info-label">Chức vụ</span>
                   <span class="reader-info-val fw-semibold">
-                    {{ staffInfo?.ChucVu === "ADMIN" ? "Quản trị viên" : "Thủthư" }}
+                    {{ staffInfo?.ChucVu === "ADMIN" ? "Quản trị viên" : "Thủ thư" }}
                   </span>
                 </div>
               </div>
@@ -440,54 +431,6 @@
         </div>
       </div>
     </div>
-
-    <!-- MoMo Payment Modal -->
-    <div v-if="showPaymentModal" class="ath-modal-overlay" @click.self="showPaymentModal = false">
-      <div class="ath-modal-content shadow-lg" style="max-width: 420px;">
-        <div class="ath-modal-inner">
-          <div class="modal-head">
-            <h3 class="modal-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                aria-hidden="true">
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-              Thanh Toán Bồi Thường MoMo
-            </h3>
-            <button type="button" class="modal-close" @click="showPaymentModal = false" aria-label="Đóng">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                aria-hidden="true">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div v-if="paymentInfo" class="modal-body text-center p-4">
-            <p class="modal-sub mb-3">Quét mã QR bằng ứng dụng MoMo để thanh toán khoản tiền bồi thường sách:</p>
-            <div class="qr-wrap">
-              <img :src="paymentInfo.qrCodeUrl" alt="MoMo QR Code"
-                style="width: 160px; height: 160px; object-fit: contain;" />
-            </div>
-            <div class="font-mono-code my-2" style="font-size: 1.8rem; font-weight: 700; color: var(--status-out);">
-              {{ (paymentInfo.amount || 0).toLocaleString('vi-VN') }} ₫
-            </div>
-            <small class="text-muted d-block mb-4">Mã GD: {{ paymentInfo.orderId }}</small>
-            <a :href="paymentInfo.payUrl" target="_blank" rel="noopener"
-              class="ath-btn-primary w-100 text-center text-decoration-none mb-3 d-inline-flex justify-content-center align-items-center gap-2">
-              Chuyển tới cổng thanh toán MoMo
-              <span class="btn-island" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <path d="M15 3h6v6" />
-                  <path d="m10 14 11-11" />
-                </svg>
-              </span>
-            </a>
-            <button class="ath-btn-outline w-100" @click="showPaymentModal = false" type="button">Đóng</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <ToastNotification ref="toast" />
   </div>
 </template>
@@ -499,7 +442,6 @@ import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
-import paymentService from "../services/payment.service";
 
 export default {
   name: "ProfileView",
@@ -513,8 +455,6 @@ export default {
       books: [],
       loading: false,
       activeTab: "active",
-      showPaymentModal: false,
-      paymentInfo: null,
       showEditProfileModal: false,
       savingProfile: false,
       selectedAvatarFile: null,
@@ -737,20 +677,6 @@ export default {
     },
     bookName(maSach) {
       return this.books.find((book) => book.MaSach === maSach)?.TenSach || maSach;
-    },
-    async openMoMoPayment(item) {
-      try {
-        const amount = item.GiaTriBoiThuong || 0;
-        const res = await paymentService.createMoMoPayment({
-          borrowId: item._id,
-          amount,
-          orderInfo: `Bồi thường mất sách ${item.MaSach} cho độc giả ${item.MaDocGia}`
-        });
-        this.paymentInfo = res.data;
-        this.showPaymentModal = true;
-      } catch (err) {
-        this.$refs.toast?.show(err.response?.data?.message || "Không thể khởi tạo cổng thanh toán MoMo.", "error");
-      }
     }
   }
 };

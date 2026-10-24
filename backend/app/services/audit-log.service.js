@@ -1,25 +1,27 @@
 const auditFields = {
-    _id: 1,
-    Action: 1,
-    EntityType: 1,
-    EntityId: 1,
-    MaSach: 1,
-    TenSach: 1,
-    MaDocGia: 1,
-    TenDocGia: 1,
-    MSNV: 1,
-    TenNhanVien: 1,
-    ActorType: 1,
-    ActorId: 1,
-    ActorName: 1,
-    Details: 1,
-    OccurredAt: 1,
+    _id: 1, HanhDong: 1, LoaiDoiTuong: 1, MaDoiTuong: 1,
+    MaSach: 1, TenSach: 1, MaDocGia: 1, TenDocGia: 1, MSNV: 1, TenNhanVien: 1,
+    LoaiTacNhan: 1, MaTacNhan: 1, TenTacNhan: 1, ChiTiet: 1, ThoiGian: 1,
+};
+
+const actionNames = {
+    BOOK_CREATED: "SACH_TAO", BOOK_UPDATED: "SACH_CAP_NHAT", BOOK_SOFT_DELETED: "SACH_XOA_MEM",
+    BOOK_RESTORED: "SACH_KHOI_PHUC", BORROW_REQUESTED: "PHIEU_DANG_KY_MUON",
+    BORROW_APPROVED: "PHIEU_DUYET_MUON", BORROW_REJECTED: "PHIEU_TU_CHOI_MUON",
+    BOOK_RETURNED: "PHIEU_TRA_SACH", BOOK_REPORTED_LOST: "PHIEU_BAO_MAT_SACH",
+    BORROW_RECORD_DELETED: "PHIEU_XOA",
+};
+const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong" };
+const translateDetails = (value) => {
+    if (Array.isArray(value)) return value.map(translateDetails);
+    if (!value || typeof value !== "object" || value instanceof Date) return value;
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [detailNames[key] || key, translateDetails(item)]));
 };
 
 class AuditLogService {
     constructor(client) {
         this.db = client.db();
-        this.Logs = this.db.collection("auditlogs");
+        this.Logs = this.db.collection("nhatkykiemtoan");
     }
 
     async record(event) {
@@ -36,17 +38,17 @@ class AuditLogService {
         }
 
         const entry = {
-            Action: String(event.action),
-            EntityType: String(event.entityType),
-            EntityId: String(event.entityId || ""),
-            ActorType: actorType,
-            ActorId: actorId,
-            ActorName: actorName || actorId,
-            OccurredAt: new Date(),
+            HanhDong: actionNames[event.action] || String(event.action),
+            LoaiDoiTuong: event.entityType === "book" ? "sach" : "phieumuon",
+            MaDoiTuong: String(event.entityId || ""),
+            LoaiTacNhan: actorType === "staff" ? "nhanvien" : actorType === "reader" ? "docgia" : "hethong",
+            MaTacNhan: actorId,
+            TenTacNhan: actorName || actorId,
+            ThoiGian: new Date(),
         };
 
         for (const key of ["MaSach", "TenSach", "MaDocGia", "TenDocGia", "MSNV", "TenNhanVien", "Details"]) {
-            if (event[key] !== undefined && event[key] !== null) entry[key] = event[key];
+            if (event[key] !== undefined && event[key] !== null) entry[key === "Details" ? "ChiTiet" : key] = key === "Details" ? translateDetails(event[key]) : event[key];
         }
         if (actorType === "staff") {
             entry.MSNV = entry.MSNV || actorId;
@@ -59,22 +61,22 @@ class AuditLogService {
 
     async find(filters = {}) {
         const query = {};
-        for (const field of ["Action", "EntityType", "MaSach", "MaDocGia", "MSNV"]) {
+        for (const field of ["HanhDong", "LoaiDoiTuong", "MaSach", "MaDocGia", "MSNV"]) {
             if (filters[field]) query[field] = String(filters[field]).trim();
         }
         if (filters.from || filters.to) {
-            query.OccurredAt = {};
-            if (filters.from) query.OccurredAt.$gte = new Date(filters.from);
+            query.ThoiGian = {};
+            if (filters.from) query.ThoiGian.$gte = new Date(filters.from);
             if (filters.to) {
                 const upperBound = new Date(filters.to);
                 if (/^\d{4}-\d{2}-\d{2}$/.test(String(filters.to))) upperBound.setDate(upperBound.getDate() + 1);
-                query.OccurredAt.$lt = upperBound;
+                query.ThoiGian.$lt = upperBound;
             }
         }
         const limit = Math.min(Math.max(Number.parseInt(filters.limit, 10) || 100, 1), 300);
         const skip = Math.min(Math.max(Number.parseInt(filters.skip, 10) || 0, 0), 100000);
         const cursor = this.Logs.find(query, { projection: auditFields })
-            .sort({ OccurredAt: -1, _id: -1 }).skip(skip).limit(limit);
+            .sort({ ThoiGian: -1, _id: -1 }).skip(skip).limit(limit);
         const [items, total] = await Promise.all([cursor.toArray(), this.Logs.countDocuments(query)]);
         return { items, total, limit, skip };
     }

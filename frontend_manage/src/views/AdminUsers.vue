@@ -8,7 +8,7 @@
           Khu Vực Quản Trị Tối Cao (Super Admin)
         </span>
         <h1 class="admin-page-title">
-          Phân Quyền Người Dùng & Danh Sách Đen
+          Quản lý tài khoản & phân quyền
         </h1>
       </div>
       <button class="ath-btn-outline" type="button" @click="fetchData">
@@ -28,24 +28,24 @@
           <input type="text"
                  class="form-control ath-input border-start-0"
                  v-model="search"
-                 placeholder="Tìm kiếm theo mã độc giả, họ tên, số điện thoại..." />
+                 placeholder="Tìm theo mã tài khoản, họ tên hoặc số điện thoại..." />
           <button v-if="search" class="btn btn-outline-secondary" type="button" @click="search = ''" style="border-color: var(--paper-border);">
             <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
         </div>
-        <div class="admin-filter-options" role="group" aria-label="Lọc danh sách người dùng">
+        <div class="admin-filter-options" role="group" aria-label="Lọc tài khoản">
           <button class="btn btn-sm"
                   :class="filterRole === 'all' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   :aria-pressed="filterRole === 'all'"
                   @click="filterRole = 'all'">
-            Tất cả ({{ users.length }})
+            Tất cả ({{ accounts.length }})
           </button>
           <button class="btn btn-sm"
-                  :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
+            :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
                   :aria-pressed="filterRole === 'MANAGER'"
                   @click="filterRole = 'MANAGER'">
             <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M16 11h6" /></svg>
-            Quản lý / Thủ thư
+            Quản lý / Thủ thư ({{ managerCount }})
           </button>
           <button class="btn btn-sm"
                   :class="filterRole === 'DanhSachDen' ? 'ath-btn-danger' : 'ath-btn-outline'"
@@ -74,7 +74,7 @@
         <p class="text-muted small mt-2">Đang tải danh sách người dùng...</p>
       </div>
 
-      <div v-else-if="filteredUsers.length === 0" class="text-center py-5">
+      <div v-else-if="filteredAccounts.length === 0" class="text-center py-5">
         <svg class="ui-icon admin-empty-icon text-muted mb-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v8M16 12h8" /></svg>
         <h6 class="font-serif-headline fw-bold">Không tìm thấy người dùng phù hợp</h6>
         <p class="text-muted small mb-0">Thử thay đổi từ khóa hoặc bộ lọc vai trò.</p>
@@ -84,33 +84,36 @@
         <table class="ath-table admin-users-table">
           <thead>
             <tr>
-              <th>Mã độc giả</th>
+              <th>Mã tài khoản</th>
               <th>Họ và Tên</th>
               <th>Số điện thoại</th>
-              <th>Vai trò</th>
+              <th>Vai trò / Chức vụ</th>
               <th>Trạng thái thẻ</th>
               <th>Vi phạm</th>
               <th class="text-end">Thao tác Quản trị</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="u in filteredUsers" :key="u._id">
-              <td class="font-mono-code fw-bold text-dark">{{ u.MaDocGia }}</td>
+            <tr v-for="account in filteredAccounts" :key="account._kind + account._id">
+              <td class="font-mono-code fw-bold text-dark">{{ account._kind === 'staff' ? account.MSNV : account.MaDocGia }}</td>
               <td>
-                <strong class="text-dark d-block" style="font-size: 0.95rem;">{{ u.HoLot }} {{ u.Ten }}</strong>
-                <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;">{{ u.DiaChi || '—' }}</small>
+                <strong class="text-dark d-block" style="font-size: 0.95rem;">{{ account._kind === 'staff' ? account.HoTenNV : `${account.HoLot} ${account.Ten}` }}</strong>
+                <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;">{{ account.DiaChi || '—' }}</small>
               </td>
-              <td class="font-mono-code small">{{ u.DienThoai }}</td>
+              <td class="font-mono-code small">{{ account._kind === 'staff' ? (account.SoDienThoai || '—') : account.DienThoai }}</td>
               <td>
-                <span v-if="u.VaiTro === 'ADMIN'" class="badge bg-danger">ADMIN</span>
-                <span v-else-if="u.VaiTro === 'MANAGER'" class="badge bg-success">QUẢN LÝ / THỦ THƯ</span>
+                <span v-if="account._kind === 'staff' && account.ChucVu === 'ADMIN'" class="badge bg-danger">QUẢN TRỊ VIÊN</span>
+                <span v-else-if="account._kind === 'staff'" class="badge bg-success">THỦ THƯ</span>
+                <span v-else-if="account.VaiTro === 'ADMIN'" class="badge bg-danger">ADMIN</span>
+                <span v-else-if="account.VaiTro === 'MANAGER'" class="badge bg-success">QUẢN LÝ / THỦ THƯ</span>
                 <span v-else class="badge bg-light text-dark border">ĐỘC GIẢ (USER)</span>
               </td>
               <td>
-                <span v-if="u.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den">
+                <span v-if="account._kind === 'staff'" class="text-muted">—</span>
+                <span v-else-if="account.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den">
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg> Danh sách đen
                 </span>
-                <span v-else-if="u.TrangThaiThe === 'Khoa'" class="ath-badge ath-badge-out">
+                <span v-else-if="account.TrangThaiThe === 'Khoa'" class="ath-badge ath-badge-out">
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg> Đang khóa
                 </span>
                 <span v-else class="ath-badge ath-badge-available">
@@ -118,51 +121,51 @@
                 </span>
               </td>
               <td>
-                <strong :class="(u.SoLanViPham || 0) >= 3 ? 'text-danger' : 'text-dark'">
-                  {{ u.SoLanViPham || 0 }} / 3
-                </strong>
+                <span v-if="account._kind === 'staff'" class="text-muted">—</span>
+                <strong v-else :class="(account.SoLanViPham || 0) >= 3 ? 'text-danger' : 'text-dark'">{{ account.SoLanViPham || 0 }} / 3</strong>
               </td>
-              <td class="text-end">
+              <td v-if="account._kind === 'reader'" class="text-end">
                 <!-- Nâng cấp / Hạ cấp Role -->
-                <button v-if="u.VaiTro === 'USER'"
+                <button v-if="account.VaiTro === 'USER'"
                         class="ath-action-btn ath-action-btn-success me-1"
-                        @click="changeRole(u, 'MANAGER')"
+                        @click="changeRole(account, 'MANAGER')"
                         title="Nâng cấp lên Quản lý / Thủ thư">
                   <svg class="ui-icon text-success" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg> Thăng cấp
                 </button>
-                <button v-else-if="u.VaiTro === 'MANAGER'"
+                <button v-else-if="account.VaiTro === 'MANAGER'"
                         class="ath-action-btn me-1"
-                        @click="changeRole(u, 'USER')"
+                        @click="changeRole(account, 'USER')"
                         title="Hạ cấp về Độc giả thường">
                   <svg class="ui-icon text-warning" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg> Hạ cấp
                 </button>
 
-                <button v-if="u.TrangThaiThe === 'HoatDong'"
+                <button v-if="account.TrangThaiThe === 'HoatDong'"
                         class="ath-action-btn ath-action-btn-danger me-1"
-                        @click="lockUser(u)"
+                        @click="lockUser(account)"
                         title="Khóa khẩn cấp thẻ, không thay đổi số lần vi phạm">
                   <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg> Khóa thẻ
                 </button>
-                <button v-else-if="u.TrangThaiThe === 'Khoa'"
+                <button v-else-if="account.TrangThaiThe === 'Khoa'"
                         class="ath-action-btn ath-action-btn-success me-1"
-                        @click="unblockUser(u)"
+                        @click="unblockUser(account)"
                         title="Mở khóa khẩn cấp, giữ nguyên số lần vi phạm">
                   <svg class="ui-icon text-info" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 7.5-2" /></svg> Mở khóa
                 </button>
-                <button v-else-if="u.TrangThaiThe === 'DanhSachDen'"
+                <button v-else-if="account.TrangThaiThe === 'DanhSachDen'"
                         class="ath-action-btn ath-action-btn-success me-1"
-                        @click="reinstateUser(u)"
+                        @click="reinstateUser(account)"
                         title="Xét gỡ khỏi danh sách đen, giữ nguyên lịch sử vi phạm">
                   <svg class="ui-icon text-success" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5h6M8.5 13l2.2 2.2 4.8-4.8" /></svg> Xét gỡ danh sách đen
                 </button>
 
                 <!-- Xóa độc giả -->
                 <button class="ath-action-btn ath-action-btn-danger" 
-                        @click="deleteUser(u)"
+                        @click="deleteUser(account)"
                         title="Xóa tài khoản">
                   <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3" /></svg>
                 </button>
               </td>
+              <td v-else class="text-muted text-center">—</td>
             </tr>
           </tbody>
         </table>
@@ -177,6 +180,7 @@
 <script>
 import ToastNotification from "../components/ToastNotification.vue";
 import docGiaService from "../services/docgia.service";
+import nhanVienService from "../services/nhanvien.service";
 
 export default {
   name: "AdminUsers",
@@ -186,6 +190,7 @@ export default {
   data() {
     return {
       users: [],
+      staff: [],
       loading: false,
       search: "",
       filterRole: "all",
@@ -198,19 +203,35 @@ export default {
     lockedCount() {
       return this.users.filter(u => u.TrangThaiThe === "Khoa").length;
     },
-    filteredUsers() {
-      return this.users.filter(u => {
-        const matchesSearch = !this.search.trim() ||
-          u.MaDocGia.toLowerCase().includes(this.search.toLowerCase()) ||
-          `${u.HoLot} ${u.Ten}`.toLowerCase().includes(this.search.toLowerCase()) ||
-          u.DienThoai.includes(this.search);
+    accounts() {
+      return [
+        ...this.users.map(user => ({ ...user, _kind: "reader" })),
+        ...this.staff.map(person => ({ ...person, _kind: "staff" })),
+      ];
+    },
+    managerCount() {
+      return this.staff.filter(person => person.ChucVu === "THUTHU").length +
+        this.users.filter(user => user.VaiTro === "MANAGER").length;
+    },
+    filteredAccounts() {
+      const query = this.search.trim().toLocaleLowerCase("vi");
+      return this.accounts.filter(account => {
+        const matchesSearch = !query || [
+          account._kind === "staff" ? account.MSNV : account.MaDocGia,
+          account._kind === "staff" ? account.HoTenNV : `${account.HoLot} ${account.Ten}`,
+          account._kind === "staff" ? account.SoDienThoai : account.DienThoai,
+          account.DiaChi,
+        ].some(value => String(value || "").toLocaleLowerCase("vi").includes(query));
 
-        let matchesRole = true;
-        if (this.filterRole === "MANAGER") matchesRole = u.VaiTro === "MANAGER";
-        if (this.filterRole === "DanhSachDen") matchesRole = u.TrangThaiThe === "DanhSachDen";
-        if (this.filterRole === "Khoa") matchesRole = u.TrangThaiThe === "Khoa";
-
-        return matchesSearch && matchesRole;
+        let matchesFilter = true;
+        if (this.filterRole === "MANAGER") {
+          matchesFilter = account._kind === "staff"
+            ? account.ChucVu === "THUTHU"
+            : account.VaiTro === "MANAGER";
+        }
+        if (this.filterRole === "DanhSachDen") matchesFilter = account._kind === "reader" && account.TrangThaiThe === "DanhSachDen";
+        if (this.filterRole === "Khoa") matchesFilter = account._kind === "reader" && account.TrangThaiThe === "Khoa";
+        return matchesSearch && matchesFilter;
       });
     }
   },
@@ -236,7 +257,9 @@ export default {
     async fetchData() {
       this.loading = true;
       try {
-        this.users = await docGiaService.getAll();
+        const [users, staff] = await Promise.all([docGiaService.getAll(), nhanVienService.getAll()]);
+        this.users = users;
+        this.staff = staff;
       } catch (err) {
         this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải danh sách độc giả.", "error");
       } finally {

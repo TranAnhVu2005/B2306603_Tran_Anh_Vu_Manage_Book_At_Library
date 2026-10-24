@@ -104,6 +104,7 @@
       <div class="header-actions d-flex align-items-center gap-2">
         <!-- Logged in State -->
         <template v-if="user">
+          <NotificationBell />
           <div class="dropdown" ref="userDropdown">
             <button
               class="btn btn-outline-secondary dropdown-toggle py-1.5 px-3 d-flex align-items-center border-opacity-50"
@@ -246,9 +247,11 @@
 
 <script>
 import authService from "../services/auth.service";
+import NotificationBell from "./NotificationBell.vue";
 
 export default {
   name: "AppHeader",
+  components: { NotificationBell },
   data() {
     return {
       authService,

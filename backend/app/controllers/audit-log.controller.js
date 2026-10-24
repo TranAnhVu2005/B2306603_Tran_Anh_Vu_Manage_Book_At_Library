@@ -4,7 +4,7 @@ const ApiError = require("../api-error");
 
 exports.findAll = async (req, res, next) => {
     try {
-        const allowed = ["Action", "EntityType", "MaSach", "MaDocGia", "MSNV", "from", "to", "limit", "skip"];
+        const allowed = ["HanhDong", "LoaiDoiTuong", "MaSach", "MaDocGia", "MSNV", "from", "to", "limit", "skip"];
         const unknown = Object.keys(req.query).filter((key) => !allowed.includes(key));
         if (unknown.length) return next(new ApiError(400, `Tham số lọc không được hỗ trợ: ${unknown.join(", ")}.`));
 

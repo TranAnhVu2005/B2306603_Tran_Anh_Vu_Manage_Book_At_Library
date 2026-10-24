@@ -74,16 +74,20 @@ Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
 2. **Chi tiết sách (`/books/:id`)**:
    * Layout Editorial Split: Tóm tắt nội dung + thông số xuất bản chi tiết + nút mở Modal xác nhận mượn.
 3. **Modal Xác Nhận Mượn Sách (Borrow Dialog)**:
-   * Overlay tương phản cao và card nền đặc, viền đậm/bóng cứng.
+   * Dùng nền giấy ngà, vùng thông tin sách violet, điểm nhấn vàng, mực đậm; loại bỏ gradient trang trí, glass/blur, bóng mềm và nền xanh rêu của kiểu cũ.
+   * Các bề mặt, thẻ thông tin, input và nút dùng viền mực 2–3px, góc vừa phải và bóng cứng 2–5px; focus-visible violet và trạng thái disabled/loading dễ nhận biết.
+   * Ảnh bìa sách phải được giữ nguyên; modal desktop chia cột sách/thông tin, mobile xếp dọc và cuộn trong modal, không làm tràn ngang ở 320px.
    * Hiển thị tựa sách, thời hạn mượn mặc định (14 ngày), địa điểm nhận sách vật lý tại quầy.
    * Thông báo: Đơn ở trạng thái `ChoDuyet` chờ thủ thư kiểm tra.
 4. **Trang hồ sơ cá nhân (`/profile`)**:
+   * Sau khi đăng nhập, header desktop, menu tài khoản và menu mobile đều có mục **Hồ sơ cá nhân** trỏ tới `/profile`; nhãn điều hướng không chỉ nói về sách đang mượn.
+   * Trang có tiêu đề rõ ràng **Hồ sơ cá nhân**; phần thông tin thẻ và chỉnh sửa hồ sơ được phân biệt trực quan với phần sách đang mượn/lịch sử.
    * Thông tin thẻ: Mã độc giả, Họ tên, Trạng thái thẻ (Hoạt động / Tạm khóa / Danh sách đen).
    * Cho phép độc giả chỉnh sửa họ tên, ngày sinh, giới tính, địa chỉ và số điện thoại đăng nhập của chính mình; không cho sửa vai trò, trạng thái thẻ hoặc số lần vi phạm.
    * Sau khi cập nhật thành công, hồ sơ và dữ liệu user lưu phiên phải đồng bộ; báo lỗi API ngay trong toast nếu cập nhật thất bại.
    * Bảng danh sách sách đang mượn: Tên sách, ngày mượn, hạn trả, trạng thái (`DangMuon`, `ChoDuyet`, `DaTra`).
    * Bảng gọn, nhãn trạng thái rõ và cuộn trong wrapper nếu viewport hẹp.
-   * Với nhân viên và quản trị viên, trang `/profile` hiển thị hồ sơ nhân viên, cho phép tự sửa `HoTenNV`, `SoDienThoai`, `DiaChi`; không cho sửa `MSNV` hoặc `ChucVu`.
+   * Với nhân viên và quản trị viên, trang `/profile` hiển thị hồ sơ nhân viên, cho phép tự sửa `HoTenNV`, `SoDienThoai`, `DiaChi`; không cho sửa `MSNV` hoặc `ChucVu`. Cổng quản lý yêu cầu nhân viên đăng nhập bằng số điện thoại đã đăng ký; MSNV chỉ hiển thị làm mã hồ sơ.
 
 ---
 
@@ -118,7 +122,11 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
    * Chỉ ADMIN được xem lịch sử sách và phiếu mượn; lọc theo hành động, mã sách, độc giả, nhân viên, loại đối tượng và khoảng thời gian.
    * Hiển thị thời điểm, hành động, tên/mã sách, tên/mã độc giả, nhân viên chịu trách nhiệm và chi tiết trạng thái/thay đổi; hỗ trợ tải thêm theo trang.
    * Nhật ký chỉ đọc; giao diện không có thao tác sửa/xóa log.
-3. **Xóa mềm sách (`/manager/books`)**:
+3. **Quản lý tài khoản (`/admin/users`)**:
+   * Hiển thị độc giả và nhân viên trong cùng một danh sách, không chia thành tab. `Tất cả` đếm/tìm kiếm trên tổng hai nguồn `GET /api/docgia` và `GET /api/nhanvien`.
+   * Bộ lọc `Quản lý / Thủ thư` gồm cả độc giả có `VaiTro=MANAGER` và nhân viên có `ChucVu=THUTHU`; bộ lọc danh sách đen/thẻ khóa chỉ áp dụng cho độc giả.
+   * Mã, tên, số điện thoại và vai trò/chức vụ hiển thị theo đúng loại hồ sơ; các cột thẻ/vi phạm không áp dụng cho nhân viên. Không trộn `nhanvien.ChucVu` với `docgia.VaiTro`, không hiển thị mật khẩu. Các thao tác thay đổi quyền/trạng thái/xóa chỉ hiện trên dòng độc giả; nhân viên chỉ đọc tại đây.
+4. **Xóa mềm sách (`/manager/books`)**:
    * Nút xóa chuyển sách sang `deleted=true`; sách biến mất khỏi tra cứu/mượn mới nhưng giữ nguyên dữ liệu và lịch sử.
    * Chỉ ADMIN có thể mở danh sách đã xóa mềm và khôi phục sách.
 
@@ -132,7 +140,7 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 
 1. **`BookCard.vue`**: Thẻ sách dùng nền đặc, viền 2–3px và bóng cứng; giữ ảnh bìa 3:4, badge và nội dung không bị cắt.
 2. **`BorrowModal.vue`**: Hộp thoại overlay tương phản cao, viền đen/bóng cứng, phím `Escape` và body scroll lock.
-3. **`ToastNotification.vue`**: Toast góc dưới phải màn hình với slide-in animation (transform + opacity).
+3. **`ToastNotification.vue`**: Toast góc dưới phải với thông báo thành công xanh lá đậm và lỗi đỏ đậm, chữ trắng tương phản cao; nền sáng, viền mực/bóng cứng, góc vừa phải. Nội dung dài tự xuống dòng, nút đóng có focus rõ, hỗ trợ `prefers-reduced-motion`; dùng cùng màu và cấu trúc ở cả hai cổng.
 4. **Navigation quản lý**: Nền phẳng, mục active vàng/violet có viền và phản hồi hover rõ.
 5. **Bảng dữ liệu (Tables)**: Header tương phản, đường kẻ rõ, bảo toàn khả năng đọc; cuộn trong wrapper trên mobile.
 6. **Form inputs**: Nhãn thường trực, viền đậm, focus-visible violet; kiểm tra checkbox/radio và input file riêng để không biến dạng.
@@ -154,3 +162,9 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 - Hồ sơ nhân viên (`nhanvien`) và độc giả (`docgia`) là hai danh tính độc lập. MANAGER/ADMIN có thể tra cứu sách công khai qua cổng độc giả, nhưng các thao tác cá nhân độc giả yêu cầu phiên đăng nhập USER riêng cho đến khi có tính năng liên kết hồ sơ.
 - Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config cho các luồng cần đổi ứng dụng. Tra cứu sách của nhân viên phải dùng route nội bộ `/catalog` để giữ origin/phiên nhân viên.
 - Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.
+# Hộp thư thông báo
+
+- Cả hai cổng hiển thị nút chuông nhỏ trong header khi có phiên đăng nhập; huy hiệu đỏ thể hiện số chưa đọc (giới hạn hiển thị `99+`). Khách chưa đăng nhập không thấy nút.
+- Mở chuông sẽ hiển thị panel có tiêu đề, nội dung, thời gian và phân biệt chưa đọc; hỗ trợ đánh dấu từng tin hoặc tất cả đã đọc. Nội dung dài được cuộn trong panel, không làm tràn toàn trang.
+- Dùng nền giấy, mực đậm, nhấn violet cho trạng thái chưa đọc, viền/bóng theo Neo-brutalism. Trên màn hình 320px panel nằm trong viewport.
+- Hộp thư lưu trên server và được đồng bộ khi mở, focus lại tab và mỗi 30 giây.

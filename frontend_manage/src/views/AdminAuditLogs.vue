@@ -27,17 +27,17 @@
         </label>
         <label class="audit-field">
           <span>Loại sự kiện</span>
-          <select v-model="filters.EntityType" class="ath-input">
+          <select v-model="filters.LoaiDoiTuong" class="ath-input">
             <option value="">Tất cả sự kiện</option>
-            <option value="book">Sách</option>
-            <option value="borrow">Mượn – trả</option>
+            <option value="sach">Sách</option>
+            <option value="phieumuon">Mượn – trả</option>
           </select>
         </label>
         <label class="audit-field">
           <span>Hành động</span>
-          <select v-model="filters.Action" class="ath-input">
+          <select v-model="filters.HanhDong" class="ath-input">
             <option value="">Tất cả hành động</option>
-            <option v-for="(label, action) in actionLabels" :key="action" :value="action">{{ label }}</option>
+          <option v-for="(label, action) in actionLabels" :key="action" :value="action">{{ label }}</option>
           </select>
         </label>
         <label class="audit-field">
@@ -79,8 +79,8 @@
           </thead>
           <tbody>
             <tr v-for="entry in logs" :key="entry._id">
-              <td class="audit-time">{{ formatDate(entry.OccurredAt) }}</td>
-              <td><span class="audit-action" :class="`audit-${entry.EntityType}`">{{ actionLabel(entry.Action) }}</span></td>
+              <td class="audit-time">{{ formatDate(entry.ThoiGian) }}</td>
+              <td><span class="audit-action" :class="`audit-${entry.LoaiDoiTuong}`">{{ actionLabel(entry.HanhDong) }}</span></td>
               <td>
                 <strong class="d-block">{{ entry.TenSach || "—" }}</strong>
                 <small class="font-mono-code text-muted">{{ entry.MaSach || "" }}</small>
@@ -90,10 +90,10 @@
                 <small class="font-mono-code text-muted">{{ entry.MaDocGia || "" }}</small>
               </td>
               <td>
-                <strong class="d-block">{{ entry.TenNhanVien || (entry.ActorType === 'staff' ? entry.ActorName : "—") }}</strong>
-                <small class="font-mono-code text-muted">{{ entry.MSNV || (entry.ActorType === 'staff' ? entry.ActorId : "") }}</small>
+                <strong class="d-block">{{ entry.TenNhanVien || (entry.LoaiTacNhan === 'nhanvien' ? entry.TenTacNhan : "—") }}</strong>
+                <small class="font-mono-code text-muted">{{ entry.MSNV || (entry.LoaiTacNhan === 'nhanvien' ? entry.MaTacNhan : "") }}</small>
               </td>
-              <td class="audit-details">{{ formatDetails(entry.Details) }}</td>
+              <td class="audit-details">{{ formatDetails(entry.ChiTiet) }}</td>
             </tr>
           </tbody>
         </table>
@@ -115,16 +115,16 @@ import auditLogService from "@/services/audit-log.service";
 import ToastNotification from "@/components/ToastNotification.vue";
 
 const actionLabels = {
-  BOOK_CREATED: "Thêm sách",
-  BOOK_UPDATED: "Sửa sách",
-  BOOK_SOFT_DELETED: "Xóa mềm sách",
-  BOOK_RESTORED: "Khôi phục sách",
-  BORROW_REQUESTED: "Đăng ký mượn",
-  BORROW_APPROVED: "Duyệt mượn / giao sách",
-  BORROW_REJECTED: "Từ chối mượn",
-  BOOK_RETURNED: "Xác nhận trả sách",
-  BOOK_REPORTED_LOST: "Ghi nhận mất sách",
-  BORROW_RECORD_DELETED: "Xóa phiếu mượn",
+  SACH_TAO: "Thêm sách",
+  SACH_CAP_NHAT: "Sửa sách",
+  SACH_XOA_MEM: "Xóa mềm sách",
+  SACH_KHOI_PHUC: "Khôi phục sách",
+  PHIEU_DANG_KY_MUON: "Đăng ký mượn",
+  PHIEU_DUYET_MUON: "Duyệt mượn / giao sách",
+  PHIEU_TU_CHOI_MUON: "Từ chối mượn",
+  PHIEU_TRA_SACH: "Xác nhận trả sách",
+  PHIEU_BAO_MAT_SACH: "Ghi nhận mất sách",
+  PHIEU_XOA: "Xóa phiếu mượn",
 };
 
 export default {
@@ -137,7 +137,7 @@ export default {
       total: 0,
       loading: false,
       error: "",
-      filters: { MaSach: "", MaDocGia: "", MSNV: "", EntityType: "", Action: "", from: "", to: "" },
+      filters: { MaSach: "", MaDocGia: "", MSNV: "", LoaiDoiTuong: "", HanhDong: "", from: "", to: "" },
     };
   },
   created() { this.loadLogs(true); },
@@ -159,7 +159,7 @@ export default {
       }
     },
     resetFilters() {
-      this.filters = { MaSach: "", MaDocGia: "", MSNV: "", EntityType: "", Action: "", from: "", to: "" };
+      this.filters = { MaSach: "", MaDocGia: "", MSNV: "", LoaiDoiTuong: "", HanhDong: "", from: "", to: "" };
       this.loadLogs(true);
     },
     actionLabel(action) { return actionLabels[action] || action || "Sự kiện"; },
@@ -169,10 +169,14 @@ export default {
     },
     formatDetails(details) {
       if (!details) return "—";
-      if (details.from !== undefined || details.to !== undefined) {
-        return `${details.from ?? "mới"} → ${details.to ?? "đã xóa"}`;
+      if (details.Tu !== undefined || details.Den !== undefined) {
+        return `${details.Tu ?? "mới"} → ${details.Den ?? "đã xóa"}`;
       }
-      return Object.entries(details).map(([key, value]) => `${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`).join(" · ");
+      const labels = { ThayDoi: "Thay đổi", TruongDuocTao: "Trường đã tạo", LyDo: "Lý do", QuaHan: "Quá hạn", GiaTriBoiThuong: "Bồi thường", Truoc: "Trước", Sau: "Sau" };
+      const formatValue = (value) => value && typeof value === "object"
+        ? Object.entries(value).map(([key, item]) => `${labels[key] || key}: ${formatValue(item)}`).join(", ")
+        : String(value ?? "—");
+      return Object.entries(details).map(([key, value]) => `${labels[key] || key}: ${formatValue(value)}`).join(" · ");
     },
   },
 };
@@ -196,7 +200,7 @@ export default {
 .audit-table th { white-space: nowrap; }
 .audit-time { min-width: 150px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .audit-action { display: inline-flex; padding: .3rem .65rem; border-radius: 999px; background: #edf2ee; color: #214d39; font-size: .75rem; font-weight: 700; white-space: nowrap; }
-.audit-borrow { background: #fff3dc; color: #805414; }
+.audit-phieumuon { background: #fff3dc; color: #805414; }
 .audit-details { max-width: 240px; color: var(--ink-secondary); font-size: .78rem; overflow-wrap: anywhere; }
 .audit-state { padding: 3rem 1rem; text-align: center; color: var(--ink-muted); }
 @media (max-width: 767.98px) {

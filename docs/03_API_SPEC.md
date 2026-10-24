@@ -32,18 +32,18 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 - Không trả trường `MatKhau` trong response vì đây là dữ liệu xác thực nhạy cảm.
 - Các lớp bao giao thức như `message`, `data`, `token` và response do MoMo quy định không phải trường collection, nên giữ nguyên.
 - Response phiếu mượn chỉ gồm trường của collection `theodoimuonsach`, không nhúng thông tin sách, độc giả hoặc nhân viên.
-- Metadata `deleted`, `DeletedAt`, `DeletedBy` không có trong response sách đang hoạt động. Chỉ Admin dùng `/api/sach?includeDeleted=true` để xem/khôi phục sách đã xóa; nhật ký dùng schema riêng của `auditlogs`.
+- Metadata `deleted`, `DeletedAt`, `DeletedBy` không có trong response sách đang hoạt động. Chỉ Admin dùng `/api/sach?includeDeleted=true` để xem/khôi phục sách đã xóa; nhật ký dùng schema tiếng Việt riêng của `nhatkykiemtoan`.
 
 ---
 
 ## 1. Phân Hệ Xác Thực & Tài Khoản (`/api/auth`)
 
 ### 📌 `POST /api/auth/login` (Đăng nhập hệ thống)
-* **Mô tả**: Hỗ trợ đăng nhập cho cả Độc giả (bằng Số điện thoại hoặc Mã độc giả) và Cán bộ / Quản trị viên (bằng MSNV).
+* **Mô tả**: Độc giả đăng nhập bằng số điện thoại hoặc mã độc giả; Thủ thư/Quản trị viên bắt buộc đăng nhập bằng số điện thoại đã đăng ký. Mã nhân viên (MSNV) chỉ dùng làm mã hồ sơ và ghi nhận nghiệp vụ, không dùng đăng nhập.
 * **Request Body**:
   ```json
   {
-    "identifier": "0912345678", // Hoặc "NV-0001", "DG-000001"
+    "identifier": "0912345678", // Nhân viên: số điện thoại; độc giả: SĐT hoặc mã độc giả
     "password": "hashed_password_or_plain"
   }
   ```
@@ -96,6 +96,16 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * **Trường được phép sửa**: `HoTenNV`, `SoDienThoai`, `DiaChi`. Không cho phép sửa `MSNV`, `ChucVu` hoặc `MatKhau`.
 * **Response**: `{ "message": "...", "data": { ... } }`; `data` chỉ gồm các trường nhân viên trong CDM và không chứa `MatKhau`.
 
+### Danh sách nhân viên (`GET /api/nhanvien`)
+* **Quyền truy cập**: Chỉ `ADMIN` (JWT nhân viên có chức vụ ADMIN); MANAGER/USER bị từ chối.
+* **Mô tả**: Trả danh sách hồ sơ từ collection `nhanvien`, hỗ trợ `?search=...` theo mã nhân viên, họ tên hoặc số điện thoại và `?chucVu=...` để lọc chức vụ.
+* **Response**: Mảng hồ sơ chỉ gồm `_id`, `MSNV`, `HoTenNV`, `ChucVu`, `SoDienThoai`, `DiaChi`, `AnhDaiDien`; tuyệt đối không có `MatKhau`. Đây là danh sách nhân sự riêng, không phải danh sách `docgia` có `VaiTro=MANAGER`.
+
+### Tạo tài khoản nhân viên (`POST /api/nhanvien`)
+* **Quyền truy cập**: Chỉ ADMIN.
+* **Trường bắt buộc**: `HoTenNV`, `SoDienThoai`, `MatKhau`; số điện thoại phải có 9–15 chữ số (có thể có tiền tố `+`) và chưa được dùng bởi nhân viên khác. Hệ thống tự sinh `MSNV`.
+* **Đăng nhập**: Tài khoản nhân viên dùng `SoDienThoai`; đăng nhập bằng `MSNV` bị từ chối.
+
 ---
 
 ## 2. Quản Lý Sách (`/api/sach`)
@@ -123,6 +133,14 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ## 4. Quản Lý Độc Giả (`/api/docgia`)
 
 * `GET /api/docgia`: [Manager/Admin] Danh sách độc giả (Hỗ trợ lọc: `?trangThai=DanhSachDen`, `?role=MANAGER`, `?search=...`).
+
+## Hộp thư thông báo (`/api/thongbao`)
+
+- `GET /api/thongbao?limit=10`: [USER/MANAGER/ADMIN đã đăng nhập] Lấy tối đa 50 thông báo mới nhất và tổng số chưa đọc. Phạm vi recipient id/type được xác định từ JWT; mỗi phiên chỉ đọc hộp thư của chính tài khoản hiện tại.
+- `PUT /api/thongbao/:id/read`: [Người nhận đã đăng nhập] Đánh dấu một thông báo của chính mình là đã đọc; trả 404 nếu id không tồn tại hoặc thuộc người khác.
+- `PUT /api/thongbao/read-all`: [Người nhận đã đăng nhập] Đánh dấu tất cả thông báo của tài khoản hiện tại đã đọc.
+- API không nhận nội dung/người nhận từ client và không cung cấp xóa thông báo. Backend tạo thông báo cho thay đổi vai trò/trạng thái thẻ độc giả, duyệt/từ chối/trả/báo mất phiếu mượn và lúc Admin tạo hồ sơ nhân viên.
+- Response GET: `{ "data": [{ "_id", "LoaiNguoiNhan", "NguoiNhanId", "LoaiThongBao", "TieuDe", "NoiDung", "MaThamChieu", "DaDoc", "ThoiGian" }], "unreadCount": 2 }`. Đây là schema riêng của collection kỹ thuật, không thuộc 5 entity CDM.
 * `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`.
 * `POST /api/docgia`: Tạo hồ sơ độc giả mới.
 * `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Số điện thoại phải đúng định dạng và chưa được tài khoản khác sử dụng.
@@ -174,10 +192,10 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ---
 
-## 6. Nhật Ký Kiểm Toán (`/api/audit-logs`)
+## 6. Nhật Ký Kiểm Toán (`/api/nhatkykiemtoan`)
 
-* `GET /api/audit-logs`: [Admin] Endpoint chỉ đọc; hỗ trợ lọc `Action`, `EntityType`, `MaSach`, `MaDocGia`, `MSNV`, `from`, `to`, `limit`, `skip`; tối đa 300 bản ghi/trang.
-* Response: `{ "items": [ ... ], "total": 123, "limit": 50, "skip": 0 }`. Mỗi item có actor (mã/tên/loại), đối tượng, snapshot sách/độc giả/nhân viên liên quan, `Details` và `OccurredAt`.
+* `GET /api/nhatkykiemtoan`: [Admin] Endpoint chỉ đọc; hỗ trợ lọc `HanhDong`, `LoaiDoiTuong`, `MaSach`, `MaDocGia`, `MSNV`, `from`, `to`, `limit`, `skip`; tối đa 300 bản ghi/trang.
+* Response: `{ "items": [ ... ], "total": 123, "limit": 50, "skip": 0 }`. Mỗi item dùng `HanhDong`, `LoaiDoiTuong`, `MaDoiTuong`, thông tin tác nhân, snapshot sách/độc giả/nhân viên, `ChiTiet` và `ThoiGian`.
 * Sự kiện ghi: thêm/sửa/xóa mềm/khôi phục sách; độc giả gửi yêu cầu mượn; nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất; Admin xóa phiếu lưu trữ.
 * Nhật ký append-only, không có API cập nhật/xóa; không ghi token/mật khẩu. Chỉ ADMIN được đọc; USER/MANAGER bị từ chối.
 

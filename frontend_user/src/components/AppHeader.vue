@@ -43,7 +43,7 @@
         <!-- Hồ sơ cá nhân -->
         <router-link v-if="user" to="/profile" class="ath-nav-link text-nowrap d-inline-flex align-items-center"
           active-class="active fw-semibold text-primary bg-light">
-          {{ authService.isReader(user) ? "Sách đang mượn" : "Hồ sơ cá nhân" }}
+          Hồ sơ cá nhân
         </router-link>
 
         <!-- Dropdown Nghiệp vụ Thủ thư -->
@@ -104,6 +104,7 @@
       <div class="header-actions d-flex align-items-center gap-2">
         <!-- Logged in State -->
         <template v-if="user">
+          <NotificationBell />
           <div class="dropdown" ref="userDropdown">
             <button
               class="btn btn-outline-secondary dropdown-toggle py-1.5 px-3 d-flex align-items-center border-opacity-50"
@@ -131,7 +132,7 @@
               </div>
               <router-link to="/profile" class="dropdown-item py-2 px-3 rounded-2" @click="isMenuOpen = false">
                 <i class="fas fa-id-badge me-2 text-muted"></i>
-                {{ authService.isReader(user) ? "Thẻ độc giả & Mượn sách" : "Hồ sơ cá nhân" }}
+                Hồ sơ cá nhân
               </router-link>
               <div v-if="isStaffOrAdmin" class="dropdown-divider my-1"></div>
               <router-link v-if="isStaffOrAdmin" to="/manager/borrows" class="dropdown-item py-2 px-3 rounded-2"
@@ -195,7 +196,7 @@
         <router-link v-if="user" to="/profile" class="nav-link text-dark py-2.5 px-3 rounded-2"
           @click="isMobileNavOpen = false">
           <i class="fas fa-address-card me-2 text-info"></i>
-          {{ authService.isReader(user) ? "Thẻ độc giả & Sách đang mượn" : "Hồ sơ cá nhân" }}
+          Hồ sơ cá nhân
         </router-link>
 
         <template v-if="isStaffOrAdmin">
@@ -239,9 +240,11 @@
 
 <script>
 import authService from "../services/auth.service";
+import NotificationBell from "./NotificationBell.vue";
 
 export default {
   name: "AppHeader",
+  components: { NotificationBell },
   data() {
     return {
       authService,
