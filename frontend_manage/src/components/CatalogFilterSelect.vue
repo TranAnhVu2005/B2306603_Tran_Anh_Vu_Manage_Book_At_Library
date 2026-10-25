@@ -110,7 +110,8 @@ export default {
 </script>
 
 <style scoped>
-.filter-picker { position: relative; width: 100%; }
+.filter-picker, .filter-picker * { box-sizing: border-box; }
+.filter-picker { position: relative; width: 100%; min-width: 0; }
 .filter-picker-trigger { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; min-width: 0; min-height: 44px; padding: 0.55rem 0.75rem; border: 2px solid var(--ink-primary); border-radius: 0.65rem; background: var(--paper-subtle); color: var(--ink-primary); box-shadow: 2px 2px 0 var(--ink-primary); font: inherit; font-size: 0.82rem; font-weight: 600; text-align: left; cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease; }
 .filter-picker-trigger:hover { border-color: var(--neo-violet); }
 .filter-picker-trigger:focus-visible { outline: 2px solid var(--neo-violet); outline-offset: 2px; box-shadow: 1px 1px 0 var(--ink-primary); transform: translate(1px, 1px); }

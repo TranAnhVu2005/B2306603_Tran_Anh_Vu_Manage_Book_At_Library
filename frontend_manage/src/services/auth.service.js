@@ -13,6 +13,7 @@ import createApiClient from "./api.service";
 class AuthService {
     constructor(baseUrl = "/api/auth") {
         this.api = createApiClient(baseUrl);
+        this.staffApplicationApi = createApiClient("/api/yeu-cau-nhan-vien");
     }
 
     /**
@@ -20,7 +21,7 @@ class AuthService {
      * Lưu JWT token và thông tin user vào localStorage.
      */
     async login(identifier, password) {
-        const response = await this.api.post("/login", { identifier, password });
+        const response = await this.api.post("/staff-login", { identifier, password });
         if (response.data) {
             if (response.data.token) {
                 localStorage.setItem("token", response.data.token);
@@ -37,6 +38,10 @@ class AuthService {
      */
     async register(data) {
         return (await this.api.post("/register", data)).data;
+    }
+
+    async registerStaff(data) {
+        return (await this.staffApplicationApi.post("/", data)).data;
     }
 
     /**

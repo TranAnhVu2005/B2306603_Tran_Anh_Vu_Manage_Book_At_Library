@@ -32,7 +32,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
   - Xem trạng thái thẻ thư viện và thanh toán tiền phạt / bồi thường bồi hoàn.
 
 ### 2.2. Nhân viên Quản lý / Thủ thư (Staff / MANAGER)
-- **Tài khoản**: Được cấp hồ sơ nhân viên (`MSNV`, `ChucVu`) và số điện thoại đăng nhập (`SoDienThoai`); MSNV là mã hồ sơ, không dùng đăng nhập.
+- **Tài khoản**: Ứng viên gửi hồ sơ tại cổng nhân viên; Admin duyệt mới được tạo hồ sơ `nhanvien` và đăng nhập bằng số điện thoại (`SoDienThoai`). `MSNV` là mã hồ sơ, không dùng đăng nhập.
 - **Quyền hạn**:
   - Quản lý kho sách (Thêm, Sửa, Xóa sách; kiểm kê số lượng tồn kho `SoQuyen`).
   - Quản lý danh mục Nhà xuất bản (Thêm, Sửa, Xóa NXB).
@@ -46,7 +46,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - Có thể tra cứu sách/NXB công khai như mọi vai trò; nghiệp vụ thủ thư luôn hiện trong menu Admin.
 - **Đặc quyền phân quyền & nhân sự**:
   - Quản lý toàn bộ danh sách tài khoản người dùng và nhân viên trong hệ thống.
-  - **Thăng cấp** Độc giả thông thường (`USER`) lên làm Thủ thư (`MANAGER`) hoặc **Hạ cấp** Thủ thư về lại Độc giả.
+  - Xét duyệt hồ sơ ứng tuyển nhân viên; chỉ hồ sơ được Admin duyệt mới tạo tài khoản thủ thư. Hồ sơ nhân viên tách biệt khỏi tài khoản độc giả và không ảnh hưởng các phiếu mượn hiện có.
   - Quản lý trạng thái thẻ: khóa/mở khóa khẩn cấp độc lập với chế tài Danh sách đen; mở khóa khẩn cấp không xóa số lần vi phạm.
   - Có thể xét gỡ khỏi Danh sách đen bằng thao tác riêng; lịch sử vi phạm vẫn được bảo toàn.
   - Quyền xóa vĩnh viễn các tài khoản vi phạm nghiêm trọng khỏi CSDL.

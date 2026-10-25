@@ -688,14 +688,15 @@ export default {
   gap: 1.5rem;
 }
 .catalog-filter-shell { position: relative; z-index: 4; min-width: 0; }
-.catalog-filter-core { display: grid; gap: 0.9rem; padding: 1.15rem; overflow: visible; }
-.catalog-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--paper-border); }
+.catalog-filter-core { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; min-width: 0; padding: 1.15rem; overflow: visible; }
+.catalog-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-width: 0; padding-bottom: 0.9rem; border-bottom: 1px solid var(--paper-border); }
+.catalog-filter-heading > div { min-width: 0; }
 .catalog-filter-kicker { display: inline-block; padding: 0.1rem 0.35rem; background: var(--neo-yellow); color: var(--ink-primary); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; line-height: 1.35; text-transform: uppercase; }
 .catalog-filter-heading h2 { margin: 0.2rem 0 0; color: var(--ink-primary); font-size: 1.2rem; font-weight: 800; line-height: 1.25; }
 .catalog-filter-reset { flex: 0 0 auto; padding: 0.4rem 0.15rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ink-secondary); font: inherit; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: color 160ms ease, border-color 160ms ease; }
 .catalog-filter-reset:hover { color: var(--ink-primary); border-bottom-color: var(--neo-yellow); }
 .catalog-filter-reset:focus-visible { outline: 2px solid var(--neo-violet); outline-offset: 3px; }
-.catalog-filter-field { display: grid; gap: 0.45rem; color: var(--ink-secondary); font-size: 0.78rem; font-weight: 700; }
+.catalog-filter-field { display: grid; gap: 0.45rem; min-width: 0; color: var(--ink-secondary); font-size: 0.78rem; font-weight: 700; }
 .catalog-stock-filter { display: flex; align-items: flex-start; gap: 0.65rem; padding-top: 0.2rem; color: var(--ink-secondary); font-size: 0.8rem; font-weight: 600; line-height: 1.45; cursor: pointer; }
 .catalog-stock-filter input { flex: 0 0 auto; width: 17px; height: 17px; margin: 0.08rem 0 0; accent-color: var(--neo-yellow); }
 .catalog-results { position: relative; z-index: 1; min-width: 0; }

@@ -116,10 +116,7 @@
                 </div>
                 <div class="reader-info-row border-0">
                   <span class="reader-info-label">Vai trò</span>
-                  <span v-if="readerInfo?.VaiTro === 'ADMIN'" class="ath-badge ath-badge-out">SUPER ADMIN</span>
-                  <span v-else-if="readerInfo?.VaiTro === 'MANAGER'" class="ath-badge ath-badge-available">THỦ
-                    THƯ</span>
-                  <span v-else class="ath-badge ath-badge-neutral">ĐỘC GIẢ</span>
+                  <span class="ath-badge ath-badge-neutral">ĐỘC GIẢ</span>
                 </div>
               </div>
 

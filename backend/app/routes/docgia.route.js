@@ -19,9 +19,6 @@ router.route("/:id")
     .put(authenticate, upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai"), controller.update)
     .delete(authenticate, authorizeAdmin, controller.delete);
 
-router.route("/:id/role")
-    .put(authenticate, authorizeAdmin, allowFields("role"), controller.updateRole);
-
 router.route("/:id/unblock")
     .put(authenticate, authorizeAdmin, controller.unblock);
 

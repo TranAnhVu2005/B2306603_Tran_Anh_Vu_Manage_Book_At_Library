@@ -8,7 +8,7 @@
           Khu Vực Quản Trị Tối Cao (Super Admin)
         </span>
         <h1 class="admin-page-title">
-          Quản lý tài khoản & phân quyền
+          Quản lý tài khoản
         </h1>
       </div>
       <button class="ath-btn-outline" type="button" @click="fetchData">
@@ -39,13 +39,6 @@
                   :aria-pressed="filterRole === 'all'"
                   @click="filterRole = 'all'">
             Tất cả ({{ accounts.length }})
-          </button>
-          <button class="btn btn-sm"
-            :class="filterRole === 'MANAGER' ? 'ath-btn-primary' : 'ath-btn-outline'"
-                  :aria-pressed="filterRole === 'MANAGER'"
-                  @click="filterRole = 'MANAGER'">
-            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M16 11h6" /></svg>
-            Quản lý / Thủ thư ({{ managerCount }})
           </button>
           <button class="btn btn-sm"
                   :class="filterRole === 'DanhSachDen' ? 'ath-btn-danger' : 'ath-btn-outline'"
@@ -104,8 +97,6 @@
               <td>
                 <span v-if="account._kind === 'staff' && account.ChucVu === 'ADMIN'" class="badge bg-danger">QUẢN TRỊ VIÊN</span>
                 <span v-else-if="account._kind === 'staff'" class="badge bg-success">THỦ THƯ</span>
-                <span v-else-if="account.VaiTro === 'ADMIN'" class="badge bg-danger">ADMIN</span>
-                <span v-else-if="account.VaiTro === 'MANAGER'" class="badge bg-success">QUẢN LÝ / THỦ THƯ</span>
                 <span v-else class="badge bg-light text-dark border">ĐỘC GIẢ (USER)</span>
               </td>
               <td>
@@ -125,20 +116,6 @@
                 <strong v-else :class="(account.SoLanViPham || 0) >= 3 ? 'text-danger' : 'text-dark'">{{ account.SoLanViPham || 0 }} / 3</strong>
               </td>
               <td v-if="account._kind === 'reader'" class="text-end">
-                <!-- Nâng cấp / Hạ cấp Role -->
-                <button v-if="account.VaiTro === 'USER'"
-                        class="ath-action-btn ath-action-btn-success me-1"
-                        @click="changeRole(account, 'MANAGER')"
-                        title="Nâng cấp lên Quản lý / Thủ thư">
-                  <svg class="ui-icon text-success" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg> Thăng cấp
-                </button>
-                <button v-else-if="account.VaiTro === 'MANAGER'"
-                        class="ath-action-btn me-1"
-                        @click="changeRole(account, 'USER')"
-                        title="Hạ cấp về Độc giả thường">
-                  <svg class="ui-icon text-warning" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg> Hạ cấp
-                </button>
-
                 <button v-if="account.TrangThaiThe === 'HoatDong'"
                         class="ath-action-btn ath-action-btn-danger me-1"
                         @click="lockUser(account)"
@@ -209,10 +186,6 @@ export default {
         ...this.staff.map(person => ({ ...person, _kind: "staff" })),
       ];
     },
-    managerCount() {
-      return this.staff.filter(person => person.ChucVu === "THUTHU").length +
-        this.users.filter(user => user.VaiTro === "MANAGER").length;
-    },
     filteredAccounts() {
       const query = this.search.trim().toLocaleLowerCase("vi");
       return this.accounts.filter(account => {
@@ -224,11 +197,6 @@ export default {
         ].some(value => String(value || "").toLocaleLowerCase("vi").includes(query));
 
         let matchesFilter = true;
-        if (this.filterRole === "MANAGER") {
-          matchesFilter = account._kind === "staff"
-            ? account.ChucVu === "THUTHU"
-            : account.VaiTro === "MANAGER";
-        }
         if (this.filterRole === "DanhSachDen") matchesFilter = account._kind === "reader" && account.TrangThaiThe === "DanhSachDen";
         if (this.filterRole === "Khoa") matchesFilter = account._kind === "reader" && account.TrangThaiThe === "Khoa";
         return matchesSearch && matchesFilter;
@@ -264,24 +232,6 @@ export default {
         this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải danh sách độc giả.", "error");
       } finally {
         this.loading = false;
-      }
-    },
-    async changeRole(u, newRole) {
-      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      if (currentUser._id === u._id && newRole !== "ADMIN") {
-        this.$refs.toast.show("Bạn không thể tự hạ cấp quyền quản trị của chính mình!", "error");
-        return;
-      }
-
-      const actionName = newRole === "MANAGER" ? "nâng cấp lên Quản lý / Thủ thư" : "hạ cấp về Độc giả thường";
-      if (!confirm(`Bạn có chắc muốn ${actionName} cho tài khoản '${u.HoLot} ${u.Ten}' (${u.MaDocGia})?`)) return;
-
-      try {
-        await docGiaService.updateRole(u._id || u.MaDocGia, newRole);
-        this.$refs.toast.show(`Đã cập nhật vai trò thành công: ${newRole}`);
-        this.fetchData();
-      } catch (err) {
-        this.$refs.toast.show(err.response?.data?.message || "Lỗi khi cập nhật vai trò.", "error");
       }
     },
     async lockUser(u) {
@@ -372,7 +322,7 @@ export default {
 }
 .admin-filter-options {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
 .admin-filter-options .btn {

@@ -24,10 +24,6 @@ class DocGiaService {
         })).data;
     }
 
-    async updateRole(id, role) {
-        return (await this.api.put(`/${id}/role`, { role })).data;
-    }
-
     async lock(id) {
         return (await this.api.put(`/${id}/lock`)).data;
     }

@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Đăng nhập chung (Độc giả / Nhân viên / Admin) → trả JWT
 router.post("/login", allowFields("identifier", "password"), authRateLimit({ max: 10 }), controller.login);
+router.post("/staff-login", allowFields("identifier", "password"), authRateLimit({ max: 10 }), controller.staffLogin);
 
 // Đăng ký thẻ độc giả mới trực tuyến
 router.post("/register", allowFields("HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "MatKhau"), authRateLimit({ max: 5 }), controller.registerDocGia);

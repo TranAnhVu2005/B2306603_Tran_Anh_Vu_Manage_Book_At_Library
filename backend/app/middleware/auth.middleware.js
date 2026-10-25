@@ -34,7 +34,7 @@ async function authenticate(req, res, next) {
         if (!currentAccount) return next(new ApiError(401, "Tài khoản không còn hợp lệ."));
         decoded.role = decoded.type === "staff"
             ? (currentAccount.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER")
-            : (currentAccount.VaiTro || "USER");
+            : "USER";
         req.user = decoded; // Gắn thông tin user vào request để các middleware sau sử dụng
         req.authToken = token;
         next();

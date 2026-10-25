@@ -47,23 +47,22 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
     "password": "hashed_password_or_plain"
   }
   ```
+
+### 📌 `POST /api/auth/staff-login` (Đăng nhập cổng nhân viên)
+* **Quyền truy cập**: Public, rate limit.
+* **Mô tả**: Chỉ xác thực hồ sơ `nhanvien`; không nhận phiên độc giả kể cả khi dùng cùng số điện thoại. Hồ sơ ứng tuyển đang chờ/từ chối chỉ nhận thông báo trạng thái nếu số điện thoại và mật khẩu khớp; không cấp JWT.
 * **Response (200 OK)**:
   ```json
   {
-    "message": "Đăng nhập thành công với vai trò Độc giả.",
+    "message": "Đăng nhập thành công với vai trò Thủ thư.",
     "token": "<JWT>",
     "data": {
       "_id": "670...",
-      "MaDocGia": "DG-000001",
-      "HoLot": "Trần Minh",
-      "Ten": "Triết",
-      "NgaySinh": "2003-09-15",
-      "Phai": 1,
-      "DiaChi": "Ninh Kiều, Cần Thơ",
-      "DienThoai": "0912345678",
-      "VaiTro": "USER",
-      "TrangThaiThe": "HoatDong",
-      "SoLanViPham": 0
+      "MSNV": "NV-0001",
+      "HoTenNV": "Nguyễn Văn A",
+      "ChucVu": "THUTHU",
+      "SoDienThoai": "0912345678",
+      "DiaChi": "Ninh Kiều, Cần Thơ"
     }
   }
   ```
@@ -83,6 +82,17 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
   ```
 * **Response (201 Created)**: Tạo thẻ thành công, mã tự sinh dạng `DG-000001`, mật khẩu được băm Bcrypt.
 
+### 📌 `POST /api/yeu-cau-nhan-vien` (Gửi hồ sơ đăng ký nhân viên)
+* **Quyền truy cập**: Public, có rate limit; chỉ nhận `HoTenNV`, `SoDienThoai`, `DiaChi`, `MatKhau` scalar. Mật khẩu tối thiểu 8 ký tự và được Bcrypt trước khi lưu.
+* **Xử lý**: Tạo hồ sơ `yeucaunhanvien` trạng thái `ChoDuyet`; không tạo hồ sơ độc giả/nhân viên, không cấp JWT. Số điện thoại phải hợp lệ, chưa tồn tại trong `nhanvien` và chưa có hồ sơ đang chờ.
+* **Response (201 Created)**: `{ message, data }`; dữ liệu chỉ gồm id, họ tên, số điện thoại, địa chỉ, trạng thái và thời gian gửi; không có mật khẩu.
+
+### API duyệt hồ sơ nhân viên
+* `GET /api/yeu-cau-nhan-vien`: [ADMIN] Liệt kê hồ sơ chờ duyệt; không trả hash mật khẩu.
+* `PUT /api/yeu-cau-nhan-vien/:id/approve`: [ADMIN] Duyệt một hồ sơ đang chờ, tạo tài khoản `nhanvien` chức vụ `THUTHU`, đánh dấu `DaDuyet`, xóa hash khỏi hồ sơ và thông báo cho nhân viên mới.
+* `PUT /api/yeu-cau-nhan-vien/:id/reject`: [ADMIN] Nhận `{ "LyDoTuChoi": "..." }`, lưu trạng thái `TuChoi` và lý do. Ứng viên đăng nhập bằng đúng số điện thoại/mật khẩu đã đăng ký sẽ thấy trạng thái/lý do nhưng không nhận JWT.
+* Cả duyệt và từ chối ghi sự kiện append-only vào `nhatkykiemtoan`; API này không cho sửa/xóa hồ sơ đã xét duyệt.
+
 ### 📌 `POST /api/auth/google` (Đăng nhập / Đăng ký nhanh qua tài khoản Google)
 * **Mô tả**: Tiếp nhận Google ID Token từ Client, xác thực thông qua `GoogleAuthService`, tự động liên kết hoặc tạo tài khoản mới.
 * **Request Body**: `{ "idToken": "google_jwt_token_here" }`
@@ -99,7 +109,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ### Danh sách nhân viên (`GET /api/nhanvien`)
 * **Quyền truy cập**: Chỉ `ADMIN` (JWT nhân viên có chức vụ ADMIN); MANAGER/USER bị từ chối.
 * **Mô tả**: Trả danh sách hồ sơ từ collection `nhanvien`, hỗ trợ `?search=...` theo mã nhân viên, họ tên hoặc số điện thoại và `?chucVu=...` để lọc chức vụ.
-* **Response**: Mảng hồ sơ chỉ gồm `_id`, `MSNV`, `HoTenNV`, `ChucVu`, `SoDienThoai`, `DiaChi`, `AnhDaiDien`; tuyệt đối không có `MatKhau`. Đây là danh sách nhân sự riêng, không phải danh sách `docgia` có `VaiTro=MANAGER`.
+* **Response**: Mảng hồ sơ chỉ gồm `_id`, `MSNV`, `HoTenNV`, `ChucVu`, `SoDienThoai`, `DiaChi`, `AnhDaiDien`; tuyệt đối không có `MatKhau`. Đây là danh sách nhân sự riêng, không phải danh sách hồ sơ độc giả.
 
 ### Tạo tài khoản nhân viên (`POST /api/nhanvien`)
 * **Quyền truy cập**: Chỉ ADMIN.
@@ -133,19 +143,18 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ## 4. Quản Lý Độc Giả (`/api/docgia`)
 
-* `GET /api/docgia`: [Manager/Admin] Danh sách độc giả (Hỗ trợ lọc: `?trangThai=DanhSachDen`, `?role=MANAGER`, `?search=...`).
+* `GET /api/docgia`: [Manager/Admin] Danh sách độc giả (Hỗ trợ lọc: `?trangThai=DanhSachDen`, `?search=...`). Vai trò độc giả không được dùng để cấp quyền nhân viên.
 
 ## Hộp thư thông báo (`/api/thongbao`)
 
 - `GET /api/thongbao?limit=10`: [USER/MANAGER/ADMIN đã đăng nhập] Lấy tối đa 50 thông báo mới nhất và tổng số chưa đọc. Phạm vi recipient id/type được xác định từ JWT; mỗi phiên chỉ đọc hộp thư của chính tài khoản hiện tại.
 - `PUT /api/thongbao/:id/read`: [Người nhận đã đăng nhập] Đánh dấu một thông báo của chính mình là đã đọc; trả 404 nếu id không tồn tại hoặc thuộc người khác.
 - `PUT /api/thongbao/read-all`: [Người nhận đã đăng nhập] Đánh dấu tất cả thông báo của tài khoản hiện tại đã đọc.
-- API không nhận nội dung/người nhận từ client và không cung cấp xóa thông báo. Backend tạo thông báo cho thay đổi vai trò/trạng thái thẻ độc giả, duyệt/từ chối/trả/báo mất phiếu mượn và lúc Admin tạo hồ sơ nhân viên.
+- API không nhận nội dung/người nhận từ client và không cung cấp xóa thông báo. Backend tạo thông báo cho thay đổi trạng thái thẻ độc giả, duyệt/từ chối/trả/báo mất phiếu mượn, lúc Admin tạo nhân viên và khi hồ sơ ứng tuyển được duyệt.
 - Response GET: `{ "data": [{ "_id", "LoaiNguoiNhan", "NguoiNhanId", "LoaiThongBao", "TieuDe", "NoiDung", "MaThamChieu", "DaDoc", "ThoiGian" }], "unreadCount": 2 }`. Đây là schema riêng của collection kỹ thuật, không thuộc 5 entity CDM.
 * `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`.
 * `POST /api/docgia`: Tạo hồ sơ độc giả mới.
 * `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Số điện thoại phải đúng định dạng và chưa được tài khoản khác sử dụng.
-* `PUT /api/docgia/:id/role`: [Super Admin] Thăng cấp / hạ cấp vai trò (`role: "MANAGER"` hoặc `"USER"`).
 * `PUT /api/docgia/:id/lock`: [Super Admin] Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`), không thay đổi `SoLanViPham`.
 * `PUT /api/docgia/:id/unblock`: [Super Admin] Chỉ mở khóa thẻ trạng thái `Khoa`; giữ nguyên `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, trạng thái sau mở khóa là `DanhSachDen`.
 * `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); giữ nguyên lịch sử `SoLanViPham`. Không dùng thay cho mở khóa khẩn cấp.

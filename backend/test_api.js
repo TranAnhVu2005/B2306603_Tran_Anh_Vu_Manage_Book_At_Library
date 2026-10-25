@@ -154,6 +154,13 @@ async function runTests() {
         }
         temporaryReaderObjectId = res.data.data._id;
         temporaryReaderToken = res.data.token;
+        await MongoDB.client.db().collection("docgia").updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "MANAGER" } });
+        const legacyRoleMe = await request("GET", "/api/auth/me", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        const legacyRoleList = await request("GET", "/api/docgia", null, { Authorization: `Bearer ${temporaryStaffToken}` });
+        if (legacyRoleMe.data?.data?.VaiTro !== "USER" || legacyRoleList.data?.find((item) => item.MaDocGia === temporaryReaderId)?.VaiTro !== "USER") {
+            throw new Error("Vai trò MANAGER cũ của độc giả vẫn được dùng như quyền nhân viên.");
+        }
+        await MongoDB.client.db().collection("docgia").updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "USER" } });
     });
 
     await assert("TC-NOTIFICATION-01: Người dùng chỉ xem và đánh dấu đã đọc thông báo của chính mình", async () => {
@@ -649,12 +656,83 @@ async function runTests() {
         }
     });
 
-    // TC-ADMIN-01: Admin nâng cấp quyền người dùng (VaiTro: MANAGER)
-    await assert("TC-ADMIN-01: Admin nâng cấp quyền độc giả lên Thủ thư (MANAGER)", async () => {
-        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/role`, { role: "MANAGER" }, { Authorization: `Bearer ${temporaryAdminToken}` });
-        if (res.status !== 200 || res.data.data.VaiTro !== "MANAGER" || "Role" in res.data.data) {
-            throw new Error(`Kỳ vọng HTTP 200 & VaiTro MANAGER, nhận status=${res.status}`);
+    // TC-STAFF-APPLICATION-01: Ứng viên chưa có quyền cho đến khi Admin duyệt hồ sơ.
+    await assert("TC-STAFF-APPLICATION-01: Đăng ký, chặn đăng nhập chờ duyệt, Admin duyệt và audit", async () => {
+        const phone = `08${String(Date.now()).slice(-8)}`;
+        const submitted = await request("POST", "/api/yeu-cau-nhan-vien", {
+            HoTenNV: "Ứng viên kiểm thử",
+            SoDienThoai: phone,
+            DiaChi: "Cần Thơ",
+            MatKhau: "applicant_test_password",
+        });
+        if (submitted.status !== 201 || submitted.data.data.TrangThai !== "ChoDuyet" || "MatKhau" in submitted.data.data) {
+            throw new Error(`Đăng ký hồ sơ không đúng, status=${submitted.status}`);
         }
+        const blockedLogin = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        if (blockedLogin.status !== 403 || blockedLogin.data.token || !blockedLogin.data.message.includes("chờ")) {
+            throw new Error(`Hồ sơ chờ duyệt không bị chặn đúng, status=${blockedLogin.status}`);
+        }
+        const headers = { Authorization: `Bearer ${temporaryAdminToken}` };
+        const anonymousList = await request("GET", "/api/yeu-cau-nhan-vien");
+        const managerList = await request("GET", "/api/yeu-cau-nhan-vien", null, { Authorization: `Bearer ${temporaryStaffToken}` });
+        if (anonymousList.status !== 401 || managerList.status !== 403) {
+            throw new Error(`Hồ sơ đăng ký chưa được bảo vệ theo Admin-only, status=${anonymousList.status}/${managerList.status}`);
+        }
+        const pendingList = await request("GET", "/api/yeu-cau-nhan-vien", null, headers);
+        const application = pendingList.data?.data?.find((item) => item._id === submitted.data.data._id);
+        if (pendingList.status !== 200 || !application || "MatKhau" in application) {
+            throw new Error("Admin không thấy hồ sơ chờ duyệt hoặc API làm lộ mật khẩu.");
+        }
+        const approved = await request("PUT", `/api/yeu-cau-nhan-vien/${application._id}/approve`, {}, headers);
+        if (approved.status !== 200 || approved.data.data.ChucVu !== "THUTHU" || !approved.data.data.MSNV || "MatKhau" in approved.data.data) {
+            throw new Error(`Duyệt hồ sơ không tạo đúng tài khoản thủ thư, status=${approved.status}`);
+        }
+        const activeLogin = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        if (activeLogin.status !== 200 || activeLogin.data.data.MSNV !== approved.data.data.MSNV) {
+            throw new Error(`Nhân viên được duyệt không đăng nhập được, status=${activeLogin.status}`);
+        }
+        const stillReader = await MongoDB.client.db().collection("docgia").findOne({ MaDocGia: temporaryReaderId }, { projection: { VaiTro: 1 } });
+        if (stillReader?.VaiTro !== "USER") throw new Error("Hồ sơ độc giả bị thay đổi khi tạo nhân viên mới.");
+        const auditCount = await MongoDB.client.db().collection("nhatkykiemtoan").countDocuments({
+            LoaiDoiTuong: "yeucaunhanvien", MaDoiTuong: application._id,
+            HanhDong: { $in: ["NHANVIEN_DANG_KY", "NHANVIEN_DUYET_DANG_KY"] },
+        });
+        if (auditCount < 2) throw new Error("Thiếu nhật ký gửi/duyệt hồ sơ nhân viên.");
+        await MongoDB.client.db().collection("thongbao").deleteMany({
+            NguoiNhanId: new (require("mongodb").ObjectId)(approved.data.data._id),
+            LoaiNguoiNhan: "nhanvien",
+        });
+        await MongoDB.client.db().collection("nhanvien").deleteOne({ _id: new (require("mongodb").ObjectId)(approved.data.data._id), MSNV: approved.data.data.MSNV });
+        await MongoDB.client.db().collection("yeucaunhanvien").deleteOne({ _id: new (require("mongodb").ObjectId)(application._id) });
+    });
+
+    await assert("TC-STAFF-APPLICATION-02: Admin từ chối hồ sơ có lý do và chỉ ứng viên hợp lệ xem được trạng thái", async () => {
+        const phone = `06${String(Date.now() + 1).slice(-8)}`;
+        const submitted = await request("POST", "/api/yeu-cau-nhan-vien", {
+            HoTenNV: "Ứng viên bị từ chối", SoDienThoai: phone, DiaChi: "Cần Thơ", MatKhau: "applicant_test_password",
+        });
+        if (submitted.status !== 201) throw new Error(`Không gửi được hồ sơ kiểm thử, status=${submitted.status}`);
+        const headers = { Authorization: `Bearer ${temporaryAdminToken}` };
+        const rejected = await request("PUT", `/api/yeu-cau-nhan-vien/${submitted.data.data._id}/reject`, { LyDoTuChoi: "Thiếu thông tin xác minh." }, headers);
+        const login = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        const saved = await MongoDB.client.db().collection("yeucaunhanvien").findOne({ _id: new (require("mongodb").ObjectId)(submitted.data.data._id) });
+        if (rejected.status !== 200 || login.status !== 403 || !login.data.message.includes("Thiếu thông tin") || saved?.TrangThai !== "TuChoi") {
+            throw new Error(`Từ chối hồ sơ chưa đúng, reject/login=${rejected.status}/${login.status}`);
+        }
+        const resubmitted = await request("POST", "/api/yeu-cau-nhan-vien", {
+            HoTenNV: "Ứng viên bị từ chối", SoDienThoai: phone, DiaChi: "Cần Thơ", MatKhau: "applicant_new_password",
+        });
+        const previousPassword = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        const newPassword = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_new_password" });
+        if (resubmitted.status !== 201 || resubmitted.data.data.TrangThai !== "ChoDuyet" || previousPassword.status !== 401 || newPassword.status !== 403) {
+            throw new Error("Ứng viên không thể gửi lại hồ sơ sau khi bị từ chối.");
+        }
+        await MongoDB.client.db().collection("yeucaunhanvien").deleteOne({ _id: saved._id });
+    });
+
+    await assert("TC-STAFF-APPLICATION-03: Endpoint cũ thăng cấp độc giả đã bị gỡ", async () => {
+        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/role`, { role: "MANAGER" }, { Authorization: `Bearer ${temporaryAdminToken}` });
+        if (res.status !== 404) throw new Error(`Route thăng cấp vẫn tồn tại, nhận HTTP ${res.status}`);
     });
 
     // TC-ADMIN-02: Admin xét gỡ độc giả khỏi danh sách đen

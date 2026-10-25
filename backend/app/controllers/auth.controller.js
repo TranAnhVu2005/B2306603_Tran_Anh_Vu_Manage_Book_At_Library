@@ -5,6 +5,7 @@ const JwtUtil = require("../utils/jwt.util");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 const TokenRevocation = require("../utils/token-revocation.util");
+const YeuCauNhanVienService = require("../services/yeu-cau-nhan-vien.service");
 
 /**
  * POST /api/auth/login    - Đăng nhập => trả JWT
@@ -13,6 +14,28 @@ const TokenRevocation = require("../utils/token-revocation.util");
  * GET  /api/auth/me       - Lấy thông tin người dùng hiện tại từ JWT (yêu cầu authenticate)
  */
 class AuthController {
+
+    async staffLogin(req, res, next) {
+        try {
+            const { identifier, password } = req.body;
+            if (!identifier || !password) return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu."));
+            const staff = await new NhanVienService(MongoDB.client).login(identifier, password);
+            if (staff) {
+                const role = staff.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER";
+                const data = {
+                    _id: String(staff._id), MSNV: staff.MSNV, HoTenNV: staff.HoTenNV,
+                    ChucVu: staff.ChucVu, SoDienThoai: staff.SoDienThoai, DiaChi: staff.DiaChi,
+                };
+                const token = JwtUtil.sign({ id: String(staff._id), username: staff.MSNV, role, type: "staff" });
+                return res.json({ message: `Đăng nhập thành công với vai trò ${role === "ADMIN" ? "Quản trị viên" : "Thủ thư"}.`, token, data });
+            }
+            const status = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(identifier, password);
+            if (status) return next(new ApiError(403, status.message));
+            return next(new ApiError(401, "Số điện thoại hoặc mật khẩu không chính xác."));
+        } catch (error) {
+            return next(new ApiError(500, "Lỗi xảy ra trong quá trình xác thực đăng nhập."));
+        }
+    }
 
     // Xử lý đăng nhập - Completed
     async login(req, res, next) {
@@ -64,7 +87,7 @@ class AuthController {
                     NgaySinh: reader.NgaySinh,
                     DiaChi: reader.DiaChi,
                     DienThoai: reader.DienThoai,
-                    VaiTro: reader.VaiTro || "USER",
+                    VaiTro: "USER",
                     SoLanViPham: reader.SoLanViPham || 0,
                     TrangThaiThe: reader.TrangThaiThe,
                 };
@@ -72,7 +95,7 @@ class AuthController {
                 const token = JwtUtil.sign({
                     id: String(reader._id),
                     username: reader.MaDocGia,
-                    role: reader.VaiTro || "USER",
+                    role: "USER",
                     type: "reader",
                 });
 
@@ -82,6 +105,9 @@ class AuthController {
                     data: userData,
                 });
             }
+
+            const applicationStatus = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(identifier, password);
+            if (applicationStatus) return next(new ApiError(403, applicationStatus.message));
 
             return next(new ApiError(401, "Tài khoản hoặc mật khẩu không chính xác."));
         } catch (error) {
@@ -146,7 +172,7 @@ class AuthController {
                 NgaySinh: reader.NgaySinh,
                 DiaChi: reader.DiaChi,
                 DienThoai: reader.DienThoai,
-                VaiTro: reader.VaiTro || "USER",
+                VaiTro: "USER",
                 SoLanViPham: reader.SoLanViPham || 0,
                 TrangThaiThe: reader.TrangThaiThe,
             };
@@ -154,7 +180,7 @@ class AuthController {
             const jwtToken = JwtUtil.sign({
                 id: String(reader._id),
                 username: reader.MaDocGia,
-                role: reader.VaiTro || "USER",
+                role: "USER",
                 type: "reader",
                 isGoogleAccount: true,
             });
@@ -202,7 +228,7 @@ class AuthController {
                     NgaySinh: reader.NgaySinh,
                     DiaChi: reader.DiaChi,
                     DienThoai: reader.DienThoai,
-                    VaiTro: reader.VaiTro || "USER",
+                    VaiTro: "USER",
                     SoLanViPham: reader.SoLanViPham || 0,
                     TrangThaiThe: reader.TrangThaiThe,
                     AnhDaiDien: reader.AnhDaiDien,

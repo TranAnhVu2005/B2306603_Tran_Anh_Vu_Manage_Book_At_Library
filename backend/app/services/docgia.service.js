@@ -32,7 +32,7 @@ const publicFields = {
  * | `DiaChi`       | String       |            |            | Địa chỉ cư trú của độc giả                  |
  * | `DienThoai`    | String       |            |            | Số điện thoại liên hệ (Dùng để đăng nhập)   |
  * | `MatKhau`      | String       |            |            | Mật khẩu tài khoản (Đã mã hóa an toàn)      |
- * | `VaiTro`       | String       |            |            | Vai trò người dùng (USER, MANAGER, ADMIN)   |
+ * | `VaiTro`       | String       |            |            | Vai trò độc giả (USER)                      |
  * | `SoLanViPham`  | Number       |            |            | Số lần vi phạm nội quy (trả trễ, mất sách)  |
  * | `TrangThaiThe` | String       |            |            | Trạng thái thẻ (HoatDong, Khoa, DanhSachDen)|
  * =========================================================================================
@@ -87,7 +87,6 @@ class DocGiaService {
         if (payload.Phai !== undefined) data.Phai = this.normalizePhai(payload.Phai);
         if (payload.DiaChi !== undefined) data.DiaChi = String(payload.DiaChi).trim();
         if (payload.DienThoai !== undefined) data.DienThoai = String(payload.DienThoai).trim();
-        if (payload.VaiTro !== undefined) data.VaiTro = String(payload.VaiTro).trim();
         if (payload.SoLanViPham !== undefined) data.SoLanViPham = Number(payload.SoLanViPham);
         if (payload.TrangThaiThe !== undefined) {
             const trangThaiThe = String(payload.TrangThaiThe).trim();
@@ -158,14 +157,10 @@ class DocGiaService {
         if (filter.trangThai && filter.trangThai !== "all") {
             query.TrangThaiThe = filter.trangThai;
         }
-        if (filter.role && filter.role !== "all") {
-            query.VaiTro = filter.role;
-        }
 
         const cursor = await this.DocGia.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
         const list = await cursor.toArray();
-
-        return list;
+        return list.map((reader) => ({ ...reader, VaiTro: "USER" }));
     }
 
     // Tìm kiếm hồ sơ độc giả theo mã, id hoặc số điện thoại, chưa sử dụng trong đồ án - Completed
@@ -177,7 +172,8 @@ class DocGiaService {
             query = { $or: [{ MaDocGia: id }, { DienThoai: id }] };
         }
 
-        return await this.DocGia.findOne(query, { projection: publicFields });
+        const reader = await this.DocGia.findOne(query, { projection: publicFields });
+        return reader ? { ...reader, VaiTro: "USER" } : null;
     }
 
     //Đăng nhập của độc giả - Completed
@@ -244,27 +240,6 @@ class DocGiaService {
         const result = await this.DocGia.findOneAndUpdate(
             filter,
             { $set: data },
-            { returnDocument: "after" }
-        );
-        return result ? this.findById(id) : null;
-    }
-
-    //Cập nhật vai trò, dùng được cho cả mã và object id - Completed
-    async updateRole(id, newRole) {
-        if (!["USER", "MANAGER", "ADMIN"].includes(newRole)) {
-            throw new Error("Vai trò không hợp lệ. Chỉ chấp nhận USER, MANAGER hoặc ADMIN.");
-        }
-
-        let filter = {};
-        if (ObjectId.isValid(id)) {
-            filter = { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }] };
-        } else {
-            filter = { MaDocGia: id };
-        }
-
-        const result = await this.DocGia.findOneAndUpdate(
-            filter,
-            { $set: { VaiTro: newRole, UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
         return result ? this.findById(id) : null;

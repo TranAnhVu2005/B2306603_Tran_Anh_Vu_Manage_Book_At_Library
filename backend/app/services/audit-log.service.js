@@ -10,6 +10,9 @@ const actionNames = {
     BORROW_APPROVED: "PHIEU_DUYET_MUON", BORROW_REJECTED: "PHIEU_TU_CHOI_MUON",
     BOOK_RETURNED: "PHIEU_TRA_SACH", BOOK_REPORTED_LOST: "PHIEU_BAO_MAT_SACH",
     BORROW_RECORD_DELETED: "PHIEU_XOA",
+    NHANVIEN_DANG_KY: "NHANVIEN_DANG_KY",
+    NHANVIEN_DUYET_DANG_KY: "NHANVIEN_DUYET_DANG_KY",
+    NHANVIEN_TU_CHOI_DANG_KY: "NHANVIEN_TU_CHOI_DANG_KY",
 };
 const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong" };
 const translateDetails = (value) => {
@@ -39,7 +42,7 @@ class AuditLogService {
 
         const entry = {
             HanhDong: actionNames[event.action] || String(event.action),
-            LoaiDoiTuong: event.entityType === "book" ? "sach" : "phieumuon",
+            LoaiDoiTuong: ({ book: "sach", borrow: "phieumuon", yeucaunhanvien: "yeucaunhanvien" })[event.entityType] || "phieumuon",
             MaDoiTuong: String(event.entityId || ""),
             LoaiTacNhan: actorType === "staff" ? "nhanvien" : actorType === "reader" ? "docgia" : "hethong",
             MaTacNhan: actorId,

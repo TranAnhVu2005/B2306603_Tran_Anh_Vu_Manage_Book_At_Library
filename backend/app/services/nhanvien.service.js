@@ -97,6 +97,35 @@ class NhanVienService {
         return await this.findById(result.insertedId);
     }
 
+    async createFromApprovedRequest(request) {
+        await this.NhanVien.createIndex({ MaYeuCauDangKy: 1 }, { unique: true, sparse: true, name: "uq_nhanvien_yeucau_dangky" });
+        const existing = await this.NhanVien.findOne({ MaYeuCauDangKy: String(request._id) }, { projection: { _id: 1 } });
+        if (existing) return this.findById(existing._id);
+        const data = {
+            MSNV: await this.generateMSNV(),
+            HoTenNV: String(request.HoTenNV).trim(),
+            SoDienThoai: String(request.SoDienThoai).trim(),
+            DiaChi: String(request.DiaChi || "").trim(),
+            MatKhau: request.MatKhau,
+            ChucVu: "THUTHU",
+            CreatedAt: new Date(),
+            UpdatedAt: new Date(),
+            MaYeuCauDangKy: String(request._id),
+        };
+        if (await this.NhanVien.findOne({ SoDienThoai: data.SoDienThoai }, { projection: { _id: 1 } })) {
+            throw new Error("Số điện thoại nhân viên đã được sử dụng.");
+        }
+        try {
+            const result = await this.NhanVien.insertOne(data);
+            return this.findById(result.insertedId);
+        } catch (error) {
+            if (error.code !== 11000) throw error;
+            const created = await this.NhanVien.findOne({ MaYeuCauDangKy: String(request._id) }, { projection: { _id: 1 } });
+            if (!created) throw error;
+            return this.findById(created._id);
+        }
+    }
+
     // Lấy danh sách nhân viên thư viện, có lọc theo họ tên, msnv, số điện thoại - Completed
     async find(filter = {}) {
         const query = {};

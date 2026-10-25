@@ -264,14 +264,8 @@
               <div class="mb-3">
                 <label class="form-label-sm">Lý do từ chối:</label>
                 <select class="ath-input mb-2" v-model="rejectReason">
-                  <option value="Độc giả đã đạt định mức tối đa 3 cuốn đang mượn">Độc giả đã đạt định mức tối đa 3 cuốn
-                    đang
-                    mượn</option>
-                  <option value="Sách đang được thu hồi để kiểm kê / phục chế">Sách đang được thu hồi để kiểm kê / phục
-                    chế
-                  </option>
-                  <option value="Thông tin thẻ độc giả chưa hoàn tất xác thực">Thông tin thẻ độc giả chưa hoàn tất xác
-                    thực
+                  <option value="Độc giả đã đạt định mức tối đa 3 cuốn đang mượn">Sách đang được thu hồi để kiểm kê
+                    /phục chế
                   </option>
                   <option value="Khác">Lý do khác (tự nhập)...</option>
                 </select>

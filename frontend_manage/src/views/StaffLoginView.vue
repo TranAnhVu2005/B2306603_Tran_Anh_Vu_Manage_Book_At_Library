@@ -22,6 +22,10 @@
                 {{ loading ? "Đang xác thực..." : "Đăng nhập" }}
               </button>
             </form>
+            <p class="small text-center mt-4 mb-0 text-muted">
+              Bạn muốn đăng ký làm nhân viên?
+              <router-link class="fw-bold text-dark" to="/staff-register">Gửi hồ sơ đăng ký</router-link>
+            </p>
           </div>
         </div>
       </div>

@@ -81,7 +81,7 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Kế thừa toàn bộ chức năng nghiệp vụ của Thủ thư và có thể truy cập các chức năng công khai của cổng Độc giả.
    - Tài khoản quản trị vẫn tách khỏi tài khoản độc giả; thao tác hồ sơ/mượn cá nhân cần đăng nhập phiên độc giả riêng nếu có.
    - Quản lý danh sách toàn bộ tài khoản người dùng và nhân viên.
-   - Đặc quyền phân quyền: Thăng cấp Độc giả lên Thủ thư (`VaiTro: MANAGER`) hoặc hạ cấp Thủ thư về lại Độc giả (`VaiTro: USER`).
+   - Xét duyệt/từ chối hồ sơ ứng tuyển nhân viên. Chỉ khi được duyệt mới sinh hồ sơ nhân viên `THUTHU`; hồ sơ độc giả không được chuyển đổi.
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
    - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); giữ nguyên `SoLanViPham` để bảo toàn lịch sử. Vi phạm mới tiếp tục cộng dồn và sẽ áp dụng lại chế tài khi đạt ngưỡng.
    - Quyền xóa tài khoản vi phạm vĩnh viễn khỏi CSDL.

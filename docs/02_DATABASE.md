@@ -2,7 +2,7 @@
 
 * **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
 * **Tên Database**: `quanlymuonsach`
-* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25), mở rộng thêm collection tham chiếu `theloai`; `nhatkykiemtoan` là collection kỹ thuật bổ sung cho truy cứu hoạt động.
+* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25), mở rộng thêm collection tham chiếu `theloai`; `yeucaunhanvien`, `nhatkykiemtoan` và `thongbao` là collection kỹ thuật.
 
 Các trường nghiệp vụ là lược đồ CDM, bổ sung thể loại tham chiếu riêng `theloai`. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `nhatkykiemtoan` có schema riêng, dùng tên trường tiếng Việt và không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
 
@@ -20,13 +20,14 @@ Các trường nghiệp vụ là lược đồ CDM, bổ sung thể loại tham 
 | 6 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
 | 7 | `nhatkykiemtoan` | Nhật ký kiểm toán append-only, lưu tác nhân, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
 | 8 | `thongbao` | Hộp thư thông báo nghiệp vụ theo từng độc giả/nhân viên; chỉ người nhận được đọc và đánh dấu đã đọc |
+| 9 | `yeucaunhanvien` | Hồ sơ đăng ký nhân viên riêng, được Admin duyệt trước khi tạo tài khoản nhân viên |
 
 ---
 
 ## 2. Chi Tiết Lược Đồ Dữ Liệu Từng Bảng (Schema Specification)
 
 ### 2.1. Bảng Độc Giả (`docgia`)
-Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mượn sách, thông tin tài khoản đăng nhập, cấp bậc phân quyền và các chỉ số theo dõi vi phạm nội quy để xử lý đưa vào danh sách đen.
+Bảng `docgia` lưu thông tin cá nhân người mượn sách, tài khoản độc giả (`VaiTro: USER`) và các chỉ số vi phạm nội quy.
 
 ```json
 {
@@ -39,7 +40,7 @@ Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mư�
   "DiaChi": "Xuân Khánh, Cần Thơ",   // Địa chỉ cư trú của độc giả
   "DienThoai": "0912345678",          // [Bắt buộc, Duy nhất] Số điện thoại liên hệ (Dùng để đăng nhập)
   "MatKhau": "$2a$10$e7...",          // [Bắt buộc, String] Mật khẩu tài khoản (Đã mã hóa Bcrypt an toàn)
-  "VaiTro": "USER",                   // [USER | MANAGER | ADMIN] Vai trò người dùng trong hệ thống
+  "VaiTro": "USER",                   // Vai trò tài khoản độc giả
   "SoLanViPham": 0,                   // [Number >= 0] Số lần vi phạm nội quy (trả trễ hạn, làm mất sách)
   "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "DanhSachDen"] Trạng thái thẻ thư viện
 }
@@ -49,7 +50,28 @@ Bảng `docgia` dùng để lưu trữ thông tin cá nhân của người mư�
 
 ---
 
-### 2.2. Bảng Nhân Viên (`nhanvien`)
+### 2.2. Hồ sơ đăng ký nhân viên (`yeucaunhanvien`)
+Hồ sơ đăng ký được lưu tách khỏi `docgia` và `nhanvien`. Người đăng ký chưa có tài khoản nghiệp vụ và không nhận JWT cho đến khi Admin duyệt. Mật khẩu chỉ được lưu dạng Bcrypt hash và không được đưa vào API response. Khi duyệt, hệ thống tạo hồ sơ `nhanvien` với chức vụ `THUTHU`; khi từ chối, trạng thái và lý do được lưu để tra cứu/kiểm toán.
+
+```json
+{
+  "_id": "ObjectId",
+  "HoTenNV": "Nguyễn Văn A",
+  "SoDienThoai": "0912345678",
+  "DiaChi": "Ninh Kiều, Cần Thơ",
+  "MatKhau": "$2b$...",
+  "TrangThai": "ChoDuyet | DangDuyet | DaDuyet | TuChoi",
+  "ThoiGianGui": "Date",
+  "ThoiGianXuLy": "Date",
+  "NguoiDuyet": "MSNV",
+  "MSNV": "NV-0001",
+  "LyDoTuChoi": "String"
+}
+```
+
+Unique index `{ SoDienThoai, TrangThai }` ngăn nhiều hồ sơ cùng số điện thoại ở cùng trạng thái. Hồ sơ `DaDuyet` được xóa hash mật khẩu sau khi tạo tài khoản.
+
+### 2.3. Bảng Nhân Viên (`nhanvien`)
 Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và quản trị viên hệ thống có quyền đăng nhập vào các phân hệ nghiệp vụ quản lý.
 
 ```json
@@ -60,13 +82,14 @@ Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và q
   "MatKhau": "$2a$10$k9...",          // [Bắt buộc] Mật khẩu đăng nhập hệ thống (Đã mã hóa Bcrypt)
   "ChucVu": "ADMIN",                  // ["THUTHU" | "ADMIN"] Chức danh công tác
   "SoDienThoai": "0901234567",        // [Bắt buộc, duy nhất trong nhanvien] Dùng đăng nhập; MSNV chỉ là mã hồ sơ
-  "DiaChi": "Ninh Kiều, Cần Thơ"     // Địa chỉ liên hệ của nhân viên
+  "DiaChi": "Ninh Kiều, Cần Thơ",    // Địa chỉ liên hệ của nhân viên
+  "MaYeuCauDangKy": "ObjectId string" // Metadata nội bộ để bảo đảm thao tác duyệt idempotent; không xuất hiện trong API
 }
 ```
 
 ---
 
-### 2.3. Bảng Sách (`sach`)
+### 2.4. Bảng Sách (`sach`)
 Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồm đơn giá bồi thường và số lượng tồn kho thực tế.
 
 ```json
@@ -92,7 +115,7 @@ Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồ
 
 ---
 
-### 2.4. Bảng Thể Loại (`theloai`)
+### 2.5. Bảng Thể Loại (`theloai`)
 Danh mục chuẩn để phân loại và lọc đầu sách. Mã thể loại ổn định được lưu trong sách dưới dạng tham chiếu `MaTheLoai`.
 
 ```json
@@ -109,7 +132,7 @@ Danh mục mặc định: Giáo trình và tài liệu học tập; Công nghệ
 
 ---
 
-### 2.5. Bảng Nhà Xuất Bản (`nhaxuatban`)
+### 2.6. Bảng Nhà Xuất Bản (`nhaxuatban`)
 Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho thư viện.
 
 ```json
@@ -125,7 +148,7 @@ Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho th
 
 ---
 
-### 2.5. Bảng Theo Dõi Mượn Sách (`theodoimuonsach`)
+### 2.7. Bảng Theo Dõi Mượn Sách (`theodoimuonsach`)
 Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữa `docgia` và `sach`, ghi nhận toàn bộ vòng đời của một phiếu mượn từ lúc gửi yêu cầu, duyệt giao sách, hẹn ngày trả, cho đến khi hoàn trả hoặc xử lý bồi thường mất sách.
 
 ```json
@@ -143,7 +166,7 @@ Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữ
 }
 ```
 
-### 2.6. Nhật Ký Kiểm Toán (`nhatkykiemtoan`)
+### 2.8. Nhật Ký Kiểm Toán (`nhatkykiemtoan`)
 
 Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứu sau khi sách xóa mềm hoặc tên hiển thị thay đổi. Không có API sửa/xóa log.
 
@@ -169,7 +192,7 @@ Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứ
 
 `HanhDong` sử dụng các giá trị `SACH_TAO`, `SACH_CAP_NHAT`, `SACH_XOA_MEM`, `SACH_KHOI_PHUC`, `PHIEU_DANG_KY_MUON`, `PHIEU_DUYET_MUON`, `PHIEU_TU_CHOI_MUON`, `PHIEU_TRA_SACH`, `PHIEU_BAO_MAT_SACH` và `PHIEU_XOA`. `LoaiDoiTuong` là `sach` hoặc `phieumuon`; `LoaiTacNhan` là `docgia`, `nhanvien` hoặc `hethong`. Tác nhân được xác định từ JWT phía server, không tin mã do client tự khai.
 
-### 2.7. Hộp Thư Thông Báo (`thongbao`)
+### 2.9. Hộp Thư Thông Báo (`thongbao`)
 
 Collection kỹ thuật lưu thông báo cần người dùng biết sau khi Admin/Thủ thư thực hiện nghiệp vụ. Khác nhật ký kiểm toán, người nhận được phép cập nhật `DaDoc`; nội dung và người nhận chỉ do backend tạo, không có API tạo/sửa/xóa tùy ý.
 
@@ -211,7 +234,7 @@ erDiagram
         string DiaChi
         string DienThoai UK
         string MatKhau "Bcrypt"
-        string VaiTro "USER/MANAGER/ADMIN"
+        string VaiTro "USER"
         int SoLanViPham
         string TrangThaiThe "HoatDong/Khoa/DanhSachDen"
     }

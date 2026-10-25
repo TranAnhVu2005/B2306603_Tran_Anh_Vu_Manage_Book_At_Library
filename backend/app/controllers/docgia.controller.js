@@ -84,35 +84,6 @@ exports.update = async (req, res, next) => {
     }
 };
 
-// Cập nhật vai trò - Completed
-exports.updateRole = async (req, res, next) => {
-    try {
-        const { role } = req.body;
-        if (!role) {
-            return next(new ApiError(400, "Vui lòng chỉ định vai trò mới (USER, MANAGER, ADMIN)."));
-        }
-        const service = new DocGiaService(MongoDB.client);
-        const result = await service.updateRole(req.params.id, role);
-        if (!result) {
-            return next(new ApiError(404, "Không tìm thấy người dùng để phân quyền."));
-        }
-        await notifyReader(
-            result,
-            "VAI_TRO_CAP_NHAT",
-            "Vai trò tài khoản đã được cập nhật",
-            result.VaiTro === "MANAGER"
-                ? "Tài khoản của bạn đã được cấp quyền Quản lý / Thủ thư."
-                : "Tài khoản của bạn hiện có quyền Độc giả."
-        );
-        return res.json({
-            message: `Phân quyền thành công vai trò '${role}'.`,
-            data: result,
-        });
-    } catch (error) {
-        return next(new ApiError(400, error.message));
-    }
-};
-
 // Mở khóa thẻ - Completed
 exports.unblock = async (req, res, next) => {
     try {

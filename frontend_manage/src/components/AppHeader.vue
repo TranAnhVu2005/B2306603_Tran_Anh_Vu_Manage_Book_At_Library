@@ -82,7 +82,11 @@
             :class="{ show: isAdminMenuOpen }" style="min-width: 230px;">
             <router-link to="/admin/users" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
               @click="isAdminMenuOpen = false">
-              Phân quyền & Tài khoản
+              Quản lý tài khoản
+            </router-link>
+            <router-link to="/admin/staff-applications" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
+              @click="isAdminMenuOpen = false">
+              Duyệt hồ sơ nhân viên
             </router-link>
             <router-link to="/admin/users?filter=danhsachden"
               class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center" @click="isAdminMenuOpen = false">
@@ -221,7 +225,11 @@
           </router-link>
           <router-link v-if="isAdmin" to="/admin/users" class="nav-link text-danger py-2.5 px-3 rounded-2"
             @click="isMobileNavOpen = false">
-            <i class="fas fa-users-cog me-2"></i> Phân quyền Admin & Danh sách đen
+            <i class="fas fa-users-cog me-2"></i> Quản lý tài khoản
+          </router-link>
+          <router-link v-if="isAdmin" to="/admin/staff-applications" class="nav-link text-danger py-2.5 px-3 rounded-2"
+            @click="isMobileNavOpen = false">
+            <i class="fas fa-user-check me-2"></i> Duyệt hồ sơ nhân viên
           </router-link>
           <router-link v-if="isAdmin" to="/admin/users?filter=locked" class="nav-link text-danger py-2.5 px-3 rounded-2"
             @click="isMobileNavOpen = false">

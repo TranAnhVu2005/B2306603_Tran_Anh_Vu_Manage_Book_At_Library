@@ -26,7 +26,7 @@ Backend chạy tại `http://localhost:3000`; mỗi app proxy `/api` về backen
 - Sidebar có khoảng đệm thoáng, nhãn/tiêu đề phân cấp rõ; nhãn nhỏ dùng nền vàng thương hiệu và chữ mực, select dùng nền giấy ấm, nút đặt lại trung tính. Tím chỉ làm màu trạng thái hover/focus để không lấn át palette vàng–mực; select vừa phải, focus bàn phím dễ nhận biết.
 - Màn quản lý kho có bộ lọc thể loại và cột thể loại. Form thêm/sửa sách yêu cầu chọn một thể loại chính; hiển thị tên thể loại từ mã tham chiếu, không nhập văn bản tự do.
 - Sidebar và catalog xếp đúng thứ tự, các điều khiển không gây tràn ngang toàn trang.
-- NXB, thể loại và khoảng giá dùng chung kiểu popover có chiều cao giới hạn (tối đa 280px) và cuộn bên trong; menu nổi trên nội dung, không bị khung sidebar cắt và không để số lượng lựa chọn phủ toàn màn hình.
+- NXB, thể loại và khoảng giá dùng chung kiểu popover có chiều cao giới hạn (tối đa 280px) và cuộn bên trong; menu nổi trên nội dung, không bị khung sidebar cắt. Nút chọn phải dùng `box-sizing: border-box`, co đúng theo bề rộng cột và không lấn sang danh sách sách.
 
 **Nhận diện hai cổng:** `frontend_user` là nguồn chuẩn cho cấu trúc Header/Footer và trang tra cứu. Hai cổng cùng dùng palette Neo-brutalist, hình thức viền/bóng, logo và nhịp khoảng cách; vẫn phân biệt chức năng bằng menu theo quyền. `frontend_manage` tra cứu nội bộ tại `/catalog`, có menu thủ thư/Admin và không hiển thị thao tác đăng ký mượn.
 
@@ -125,16 +125,15 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
    * Bộ lọc trạng thái riêng cho `DanhSachDen` và thẻ bị khóa (`Khoa`); hiển thị trạng thái thẻ thực tế, không gộp hai trạng thái.
    * **Khóa thẻ** chỉ dành cho thẻ `HoatDong`; **Mở khóa** chỉ dành cho thẻ `Khoa` và giữ nguyên `SoLanViPham`. Nếu đã đạt 3 vi phạm, mở khóa khẩn cấp vẫn để thẻ ở `DanhSachDen`.
    * Thẻ `DanhSachDen` có thao tác **Xét gỡ khỏi danh sách đen** riêng; khi được duyệt, trạng thái trở về `HoatDong` nhưng lịch sử vi phạm không bị xóa.
-   * Nút **Nâng cấp (Promote)**: Thăng cấp Độc giả → Quản lý/Thủ thư.
-   * Nút **Hạ cấp (Demote)**: Thu hồi quyền quản lý về lại Độc giả.
+   * Admin có trang riêng để xem hồ sơ ứng tuyển nhân viên, duyệt hoặc từ chối kèm lý do; không chuyển đổi hồ sơ độc giả thành nhân viên.
 2. **Nhật ký kiểm toán (`/admin/audit-logs`)**:
    * Chỉ ADMIN được xem lịch sử sách và phiếu mượn; lọc theo hành động, mã sách, độc giả, nhân viên, loại đối tượng và khoảng thời gian.
    * Hiển thị thời điểm, hành động, tên/mã sách, tên/mã độc giả, nhân viên chịu trách nhiệm và chi tiết trạng thái/thay đổi; hỗ trợ tải thêm theo trang.
    * Nhật ký chỉ đọc; giao diện không có thao tác sửa/xóa log.
 3. **Quản lý tài khoản (`/admin/users`)**:
-   * Hiển thị độc giả và nhân viên trong cùng một danh sách, không chia thành tab. `Tất cả` đếm/tìm kiếm trên tổng hai nguồn `GET /api/docgia` và `GET /api/nhanvien`.
-   * Bộ lọc `Quản lý / Thủ thư` gồm cả độc giả có `VaiTro=MANAGER` và nhân viên có `ChucVu=THUTHU`; bộ lọc danh sách đen/thẻ khóa chỉ áp dụng cho độc giả.
-   * Mã, tên, số điện thoại và vai trò/chức vụ hiển thị theo đúng loại hồ sơ; các cột thẻ/vi phạm không áp dụng cho nhân viên. Không trộn `nhanvien.ChucVu` với `docgia.VaiTro`, không hiển thị mật khẩu. Các thao tác thay đổi quyền/trạng thái/xóa chỉ hiện trên dòng độc giả; nhân viên chỉ đọc tại đây.
+   * Hiển thị độc giả và nhân viên đã được tạo trong cùng một danh sách; bộ lọc thẻ chỉ áp dụng cho độc giả.
+   * Không có thao tác thăng cấp/hạ cấp độc giả. Quản trị viên xử lý hồ sơ ứng tuyển tại `/admin/staff-applications`; duyệt tạo tài khoản thủ thư, từ chối yêu cầu lý do và ghi nhật ký.
+   * Mã, tên, số điện thoại và vai trò/chức vụ hiển thị theo đúng loại hồ sơ; các cột thẻ/vi phạm không áp dụng cho nhân viên, không hiển thị mật khẩu.
 4. **Xóa mềm sách (`/manager/books`)**:
    * Nút xóa chuyển sách sang `deleted=true`; sách biến mất khỏi tra cứu/mượn mới nhưng giữ nguyên dữ liệu và lịch sử.
    * Chỉ ADMIN có thể mở danh sách đã xóa mềm và khôi phục sách.
@@ -167,7 +166,7 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 ## 5. Bản đồ route theo frontend
 
 - `frontend_user/`: `/`, `/books`, `/books/:id`, `/profile`, `/login`, `/register`, trang 404 dành cho độc giả. Không đăng ký các route `/manager/*` hoặc `/admin/*`.
-- `frontend_manage/`: `/catalog` và `/catalog/books/:id` để tra cứu danh mục/chi tiết (không đăng ký mượn), `/login` dành cho nhân viên, `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/admin/audit-logs`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; route log chỉ ADMIN.
+- `frontend_manage/`: `/catalog` và `/catalog/books/:id` để tra cứu danh mục/chi tiết (không đăng ký mượn), `/login` và `/staff-register` dành cho nhân viên; trang đăng ký chỉ gửi hồ sơ, chưa tạo phiên. Các route nghiệp vụ gồm `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/admin/staff-applications`, `/admin/audit-logs`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; route Admin chỉ ADMIN.
 - Hồ sơ nhân viên (`nhanvien`) và độc giả (`docgia`) là hai danh tính độc lập. MANAGER/ADMIN có thể tra cứu sách công khai qua cổng độc giả, nhưng các thao tác cá nhân độc giả yêu cầu phiên đăng nhập USER riêng cho đến khi có tính năng liên kết hồ sơ.
 - Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config cho các luồng cần đổi ứng dụng. Tra cứu sách của nhân viên phải dùng route nội bộ `/catalog` để giữ origin/phiên nhân viên.
 - Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.

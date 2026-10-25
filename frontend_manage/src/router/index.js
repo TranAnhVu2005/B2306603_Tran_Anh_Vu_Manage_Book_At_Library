@@ -6,11 +6,13 @@ const routes = [
   { path: "/catalog", name: "manager.catalog", component: () => import("@/views/ManagerCatalog.vue"), meta: { role: "staff" } },
   { path: "/catalog/books/:id", name: "manager.catalog.book", component: () => import("@/views/ManagerBookDetail.vue"), meta: { role: "staff" } },
   { path: "/login", name: "login", component: () => import("@/views/StaffLoginView.vue") },
+  { path: "/staff-register", name: "staff-register", component: () => import("@/views/StaffRegisterView.vue") },
   { path: "/profile", name: "profile", component: () => import("@/views/ProfileView.vue"), meta: { role: "staff" } },
   { path: "/manager/borrows", name: "manager.borrows", component: () => import("@/views/ManagerBorrows.vue"), meta: { role: "staff" } },
   { path: "/manager/books", name: "manager.books", component: () => import("@/views/ManagerBooks.vue"), meta: { role: "staff" } },
   { path: "/manager/publishers", name: "manager.publishers", component: () => import("@/views/ManagerPublishers.vue"), meta: { role: "staff" } },
   { path: "/admin/users", name: "admin.users", component: () => import("@/views/AdminUsers.vue"), meta: { role: "admin" } },
+  { path: "/admin/staff-applications", name: "admin.staff-applications", component: () => import("@/views/AdminStaffApplications.vue"), meta: { role: "admin" } },
   { path: "/admin/audit-logs", name: "admin.audit-logs", component: () => import("@/views/AdminAuditLogs.vue"), meta: { role: "admin" } },
   { path: "/:pathMatch(.*)*", name: "notfound", component: () => import("@/views/NotFound.vue") },
 ];
