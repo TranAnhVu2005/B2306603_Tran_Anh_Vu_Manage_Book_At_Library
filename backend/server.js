@@ -3,6 +3,7 @@ const config = require("./app/config");
 const MongoDB = require("./app/utils/mongodb.util");
 const TheLoaiService = require("./app/services/theloai.service");
 const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
+const TheoDoiMuonSachService = require("./app/services/theodoimuonsach.service");
 
 async function startServer() {
     try {
@@ -30,6 +31,13 @@ async function startServer() {
             notifications.createIndex({ LoaiNguoiNhan: 1, NguoiNhanId: 1, DaDoc: 1 }),
         ]);
 
+        const borrowService = new TheoDoiMuonSachService(MongoDB.client);
+        await borrowService.migrateLegacyPendingRecords();
+        await borrowService.expirePickupReservations();
+        const pickupExpiryTimer = setInterval(() => {
+            borrowService.expirePickupReservations().catch((error) => console.error("Lỗi xử lý phiếu quá hạn nhận:", error));
+        }, 60 * 1000);
+
         const PORT = config.app.port;
         const server = app.listen(PORT, () => {
             console.log(`====================================================`);
@@ -41,6 +49,7 @@ async function startServer() {
         // Xử lý dừng máy chủ an toàn (Graceful Shutdown)
         const handleShutdown = async (signal) => {
             console.log(`\nNhận tín hiệu ${signal}. Đang đóng các kết nối an toàn...`);
+            clearInterval(pickupExpiryTimer);
             server.close(async () => {
                 if (MongoDB.client) {
                     await MongoDB.client.close();

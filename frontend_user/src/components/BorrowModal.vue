@@ -72,7 +72,7 @@
                   </svg>
                   Thời hạn mượn
                 </dt>
-                <dd>14 ngày kể từ thời điểm được duyệt</dd>
+                <dd>14 ngày kể từ khi thủ thư xác nhận bàn giao</dd>
               </div>
               <div class="bm-term">
                 <dt>
@@ -141,8 +141,8 @@
                 <path d="M12 10.5v3.6M12 16.8v.01" />
               </svg>
               <p>
-                Yêu cầu sẽ ở trạng thái <strong>Chờ duyệt</strong>. Sau khi thủ thư xét duyệt,
-                bạn vui lòng đến quầy nhận sách vật lý.
+                Sau khi được duyệt, sách được giữ trong <strong>3 ngày</strong>. Vui lòng đến quầy nhận;
+                hạn mượn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao.
               </p>
             </aside>
           </div>

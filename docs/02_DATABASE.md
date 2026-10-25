@@ -116,7 +116,7 @@ Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồ
 ```
 
 * **Xóa mềm**: `DELETE /api/sach/:id` đặt `deleted=true`, `DeletedAt`, `DeletedBy`, không xóa document. Sách đã xóa bị ẩn khỏi tra cứu/chi tiết và không thể đăng ký/duyệt mượn. Chỉ Admin được xem danh sách xóa mềm và khôi phục (`deleted=false`); mọi thao tác được ghi log. Bản ghi cũ thiếu `deleted` được hiểu là đang hoạt động.
-* **Ràng buộc toàn vẹn**: Không cho phép xóa mềm nếu sách đang có phiếu `DangMuon` hoặc `ChoDuyet`.
+* **Ràng buộc toàn vẹn**: Không cho phép xóa mềm nếu sách đang có phiếu `DangMuon`, `ChoDuyet` hoặc `ChoNhan`.
 * **Ràng buộc thể loại**: Mỗi đầu sách có một thể loại chính; `MaTheLoai` bắt buộc và phải tồn tại trong `theloai`. Danh mục không nhúng vào document sách.
 * `deleted`, `DeletedAt`, `DeletedBy` là metadata kỹ thuật ngoài CDM; chỉ endpoint danh sách đã xóa dành cho Admin trả các trường này.
 
@@ -163,11 +163,16 @@ Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữ
   "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
   "MaDocGia": "DG-000001",            // [Khóa ngoại FK] Tham chiếu đến docgia.MaDocGia
   "MaSach": "SACH-000004",            // [Khóa ngoại FK] Tham chiếu đến sach.MaSach
-  "NgayMuon": "2026-10-14",           // Ngày độc giả gửi yêu cầu hoặc bắt đầu nhận sách (YYYY-MM-DD)
-  "MSNV": "NV-0002",                  // [Khóa ngoại FK] Mã số nhân viên phụ trách duyệt (nhanvien.MSNV)
-  "NgayHenTra": "2026-10-28",         // Hạn trả sách dự kiến (Mặc định 14 ngày kể từ ngày duyệt)
+  "NgayDangKy": "2026-10-14",         // Ngày độc giả gửi yêu cầu
+  "NgayDuyet": "2026-10-15",          // Ngày thủ thư duyệt và giữ sách
+  "HanNhan": "2026-10-18",            // Hạn cuối đến nhận (3 ngày từ ngày duyệt, được nhận hết ngày này)
+  "NgayMuon": "2026-10-17",           // Ngày thủ thư thực tế bàn giao sách; null trước bàn giao
+  "MSNV": "NV-0002",                  // [Khóa ngoại FK] Nhân viên duyệt/bàn giao (nhanvien.MSNV)
+  "NgayHenTra": "2026-10-31",         // Hạn trả: 14 ngày kể từ NgayMuon; null trước bàn giao
+  "SoLanGiaHan": 0,                    // Số lần gia hạn; tối đa 1 lần cho mỗi phiếu
+  "NgayGiaHan": null,                  // Ngày độc giả gia hạn; null nếu chưa gia hạn
   "NgayTra": null,                    // Ngày thực tế mang trả sách tại quầy (null nếu chưa trả)
-  "TrangThai": "DangMuon",            // ["ChoDuyet" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi" | "DaHuy"]
+  "TrangThai": "DangMuon",            // ["ChoDuyet" | "ChoNhan" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi" | "DaHuy" | "QuaHanNhan"]
   "GiaTriBoiThuong": 0,               // [Double >= 0] Tiền bồi hoàn theo đơn giá nếu làm mất sách
   "GhiChu": "Sách bìa cứng, mới"      // Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
 }
@@ -180,7 +185,7 @@ Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứ
 ```json
 {
   "_id": "ObjectId",
-  "HanhDong": "PHIEU_DUYET_MUON",
+  "HanhDong": "PHIEU_GIA_HAN",
   "LoaiDoiTuong": "phieumuon",
   "MaDoiTuong": "ObjectId hoặc MaSach",
   "MaSach": "SACH-000001",
@@ -192,12 +197,12 @@ Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứ
   "LoaiTacNhan": "nhanvien",
   "MaTacNhan": "NV-0002",
   "TenTacNhan": "Nguyễn Thủ Thư",
-  "ChiTiet": { "Tu": "ChoDuyet", "Den": "DangMuon" },
+  "ChiTiet": { "HanTraCu": "2026-10-31", "HanTraMoi": "2026-11-07", "SoNgayGiaHan": 7 },
   "ThoiGian": "2026-10-23T10:00:00.000Z"
 }
 ```
 
-`HanhDong` sử dụng các giá trị `SACH_TAO`, `SACH_CAP_NHAT`, `SACH_XOA_MEM`, `SACH_KHOI_PHUC`, `PHIEU_DANG_KY_MUON`, `PHIEU_DUYET_MUON`, `PHIEU_TU_CHOI_MUON`, `PHIEU_TRA_SACH`, `PHIEU_BAO_MAT_SACH` và `PHIEU_XOA`. `LoaiDoiTuong` là `sach` hoặc `phieumuon`; `LoaiTacNhan` là `docgia`, `nhanvien` hoặc `hethong`. Tác nhân được xác định từ JWT phía server, không tin mã do client tự khai.
+`HanhDong` sử dụng các giá trị `SACH_TAO`, `SACH_CAP_NHAT`, `SACH_XOA_MEM`, `SACH_KHOI_PHUC`, `PHIEU_DANG_KY_MUON`, `PHIEU_DUYET_MUON`, `PHIEU_BAN_GIAO_SACH`, `PHIEU_QUA_HAN_NHAN`, `PHIEU_GIA_HAN`, `PHIEU_TU_CHOI_MUON`, `PHIEU_TRA_SACH`, `PHIEU_BAO_MAT_SACH` và `PHIEU_XOA`. `LoaiDoiTuong` là `sach` hoặc `phieumuon`; `LoaiTacNhan` là `docgia`, `nhanvien` hoặc `hethong`. Tác nhân được xác định từ JWT phía server, không tin mã do client tự khai.
 
 ### 2.9. Hộp Thư Thông Báo (`thongbao`)
 
@@ -289,8 +294,13 @@ erDiagram
         string MaDocGia FK
         string MaSach FK
         string MSNV FK
+        date NgayDangKy
+        date NgayDuyet
+        date HanNhan
         date NgayMuon
         date NgayHenTra
+        int SoLanGiaHan
+        date NgayGiaHan
         date NgayTra
         string TrangThai
         double GiaTriBoiThuong

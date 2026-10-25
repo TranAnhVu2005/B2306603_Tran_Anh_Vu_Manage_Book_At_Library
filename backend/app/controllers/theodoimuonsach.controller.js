@@ -34,9 +34,20 @@ exports.duyetMuon = async (req, res, next) => {
 
         const result = await service.duyetMuon(req.params.id, msnv);
         return res.json({
-            message: "Duyệt yêu cầu mượn thành công. Đã xuất kho 1 cuốn và hẹn trả sau 14 ngày.",
+            message: "Đã duyệt yêu cầu. Sách được giữ trong 3 ngày; hạn mượn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao.",
             data: result,
         });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+};
+
+// Thủ thư xác nhận độc giả đã đến nhận sách; mốc mượn 14 ngày bắt đầu tại đây.
+exports.giaoSach = async (req, res, next) => {
+    try {
+        const service = new TheoDoiMuonSachService(MongoDB.client);
+        const result = await service.giaoSach(req.params.id, req.user?.username);
+        return res.json({ message: "Đã xác nhận bàn giao sách. Hạn trả được tính 14 ngày từ hôm nay.", data: result });
     } catch (error) {
         return next(new ApiError(error.statusCode || 400, error.message));
     }
@@ -57,16 +68,28 @@ exports.tuChoiMuon = async (req, res, next) => {
     }
 };
 
-// Độc giả hủy yêu cầu mượn của chính mình khi phiếu còn chờ duyệt.
+// Độc giả hủy yêu cầu mượn của chính mình trước khi nhận sách.
 exports.huyDangKy = async (req, res, next) => {
     try {
         const service = new TheoDoiMuonSachService(MongoDB.client);
         const result = await service.huyDangKy(req.params.id, req.user?.username);
         if (!result) return next(new ApiError(404, "Không tìm thấy phiếu mượn."));
         return res.json({
-            message: "Đã hủy yêu cầu mượn đang chờ duyệt. Bạn có thể đăng ký mượn sách khác.",
+            message: "Đã hủy yêu cầu mượn trước khi nhận sách. Cuốn đã được giữ (nếu có) đã hoàn lại kho.",
             data: result,
         });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+};
+
+// Độc giả gia hạn phiếu mượn của chính mình trước hạn trả.
+exports.giaHan = async (req, res, next) => {
+    try {
+        const service = new TheoDoiMuonSachService(MongoDB.client);
+        const result = await service.giaHan(req.params.id, req.user?.username);
+        if (!result) return next(new ApiError(404, "Không tìm thấy phiếu mượn."));
+        return res.json({ message: "Đã gia hạn thêm 7 ngày. Hạn trả mới đã được cập nhật.", data: result });
     } catch (error) {
         return next(new ApiError(error.statusCode || 400, error.message));
     }

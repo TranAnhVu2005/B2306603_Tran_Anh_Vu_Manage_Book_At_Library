@@ -11,7 +11,7 @@ const PasswordUtil = require("./app/utils/password.util");
  * 2. sach: MaSach, TenSach, DonGia, SoQuyen, NamXuatBan, MaNXB, TacGia, HinhAnh, MoTa
  * 3. docgia: MaDocGia, HoLot, Ten, NgaySinh, Phai (Integer: 1:Nam, 0:Nữ), DiaChi, DienThoai, MatKhau (Bcrypt), VaiTro, SoLanViPham, TrangThaiThe
  * 4. nhanvien: MSNV, HoTenNV, MatKhau (Bcrypt), ChucVu, SoDienThoai, DiaChi
- * 5. theodoimuonsach: MaDocGia, MaSach, NgayMuon, MSNV, NgayHenTra, NgayTra, TrangThai, GiaTriBoiThuong, GhiChu
+ * 5. theodoimuonsach: MaDocGia, MaSach, NgayDangKy, NgayDuyet, HanNhan, NgayMuon, MSNV, NgayHenTra, NgayTra, TrangThai, GiaTriBoiThuong, GhiChu
  * =========================================================================================
  */
 async function seedData() {
@@ -249,16 +249,23 @@ async function seedData() {
         console.log(`-> Đã thêm ${readerList.length} Độc giả (Phai: Integer, Mật khẩu Bcrypt).`);
 
         // 6. Seed Giao Dịch Theo Dõi Mượn Sách
-        const todayStr = new Date().toISOString().split("T")[0];
-        const dueDate = new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
+        const handoverDate = new Date(Date.now() - 2 * 86400000);
+        const handoverDateStr = handoverDate.toISOString().split("T")[0];
+        const dueDate = new Date(handoverDate.getTime() + 14 * 86400000).toISOString().split("T")[0];
+        const registrationDate = new Date().toISOString().split("T")[0];
 
         const borrowList = [
             {
                 MaDocGia: "DG-000001",
                 MaSach: "SACH-000004",
-                NgayMuon: todayStr,
+                NgayDangKy: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
+                NgayDuyet: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
+                HanNhan: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+                NgayMuon: handoverDateStr,
                 MSNV: "NV-0002",
                 NgayHenTra: dueDate,
+                SoLanGiaHan: 0,
+                NgayGiaHan: null,
                 NgayTra: null,
                 TrangThai: "DangMuon",
                 GiaTriBoiThuong: 0,
@@ -269,9 +276,14 @@ async function seedData() {
             {
                 MaDocGia: "DG-000003",
                 MaSach: "SACH-000001",
-                NgayMuon: todayStr,
-                MSNV: null, // Chưa duyệt
-                NgayHenTra: dueDate,
+                NgayDangKy: registrationDate,
+                NgayDuyet: null,
+                HanNhan: null,
+                NgayMuon: null,
+                MSNV: null,
+                NgayHenTra: null,
+                SoLanGiaHan: 0,
+                NgayGiaHan: null,
                 NgayTra: null,
                 TrangThai: "ChoDuyet",
                 GiaTriBoiThuong: 0,
@@ -282,9 +294,14 @@ async function seedData() {
             {
                 MaDocGia: "DG-000001",
                 MaSach: "SACH-000005",
+                NgayDangKy: "2026-09-10",
+                NgayDuyet: "2026-09-10",
+                HanNhan: "2026-09-13",
                 NgayMuon: "2026-09-10",
                 MSNV: "NV-0002",
                 NgayHenTra: "2026-09-24",
+                SoLanGiaHan: 0,
+                NgayGiaHan: null,
                 NgayTra: "2026-09-22",
                 TrangThai: "DaTra",
                 GiaTriBoiThuong: 0,

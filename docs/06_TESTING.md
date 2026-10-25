@@ -35,12 +35,15 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | TC-BOOK-SOFT-DELETE-01 | Xóa mềm sách và khôi phục | STAFF xóa sách không có phiếu mở; Admin xem `includeDeleted=true` và khôi phục; STAFF thử xem bản đã xóa | Document vẫn tồn tại với `deleted=true`; GET công khai/chi tiết và đăng ký mượn không tìm thấy; Admin khôi phục được; STAFF không được xem dữ liệu đã xóa | 🟡 Chưa chạy |
 | TC-AUDIT-01 | Collection/schema và phân quyền nhật ký | Tạo sách; Admin và nhân viên gọi `GET /api/nhatkykiemtoan?MaSach=...` | Collection `nhatkykiemtoan`, trường tiếng Việt (`HanhDong`, `LoaiDoiTuong`, `ThoiGian`); Admin đọc được, nhân viên bị từ chối | ✅ PASSED |
 | **TC-BORROW-01**| Độc giả gửi phiếu yêu cầu mượn | Độc giả kiểm thử tạm thời, `TEST_SACH_99` | HTTP 201, trạng thái `ChoDuyet`, response chỉ có trường CDM của phiếu | ✅ PASSED |
-| **TC-CANCEL-01** | Độc giả hủy phiếu chờ duyệt | Hai cuốn đang mượn + một phiếu chờ; độc giả khác thử hủy; chủ phiếu hủy rồi đăng ký sách khác | Chỉ chủ phiếu hủy được; hủy chuyển `DaHuy`, không trừ kho, giải phóng hạn mức; không hủy phiếu đã xử lý; audit có actor và trạng thái trước/sau | ✅ PASSED |
+| **TC-CANCEL-01** | Độc giả hủy phiếu chờ duyệt | Hai cuốn đang mượn + một phiếu `ChoDuyet`; độc giả khác thử hủy; chủ phiếu hủy rồi đăng ký sách khác | Chỉ chủ phiếu hủy được; `ChoDuyet` chuyển `DaHuy` mà không đổi kho, giải phóng hạn mức; không hủy phiếu đã xử lý; audit có actor và trạng thái trước/sau | ✅ PASSED |
+| **TC-CANCEL-02** | Độc giả hủy phiếu đã duyệt nhưng chưa nhận | Chủ phiếu hủy phiếu `ChoNhan` | Chuyển `DaHuy`, hoàn đúng một cuốn đã giữ về `SoQuyen`; không hủy sau bàn giao | ✅ PASSED |
 | **TC-BORROW-02**| Mượn sách khi đã hết kho | Độc giả kiểm thử tạm thời, `SACH-000003` (`SoQuyen: 0`) | HTTP 400: Báo hết sách trong kho | ✅ PASSED |
 | **TC-BORROW-03**| Mượn sách vượt hạn mức 3 cuốn | Độc giả đã có 3 cuốn chưa trả | HTTP 400: Chặn vượt hạn mức | ✅ PASSED |
 | **TC-BORROW-04**| Độc giả trong danh sách đen mượn sách | Tạo độc giả kiểm thử với `TrangThaiThe: DanhSachDen` | HTTP 403: Bị từ chối mượn | ✅ PASSED |
-| **TC-BORROW-05**| Thủ thư/Admin duyệt đơn mượn | Thử thiếu JWT, JWT độc giả, rồi JWT thủ thư/Admin | Thiếu JWT: HTTP 401; độc giả: HTTP 403; thủ thư/Admin: HTTP 200, `DangMuon`, kho giảm 10 -> 9, gán `MSNV` theo JWT | ✅ PASSED |
+| **TC-BORROW-05**| Duyệt và bàn giao phiếu mượn | Thiếu JWT, JWT độc giả, STAFF/ADMIN duyệt rồi xác nhận giao tại quầy | Thiếu JWT: 401; độc giả: 403; duyệt chuyển `ChoNhan`, trừ kho một cuốn, `HanNhan = NgayDuyet + 3`, `NgayMuon`/`NgayHenTra` còn null; bàn giao chuyển `DangMuon`, ghi `NgayMuon`, `NgayHenTra = NgayMuon + 14`, gán MSNV theo JWT và gửi thông báo | ✅ PASSED |
 | **TC-BORROW-06** | Hủy và duyệt đồng thời | Độc giả hủy phiếu đúng lúc thủ thư duyệt | Một chuyển trạng thái thắng; phiếu đã hủy không được duyệt; nếu thao tác duyệt đã trừ kho thì kho được hoàn lại | 🟡 Chờ regression API |
+| **TC-BORROW-07** | Phiếu chờ nhận quá hạn | Tạo fixture `ChoNhan` có `HanNhan` trước hôm nay rồi gọi API đọc danh sách | Tự chuyển `QuaHanNhan`, hoàn một cuốn về kho đúng một lần, audit `PHIEU_QUA_HAN_NHAN` và thông báo độc giả | ✅ PASSED |
+| **TC-BORROW-08** | Độc giả gia hạn mượn | Chủ phiếu `DangMuon` trước hạn; thử anonymous, STAFF, độc giả khác, body giả mạo, quá hạn và hai request đồng thời | Chỉ chủ phiếu được gia hạn; hạn mới bằng hạn cũ + 7 ngày; lưu `SoLanGiaHan=1`/`NgayGiaHan`; chỉ một request đồng thời thành công; gia hạn lặp hoặc khi đến hạn trả HTTP 409; ghi audit và gửi thông báo | ✅ PASSED |
 | **TC-RETURN-01**| Xác nhận trả sách đúng hạn | `id` đơn mượn, nhấn Trả sách | HTTP 200, `DaTra`, kho hoàn lại 9 -> 10 | ✅ PASSED |
 | **TC-RETURN-02**| Trả sách trễ hạn | Đơn mượn có `NgayTra > NgayHenTra` | HTTP 200, `SoLanViPham` tăng +1 | ✅ PASSED |
 | **TC-RETURN-03**| Tự động đưa vào danh sách đen sau 3 lần trễ | Vi phạm lần thứ 3 | `TrangThaiThe` tự động đổi sang `DanhSachDen` | ✅ PASSED |
@@ -77,8 +80,9 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 
 ### Kết quả lần chạy gần nhất
 
-- `frontend_user` và `frontend_manage`: build thành công ngày 2026-10-25.
-- `backend`: lần chạy ngày 2026-10-25 đạt 26/26; bao gồm JWT dùng role `STAFF`, migration `THUTHU` sang `STAFF` và chuẩn hóa `VaiTro` độc giả cũ về `USER`. `TC-STAFF-LOCK-01` xác nhận thông báo khóa chỉ hiện khi mật khẩu đúng, mật khẩu sai vẫn nhận lỗi chung. Harness dọn fixture khi hoàn tất.
+- `frontend_user` và `frontend_manage`: build thành công ngày 2026-10-25; build lại sau thay đổi luồng mượn đều thành công.
+- `backend`: lần chạy mới nhất ngày 2026-10-25 đạt **29/29**. Bao gồm đăng ký → duyệt giữ sách → bàn giao mới tính hạn 14 ngày, quá hạn nhận tự hoàn kho, hủy phiếu `ChoNhan`, gia hạn đúng 7 ngày (quyền sở hữu, chặn quá hạn/body giả mạo, hai request đồng thời chỉ có một thành công), cùng kiểm tra báo mất sau khi đã bàn giao. Harness dọn fixture sau lượt chạy thành công.
+- `backend`: đợt kiểm thử trước đạt 26/26; gồm JWT dùng role `STAFF`, migration `THUTHU` sang `STAFF`, chuẩn hóa `VaiTro` độc giả cũ về `USER` và kiểm tra xử lý khóa tài khoản.
 - MoMo vẫn là đặc tả tương lai, chưa có UI/API trong bản hiện hành. Bộ API test cần MongoDB local.
 - Các ca `SEC-*` và kiểm thử trình duyệt `UI-12`–`UI-17` chưa được chạy; bảng ma trận là kế hoạch xác minh, không phải kết quả nghiệm thu.
 
@@ -92,7 +96,9 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 | **UI-02** | Tìm kiếm theo tên / Lọc theo NXB / tình trạng kho | Tìm chính xác hoặc không dấu theo tên sách/tác giả/mã phải hiện thẻ sách; kết hợp bộ lọc NXB và còn kho, đếm trên toàn danh mục, xóa bộ lọc khôi phục đầy đủ danh sách; thẻ mới sau lọc không bị ẩn bởi reveal | ✅ PASSED |
 | **UI-03** | Đăng ký mượn và kiểm tra Neo-brutalist `BorrowModal` | Dialog xác nhận dùng violet/vàng/giấy ngà, viền và bóng cứng; giữ ảnh bìa, ghi chú, điều khoản, loading/đóng/gửi; không tràn ở 320/375/768/1024/1440px | 🟡 Cần kiểm tra trình duyệt sau đổi style |
 | **UI-04** | Sách hết số lượng (`SoQuyen == 0`) | Nút mượn bị vô hiệu hóa (disabled), hiển thị badge "Tạm hết sách" | ✅ PASSED |
-| **UI-05** | Quản lý duyệt mượn trên bảng | Nhấn nút "Duyệt" -> Trạng thái đổi sang "Đang mượn" ngay trên bảng | ✅ PASSED |
+| **UI-05** | Quản lý duyệt và bàn giao mượn trên bảng | Nút **Duyệt & giữ sách** chuyển phiếu sang **Chờ nhận sách**, hiển thị hạn nhận 3 ngày; chỉ nút **Xác nhận giao sách** sau khi bàn giao tại quầy mới chuyển **Đang mượn**, bắt đầu hạn 14 ngày | 🟡 Cần kiểm tra trình duyệt |
+| **UI-18** | Độc giả theo dõi hạn nhận/hạn trả và hủy trước bàn giao | Hồ sơ hiển thị ngày đăng ký, hạn nhận hoặc hạn trả theo trạng thái; hủy `ChoNhan` trả sách giữ về kho; quá hạn nhận chuyển lịch sử | 🟡 Cần kiểm tra trình duyệt |
+| **UI-19** | Độc giả gia hạn sách đang mượn | Trong tab Đang mượn, chọn gia hạn trước hạn, xác nhận dialog, thử trường hợp đã gia hạn/đến hạn | Dialog cho thấy hạn mới thêm 7 ngày; sau thành công cập nhật hạn và ghi nhận 1/1; ẩn thao tác; mobile không tràn ngang | 🟡 Cần kiểm tra trình duyệt |
 | **UI-06** | Quản lý xác nhận trả / báo mất | Nhấn nút "Trả" -> Số lượng tồn kho trên bảng cập nhật tức thì | ✅ PASSED |
 | **UI-07** | Độc giả tìm và xem hồ sơ cá nhân `/profile` | Sau đăng nhập, mục Hồ sơ cá nhân hiện rõ trên header/menu tài khoản/menu mobile; trang có tiêu đề Hồ sơ cá nhân, thẻ độc giả và lịch sử mượn được chia khu vực rõ ràng | 🟡 Build verified; cần rà lại trên trình duyệt |
 | **UI-08** | Admin quản lý trạng thái thẻ | Bộ lọc Danh sách đen và `Khoa` tách biệt; khóa/mở khẩn cấp không reset vi phạm; xét gỡ khỏi danh sách đen là thao tác riêng | 🟡 Build verified; chưa chạy trình duyệt |

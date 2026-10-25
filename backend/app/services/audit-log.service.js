@@ -7,8 +7,9 @@ const auditFields = {
 const actionNames = {
     BOOK_CREATED: "SACH_TAO", BOOK_UPDATED: "SACH_CAP_NHAT", BOOK_SOFT_DELETED: "SACH_XOA_MEM",
     BOOK_RESTORED: "SACH_KHOI_PHUC", BORROW_REQUESTED: "PHIEU_DANG_KY_MUON",
-    BORROW_APPROVED: "PHIEU_DUYET_MUON", BORROW_REJECTED: "PHIEU_TU_CHOI_MUON",
-    BOOK_RETURNED: "PHIEU_TRA_SACH", BOOK_REPORTED_LOST: "PHIEU_BAO_MAT_SACH",
+    BORROW_APPROVED: "PHIEU_DUYET_MUON", BORROW_HANDED_OVER: "PHIEU_BAN_GIAO_SACH",
+    BORROW_PICKUP_EXPIRED: "PHIEU_QUA_HAN_NHAN", BORROW_REJECTED: "PHIEU_TU_CHOI_MUON",
+    BORROW_EXTENDED: "PHIEU_GIA_HAN", BOOK_RETURNED: "PHIEU_TRA_SACH", BOOK_REPORTED_LOST: "PHIEU_BAO_MAT_SACH",
     BORROW_CANCELLED: "PHIEU_HUY_DANG_KY",
     BORROW_RECORD_DELETED: "PHIEU_XOA",
     NHANVIEN_DANG_KY: "NHANVIEN_DANG_KY",
@@ -18,7 +19,7 @@ const actionNames = {
     STAFF_ACCOUNT_UNLOCKED: "NHANVIEN_MO_KHOA_TAI_KHOAN",
     READER_BLACKLIST_REINSTATED: "DOCGIA_GO_DANH_SACH_DEN",
 };
-const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong" };
+const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong", HanTraCu: "HanTraCu", HanTraMoi: "HanTraMoi", SoNgayGiaHan: "SoNgayGiaHan" };
 const translateDetails = (value) => {
     if (Array.isArray(value)) return value.map(translateDetails);
     if (!value || typeof value !== "object" || value instanceof Date) return value;

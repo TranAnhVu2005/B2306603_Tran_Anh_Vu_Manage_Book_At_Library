@@ -6,9 +6,14 @@ const publicFields = {
     _id: 1,
     MaDocGia: 1,
     MaSach: 1,
+    NgayDangKy: 1,
+    NgayDuyet: 1,
+    HanNhan: 1,
     NgayMuon: 1,
     MSNV: 1,
     NgayHenTra: 1,
+    SoLanGiaHan: 1,
+    NgayGiaHan: 1,
     NgayTra: 1,
     TrangThai: 1,
     GiaTriBoiThuong: 1,
@@ -39,8 +44,69 @@ class TheoDoiMuonSachService {
         });
     }
 
+    dateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    dateAfterDays(date, days) {
+        const result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return this.dateKey(result);
+    }
+
+    async migrateLegacyPendingRecords() {
+        const cursor = this.TheoDoi.find(
+            { TrangThai: "ChoDuyet", NgayMuon: { $ne: null } },
+            { projection: { _id: 1, NgayMuon: 1, NgayDangKy: 1 } }
+        );
+        for await (const record of cursor) {
+            await this.TheoDoi.updateOne(
+                { _id: record._id, TrangThai: "ChoDuyet" },
+                { $set: { NgayDangKy: record.NgayDangKy || record.NgayMuon }, $unset: { NgayMuon: "", NgayHenTra: "" } }
+            );
+        }
+    }
+
+    // Hết hạn nhận sau hết ngày HanNhan; cập nhật trạng thái có điều kiện để worker nhiều instance không hoàn kho trùng.
+    async expirePickupReservations() {
+        const today = this.dateKey();
+        const expired = await this.TheoDoi.find(
+            { TrangThai: "ChoNhan", HanNhan: { $lt: today } },
+            { projection: { _id: 1, MaSach: 1, MaDocGia: 1, HanNhan: 1, MSNV: 1 } }
+        ).toArray();
+
+        for (const record of expired) {
+            const result = await this.TheoDoi.findOneAndUpdate(
+                { _id: record._id, TrangThai: "ChoNhan", HanNhan: { $lt: today } },
+                { $set: { TrangThai: "QuaHanNhan", UpdatedAt: new Date() } },
+                { returnDocument: "after" }
+            );
+            if (!result) continue;
+
+            await this.Sach.updateOne({ MaSach: record.MaSach }, { $inc: { SoQuyen: 1 }, $set: { UpdatedAt: new Date() } });
+            const [sach, reader] = await Promise.all([
+                this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } }),
+                this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { _id: 1, HoLot: 1, Ten: 1 } }),
+            ]);
+            await this.AuditLog.record({
+                action: "BORROW_PICKUP_EXPIRED", entityType: "borrow", entityId: String(record._id),
+                MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+                TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+                actorType: "system", actorId: "system",
+                Details: { from: "ChoNhan", to: "QuaHanNhan", HanNhan: record.HanNhan },
+            });
+            await this.notifyReader(record.MaDocGia, "PHIEU_QUA_HAN_NHAN", "Yêu cầu nhận sách đã hết hạn",
+                `Bạn chưa nhận “${sach?.TenSach || record.MaSach}” trước ${record.HanNhan}. Yêu cầu đã hết hiệu lực và sách được trả về kho.`, record.MaSach);
+        }
+        return expired.length;
+    }
+
     // Service đăng ký mượn sách - Completed
     async createDangKy(payload) {
+        await this.expirePickupReservations();
         const maDocGia = String(payload.MaDocGia || "").trim();
         const maSach = String(payload.MaSach || "").trim();
 
@@ -68,10 +134,10 @@ class TheoDoiMuonSachService {
             throw err;
         }
 
-        // 2. Kiểm tra giới hạn mượn: tối đa 3 quyển đang lưu thông (ChoDuyet + DangMuon)
+        // 2. Giới hạn gồm yêu cầu chờ duyệt, sách đã giữ chờ nhận và sách đang mượn.
         const currentActiveCount = await this.TheoDoi.countDocuments({
             MaDocGia: docGia.MaDocGia,
-            TrangThai: { $in: ["ChoDuyet", "DangMuon"] }
+            TrangThai: { $in: ["ChoDuyet", "ChoNhan", "DangMuon"] }
         });
 
         if (currentActiveCount >= 3) {
@@ -96,7 +162,7 @@ class TheoDoiMuonSachService {
         const alreadyBorrowing = await this.TheoDoi.findOne({
             MaDocGia: docGia.MaDocGia,
             MaSach: maSach,
-            TrangThai: { $in: ["ChoDuyet", "DangMuon"] }
+            TrangThai: { $in: ["ChoDuyet", "ChoNhan", "DangMuon"] }
         });
         if (alreadyBorrowing) {
             const err = new Error("Bạn đã đăng ký hoặc đang mượn cuốn sách này rồi.");
@@ -104,19 +170,18 @@ class TheoDoiMuonSachService {
             throw err;
         }
 
-        const today = new Date();
-        const dueDate = new Date(today);
-        dueDate.setDate(dueDate.getDate() + 14); // Quy định thời hạn 14 ngày
-
-        const todayStr = today.toISOString().split("T")[0]; // Chuyển giờ theo dạng ISO, cắt bỏ từ chữ T, bỏ giờ phút giây
-        const dueDateStr = dueDate.toISOString().split("T")[0];
-
+        const today = this.dateKey();
         const record = {
             MaDocGia: docGia.MaDocGia,
             MaSach: sach.MaSach,
-            NgayMuon: todayStr,
-            MSNV: null, // Sẽ được cập nhật khi Thủ thư phê duyệt
-            NgayHenTra: dueDateStr,
+            NgayDangKy: today,
+            NgayDuyet: null,
+            HanNhan: null,
+            NgayMuon: null,
+            MSNV: null,
+            NgayHenTra: null,
+            SoLanGiaHan: 0,
+            NgayGiaHan: null,
             NgayTra: null,
             TrangThai: "ChoDuyet",
             GiaTriBoiThuong: 0,
@@ -168,21 +233,18 @@ class TheoDoiMuonSachService {
             throw err;
         }
 
-        const today = new Date();
-        const dueDate = new Date(today);
-        dueDate.setDate(dueDate.getDate() + 14); // 14 ngày kể từ ngày duyệt
-
-        const todayStr = today.toISOString().split("T")[0];
-        const dueDateStr = dueDate.toISOString().split("T")[0];
+        const approvedAt = new Date();
+        const todayStr = this.dateKey(approvedAt);
+        const pickupDeadline = this.dateAfterDays(approvedAt, 3);
 
         const result = await this.TheoDoi.findOneAndUpdate(
             { _id: record._id, TrangThai: "ChoDuyet" },
             {
                 $set: {
-                    TrangThai: "DangMuon",
+                    TrangThai: "ChoNhan",
                     MSNV: String(msnv).trim(),
-                    NgayMuon: todayStr,
-                    NgayHenTra: dueDateStr,
+                    NgayDuyet: todayStr,
+                    HanNhan: pickupDeadline,
                     UpdatedAt: new Date()
                 }
             },
@@ -203,16 +265,136 @@ class TheoDoiMuonSachService {
                 MaSach: record.MaSach, TenSach: sach.TenSach, MaDocGia: record.MaDocGia,
                 TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
                 actorType: "staff", actorId: msnv,
-                Details: { from: "ChoDuyet", to: "DangMuon" },
+                Details: { from: "ChoDuyet", to: "ChoNhan", NgayDuyet: todayStr, HanNhan: pickupDeadline },
             });
             await this.ThongBao.createSafely({
                 recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_DUYET_MUON",
                 title: "Yêu cầu mượn sách đã được duyệt",
-                message: `Yêu cầu mượn “${sach.TenSach}” đã được duyệt. Hạn trả dự kiến: ${updatedRecord.NgayHenTra}.`,
+                message: `Yêu cầu mượn “${sach.TenSach}” đã được duyệt. Vui lòng đến nhận sách trước ${updatedRecord.HanNhan}. Thời hạn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao.`,
                 reference: record.MaSach,
             });
         }
         return updatedRecord;
+    }
+
+    async giaoSach(id, msnv) {
+        if (!msnv || String(msnv).trim() === "") throw new Error("Không xác định được nhân viên bàn giao.");
+        await this.expirePickupReservations();
+        const record = await this.findById(id);
+        if (!record) throw new Error("Không tìm thấy phiếu mượn.");
+        if (record.TrangThai !== "ChoNhan") {
+            const err = new Error("Chỉ có thể bàn giao phiếu đang ở trạng thái Chờ nhận sách.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const today = new Date();
+        const todayStr = this.dateKey(today);
+        if (record.HanNhan && record.HanNhan < todayStr) {
+            await this.expirePickupReservations();
+            const err = new Error("Hạn nhận sách đã hết. Yêu cầu được đóng và sách đã trả về kho.");
+            err.statusCode = 409;
+            throw err;
+        }
+        const dueDateStr = this.dateAfterDays(today, 14);
+        const result = await this.TheoDoi.findOneAndUpdate(
+            { _id: record._id, TrangThai: "ChoNhan", HanNhan: { $gte: todayStr } },
+            { $set: { TrangThai: "DangMuon", MSNV: String(msnv).trim(), NgayMuon: todayStr, NgayHenTra: dueDateStr, UpdatedAt: new Date() } },
+            { returnDocument: "after" }
+        );
+        if (!result) {
+            const err = new Error("Phiếu đã hết hạn nhận hoặc vừa được xử lý. Hãy tải lại danh sách.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const [sach, reader] = await Promise.all([
+            this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } }),
+            this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { _id: 1, HoLot: 1, Ten: 1 } }),
+        ]);
+        await this.AuditLog.record({
+            action: "BORROW_HANDED_OVER", entityType: "borrow", entityId: String(record._id),
+            MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+            TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+            actorType: "staff", actorId: msnv,
+            Details: { from: "ChoNhan", to: "DangMuon", NgayMuon: todayStr, NgayHenTra: dueDateStr },
+        });
+        await this.ThongBao.createSafely({
+            recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_GIAO_SACH",
+            title: "Đã bàn giao sách",
+            message: `Thư viện đã xác nhận bàn giao “${sach?.TenSach || record.MaSach}”. Ngày mượn: ${todayStr}; hạn trả: ${dueDateStr}.`,
+            reference: record.MaSach,
+        });
+        return await this.findById(String(record._id));
+    }
+
+    // Độc giả chỉ được gia hạn một lần, trước hạn trả; hạn mới tính từ hạn cũ thêm 7 ngày.
+    async giaHan(id, maDocGia) {
+        if (!ObjectId.isValid(id)) return null;
+        const record = await this.TheoDoi.findOne({ _id: new ObjectId(id) });
+        if (!record) return null;
+        if (record.MaDocGia !== String(maDocGia)) {
+            const err = new Error("Bạn không có quyền gia hạn phiếu mượn của độc giả khác.");
+            err.statusCode = 403;
+            throw err;
+        }
+        if (record.TrangThai !== "DangMuon" || !record.NgayHenTra) {
+            const err = new Error("Chỉ có thể gia hạn sách đang được mượn.");
+            err.statusCode = 409;
+            throw err;
+        }
+        if (Number(record.SoLanGiaHan || 0) >= 1) {
+            const err = new Error("Phiếu mượn này đã được gia hạn một lần.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const today = this.dateKey();
+        if (record.NgayHenTra <= today) {
+            const err = new Error("Chỉ có thể gia hạn trước ngày đến hạn trả.");
+            err.statusCode = 409;
+            throw err;
+        }
+        const [year, month, day] = record.NgayHenTra.split("-").map(Number);
+        const oldDueDate = new Date(year, month - 1, day);
+        const extendedDueDate = this.dateAfterDays(oldDueDate, 7);
+        const result = await this.TheoDoi.findOneAndUpdate(
+            {
+                _id: record._id,
+                MaDocGia: String(maDocGia),
+                TrangThai: "DangMuon",
+                NgayHenTra: { $eq: record.NgayHenTra, $gt: today },
+                $or: [{ SoLanGiaHan: { $exists: false } }, { SoLanGiaHan: 0 }],
+            },
+            {
+                $set: { NgayHenTra: extendedDueDate, SoLanGiaHan: 1, NgayGiaHan: today, UpdatedAt: new Date() },
+            },
+            { returnDocument: "after" }
+        );
+        if (!result) {
+            const err = new Error("Phiếu vừa được gia hạn hoặc đã đến hạn trả. Hãy tải lại danh sách.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const [sach, reader] = await Promise.all([
+            this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } }),
+            this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { _id: 1, HoLot: 1, Ten: 1 } }),
+        ]);
+        await this.AuditLog.record({
+            action: "BORROW_EXTENDED", entityType: "borrow", entityId: String(record._id),
+            MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+            TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
+            actorType: "reader", actorId: String(maDocGia),
+            Details: { HanTraCu: record.NgayHenTra, HanTraMoi: extendedDueDate, SoNgayGiaHan: 7 },
+        });
+        await this.ThongBao.createSafely({
+            recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_GIA_HAN",
+            title: "Gia hạn mượn sách thành công",
+            message: `Hạn trả “${sach?.TenSach || record.MaSach}” đã được gia hạn thêm 7 ngày, đến ${extendedDueDate}.`,
+            reference: record.MaSach,
+        });
+        return await this.findById(String(record._id));
     }
 
     // Từ chối kèm lý do - Completed
@@ -268,7 +450,7 @@ class TheoDoiMuonSachService {
         return updatedRecord;
     }
 
-    // Độc giả chỉ được hủy phiếu của mình khi phiếu vẫn đang chờ duyệt.
+    // Độc giả có thể hủy trước khi đã nhận sách; phiếu đã giữ kho phải hoàn kho.
     async huyDangKy(id, maDocGia) {
         if (!ObjectId.isValid(id)) return null;
         const record = await this.TheoDoi.findOne({ _id: new ObjectId(id) });
@@ -278,14 +460,14 @@ class TheoDoiMuonSachService {
             err.statusCode = 403;
             throw err;
         }
-        if (record.TrangThai !== "ChoDuyet") {
-            const err = new Error("Chỉ có thể hủy phiếu mượn khi phiếu còn ở trạng thái Chờ duyệt.");
+        if (!["ChoDuyet", "ChoNhan"].includes(record.TrangThai)) {
+            const err = new Error("Chỉ có thể hủy phiếu trước khi thủ thư bàn giao sách.");
             err.statusCode = 409;
             throw err;
         }
 
         const result = await this.TheoDoi.findOneAndUpdate(
-            { _id: record._id, MaDocGia: String(maDocGia), TrangThai: "ChoDuyet" },
+            { _id: record._id, MaDocGia: String(maDocGia), TrangThai: record.TrangThai },
             { $set: { TrangThai: "DaHuy", UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
@@ -293,6 +475,10 @@ class TheoDoiMuonSachService {
             const err = new Error("Phiếu vừa được thủ thư xử lý; hãy tải lại danh sách để xem trạng thái mới.");
             err.statusCode = 409;
             throw err;
+        }
+
+        if (record.TrangThai === "ChoNhan") {
+            await this.Sach.updateOne({ MaSach: record.MaSach }, { $inc: { SoQuyen: 1 }, $set: { UpdatedAt: new Date() } });
         }
 
         const [sach, docGia] = await Promise.all([
@@ -304,7 +490,7 @@ class TheoDoiMuonSachService {
             MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
             TenDocGia: [docGia?.HoLot, docGia?.Ten].filter(Boolean).join(" "),
             actorType: "reader", actorId: String(maDocGia),
-            Details: { from: "ChoDuyet", to: "DaHuy" },
+            Details: { from: record.TrangThai, to: "DaHuy" },
         });
         return await this.findById(String(record._id));
     }
@@ -444,6 +630,7 @@ class TheoDoiMuonSachService {
 
     // Tìm theo mã độc giả, mã sách và trạng thái - Completed
     async find(filter = {}) {
+        await this.expirePickupReservations();
         const query = {};
         if (filter.maDocGia) {
             query.MaDocGia = filter.maDocGia;

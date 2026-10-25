@@ -130,7 +130,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `POST /api/sach`: [Manager/Admin] Thêm sách mới (`TenSach`, `DonGia`, `SoQuyen`, `NamXuatBan`, `MaNXB`, `MaTheLoai`, `TacGia`, `HinhAnh`, `MoTa`). `MaTheLoai` bắt buộc và phải tồn tại trong danh mục. Tự động sinh `MaSach: SACH-000001`.
 * `PUT /api/sach/:id`: [Manager/Admin] Cập nhật thông tin sách / điều chỉnh số lượng tồn kho.
 * `GET /api/theloai`: Danh mục thể loại công khai (`_id`, `MaTheLoai`, `TenTheLoai`, `MoTa`); danh mục mặc định được khởi tạo idempotent.
-* `DELETE /api/sach/:id`: [Manager/Admin] Xóa mềm; chặn nếu sách đang có phiếu `DangMuon` hoặc `ChoDuyet`; document được giữ lại và actor được ghi log.
+* `DELETE /api/sach/:id`: [STAFF/ADMIN] Xóa mềm; chặn nếu sách đang có phiếu `DangMuon`, `ChoDuyet` hoặc `ChoNhan`; document được giữ lại và actor được ghi log.
 * `PUT /api/sach/:id/restore`: [Admin] Khôi phục sách đã xóa mềm về danh mục hoạt động; log người thực hiện.
 
 ---
@@ -176,21 +176,34 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * **Request Body**: `{ "MaDocGia": "DG-000001", "MaSach": "SACH-000001", "GhiChu": "..." }`
 * **Xử lý**:
   - Chặn nếu thẻ độc giả ở trạng thái `DanhSachDen` hoặc `Khoa` (HTTP 403).
-  - Chặn nếu độc giả đã mượn đủ 3 cuốn đang lưu thông (HTTP 400).
+  - Chặn nếu độc giả đã có 3 phiếu đang lưu thông (`ChoDuyet`, `ChoNhan`, `DangMuon`) (HTTP 400).
   - Chặn nếu sách đã hết trong kho `SoQuyen <= 0` (HTTP 400).
   - Tạo phiếu với `TrangThai: "ChoDuyet"`.
 
-### 📌 `PUT /api/theodoimuonsach/:id/huy` (Độc giả hủy yêu cầu đang chờ)
+### 📌 `PUT /api/theodoimuonsach/:id/huy` (Độc giả hủy yêu cầu trước khi nhận)
 * **Quyền truy cập**: Độc giả (`USER`) đã đăng nhập; chỉ được hủy phiếu của chính mình.
-* **Điều kiện**: Phiếu còn ở trạng thái `ChoDuyet`; phiếu đã được duyệt/từ chối/hủy trả HTTP 409. Hủy thành công chuyển sang trạng thái lịch sử `DaHuy`, không xóa phiếu và không thay đổi tồn kho.
-* **Kết quả**: Phiếu `DaHuy` không còn tính vào hạn mức 3 cuốn; ghi audit `PHIEU_HUY_DANG_KY`. Nếu hủy và duyệt xảy ra đồng thời, chỉ một chuyển trạng thái thắng; thao tác duyệt hoàn lại tồn kho nếu phiếu đã bị hủy trước khi hoàn tất.
+* **Điều kiện**: Phiếu thuộc chính độc giả và ở trạng thái `ChoDuyet` hoặc `ChoNhan`; không thể hủy sau bàn giao. Hủy thành công chuyển `DaHuy`.
+* **Tồn kho**: Hủy `ChoDuyet` không đổi kho; hủy `ChoNhan` hoàn lại một cuốn đã giữ. Phiếu không còn tính vào hạn mức 3 cuốn.
+* **Cạnh tranh**: Dùng cập nhật trạng thái có điều kiện; nếu hủy, duyệt, bàn giao hoặc hết hạn chạy đồng thời, chỉ một chuyển trạng thái có hiệu lực và không hoàn kho lặp.
 
-### 📌 `PUT /api/theodoimuonsach/:id/duyet` (Thủ thư phê duyệt mượn)
+### 📌 `PUT /api/theodoimuonsach/:id/duyet` (Thủ thư phê duyệt và giữ sách)
 * **Quyền truy cập**: Bắt buộc JWT của nhân viên (`STAFF`) hoặc quản trị viên (`ADMIN`). `MSNV` được lấy từ token, không nhận danh tính nhân viên từ request body.
 * **Xử lý**:
-  - Kiểm tra kho `SoQuyen > 0`, trừ kho: `SoQuyen = SoQuyen - 1`.
-  - Cập nhật: `TrangThai: "DangMuon"`, gán `MSNV` từ tài khoản đang đăng nhập, `NgayHenTra = NgayMuon + 14 ngày`.
-  - Chuyển trạng thái chỉ khi phiếu vẫn là `ChoDuyet`; nếu độc giả đã hủy, trả HTTP 409 và hoàn lại cuốn vừa trừ.
+  - Kiểm tra kho `SoQuyen > 0`, giữ một cuốn bằng cách giảm tồn kho 1.
+  - Cập nhật `TrangThai: "ChoNhan"`, `NgayDuyet`, `HanNhan = NgayDuyet + 3 ngày`, `MSNV`; `NgayMuon` và `NgayHenTra` vẫn null.
+  - Gửi thông báo hạn nhận. Phiếu có thể hủy trước khi bàn giao; cạnh tranh thất bại trả HTTP 409 và hoàn kho nếu bước giữ đã xảy ra.
+
+### 📌 `PUT /api/theodoimuonsach/:id/giao-sach` (Thủ thư xác nhận bàn giao)
+* **Quyền truy cập**: `STAFF` hoặc `ADMIN`; không nhận MSNV từ body, lấy từ JWT.
+* **Điều kiện**: Phiếu phải ở `ChoNhan` và chưa qua hết ngày `HanNhan`; hết hạn trả HTTP 409.
+* **Xử lý**: Chuyển `DangMuon`, đặt `NgayMuon` bằng ngày bàn giao thực tế và `NgayHenTra = NgayMuon + 14 ngày`; ngày này mới bắt đầu tính thời hạn. Ghi audit `PHIEU_BAN_GIAO_SACH` và gửi thông báo cho độc giả.
+* **Hết hạn nhận**: Backend tự chuyển `ChoNhan` quá hạn sang `QuaHanNhan`, hoàn kho, ghi audit `PHIEU_QUA_HAN_NHAN` và thông báo độc giả; xử lý lúc khởi động, định kỳ mỗi phút và trước khi đọc/đăng ký.
+
+### 📌 `PUT /api/theodoimuonsach/:id/gia-han` (Độc giả gia hạn mượn)
+* **Quyền truy cập**: Độc giả (`USER`) đã đăng nhập; chỉ được gia hạn phiếu của chính mình. Request không nhận trường body.
+* **Điều kiện**: Phiếu ở `DangMuon`, `NgayHenTra` sau ngày hiện tại và `SoLanGiaHan` chưa đạt 1; không gia hạn phiếu đã trả/mất hoặc đã đến hạn.
+* **Xử lý**: Cộng đúng 7 ngày vào hạn trả hiện tại; đặt `SoLanGiaHan = 1`, `NgayGiaHan` bằng ngày thao tác. Dùng cập nhật có điều kiện để chặn gia hạn đua/lặp; lỗi điều kiện hoặc cạnh tranh trả HTTP 409, sai chủ phiếu trả HTTP 403.
+* **Theo dõi**: Ghi audit `PHIEU_GIA_HAN` với hạn cũ/mới và gửi thông báo. Không đổi trạng thái phiếu hoặc tồn kho.
 
 ### 📌 `PUT /api/theodoimuonsach/:id/tu-choi` (Từ chối yêu cầu)
 * **Request Body**: `{ "lyDo": "Không đủ điều kiện" }`

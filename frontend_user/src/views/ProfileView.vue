@@ -211,7 +211,7 @@
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 6v6l4 2" />
                     </svg>
-                    Chờ duyệt <span class="tab-count">{{ pendingBorrows.length }}</span>
+                    Chờ xử lý <span class="tab-count">{{ pendingBorrows.length }}</span>
                   </button>
                   <button class="vg-tab" :class="{ 'is-active': activeTab === 'history' }"
                     @click="activeTab = 'history'" type="button">
@@ -225,7 +225,7 @@
                 </div>
               </div>
               <p v-if="activeTab === 'pending' && pendingBorrows.length" class="pending-borrow-hint">
-                Bạn có thể hủy yêu cầu khi thủ thư chưa duyệt.
+                Bạn có thể hủy trước khi nhận sách. Sau khi được duyệt, vui lòng nhận trong 3 ngày; hạn mượn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao.
               </p>
 
               <!-- Loading -->
@@ -252,11 +252,11 @@
                   <thead>
                     <tr>
                       <th class="ps-4">Sách</th>
-                      <th>Ngày mượn</th>
-                      <th>Hạn trả</th>
+                      <th>Ngày đăng ký / mượn</th>
+                      <th>Hạn nhận / trả</th>
                       <th>Trạng thái</th>
                       <th class="pe-4">Ghi chú / Bồi thường</th>
-                      <th v-if="activeTab === 'pending'" class="pe-4 borrow-actions-heading">Thao tác</th>
+                      <th v-if="isReader && ['pending', 'active'].includes(activeTab)" class="pe-4 borrow-actions-heading">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -268,12 +268,14 @@
                         <span class="font-mono-code text-muted d-block" style="font-size: 0.7rem;">{{ item.MaSach
                           }}</span>
                       </td>
-                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.NgayMuon || '—' }}</td>
+                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet || '—') }}</td>
                       <td class="text-nowrap">
                         <span class="font-mono-code" style="font-size: 0.82rem;"
                           :class="isOverdue(item) ? 'overdue-text' : ''">
-                          {{ item.NgayHenTra || '—' }}
+                          {{ item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra || '—' }}
                         </span>
+                        <span v-if="item.TrangThai === 'ChoNhan'" class="d-block small text-muted">Hạn đến nhận</span>
+                        <span v-if="item.TrangThai === 'DangMuon' && item.SoLanGiaHan > 0" class="d-block small text-muted">Đã gia hạn 1 lần</span>
                         <span v-if="isOverdue(item)" class="ath-badge ath-badge-out d-inline-flex ms-1"
                           style="font-size: 0.6rem; padding: 0.1rem 0.35rem;">Quá hạn</span>
                       </td>
@@ -282,11 +284,13 @@
                           mượn</span>
                         <span v-else-if="item.TrangThai === 'ChoDuyet'" class="ath-badge ath-badge-pending">Chờ
                           duyệt</span>
+                        <span v-else-if="item.TrangThai === 'ChoNhan'" class="ath-badge ath-badge-pending">Chờ nhận sách</span>
                         <span v-else-if="item.TrangThai === 'DaTra'" class="ath-badge ath-badge-neutral">Đã trả</span>
                         <span v-else-if="item.TrangThai === 'MatSach'" class="ath-badge ath-badge-out">Mất sách</span>
                         <span v-else-if="item.TrangThai === 'TuChoi'" class="ath-badge ath-badge-rejected">Từ
                           chối</span>
                         <span v-else-if="item.TrangThai === 'DaHuy'" class="ath-badge ath-badge-neutral">Đã hủy</span>
+                        <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn nhận</span>
                       </td>
                       <td class="pe-4" style="font-size: 0.82rem; color: var(--ink-muted);">
                         <span>{{ item.GhiChu || '—' }}</span>
@@ -300,6 +304,14 @@
                         <button type="button" class="borrow-cancel-button" @click="openCancelBorrowModal(item)">
                           Hủy yêu cầu
                         </button>
+                      </td>
+                      <td v-else-if="isReader && activeTab === 'active'" class="pe-4 borrow-actions-cell">
+                        <button v-if="canRenew(item)" type="button" class="borrow-renew-button" @click="openRenewBorrowModal(item)">
+                          Gia hạn 7 ngày
+                        </button>
+                        <span v-else class="borrow-renew-status">
+                          {{ item.SoLanGiaHan > 0 ? 'Đã gia hạn' : 'Không thể gia hạn' }}
+                        </span>
                       </td>
                     </tr>
                   </tbody>
@@ -367,14 +379,14 @@
               <p class="borrow-cancel-book">{{ cancelTarget ? bookName(cancelTarget.MaSach) : '' }}</p>
             </div>
             <p class="borrow-cancel-description">
-              Yêu cầu chỉ hủy được trước khi thủ thư duyệt. Sau khi hủy, bạn có thể đăng ký mượn sách khác.
+              Yêu cầu chỉ hủy được trước khi thủ thư bàn giao sách. Nếu đã duyệt, cuốn sách đang được giữ cho bạn; khi hủy, sách sẽ được trả lại kho.
             </p>
             <p class="borrow-cancel-note">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" />
               </svg>
-              <span>Không thay đổi số lượng sách trong kho.</span>
+              <span>Phiếu chưa duyệt không đổi tồn kho; phiếu đã duyệt sẽ hoàn lại cuốn đang giữ.</span>
             </p>
           </div>
           <div class="profile-editor-actions borrow-cancel-actions">
@@ -383,6 +395,60 @@
             <button class="borrow-cancel-confirm" type="button" :disabled="cancellingBorrow"
               @click="confirmCancelBorrow">
               {{ cancellingBorrow ? 'Đang hủy...' : 'Xác nhận hủy' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Renew active borrow confirmation -->
+    <div v-if="showRenewBorrowModal" class="ath-modal-overlay" @click.self="closeRenewBorrowModal">
+      <div class="ath-modal-content borrow-cancel-modal" role="dialog" aria-modal="true"
+        aria-labelledby="renew-borrow-title">
+        <div class="ath-modal-inner">
+          <div class="modal-head borrow-cancel-head">
+            <div class="borrow-cancel-heading">
+              <span class="borrow-renew-symbol" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 7v5h-5M4 17v-5h5" />
+                  <path d="M5.6 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 12.4-3" />
+                </svg>
+              </span>
+              <div>
+                <span class="vg-section-label">GIA HẠN MƯỢN SÁCH</span>
+                <h2 id="renew-borrow-title" class="modal-title">Gia hạn thêm 7 ngày?</h2>
+              </div>
+            </div>
+            <button type="button" class="modal-close" @click="closeRenewBorrowModal" :disabled="renewingBorrow"
+              aria-label="Đóng">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div class="borrow-cancel-body">
+            <div class="borrow-cancel-book-card">
+              <span class="borrow-cancel-book-label">SÁCH ĐANG MƯỢN</span>
+              <p class="borrow-cancel-book">{{ renewTarget ? bookName(renewTarget.MaSach) : '' }}</p>
+            </div>
+            <p class="borrow-cancel-description">
+              Hạn trả hiện tại: <strong>{{ renewTarget?.NgayHenTra }}</strong>. Sau khi gia hạn, hạn trả mới là
+              <strong>{{ renewalDuePreview() }}</strong>.
+            </p>
+            <p class="borrow-cancel-note">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" />
+              </svg>
+              <span>Mỗi phiếu chỉ được gia hạn một lần và phải thực hiện trước ngày đến hạn trả.</span>
+            </p>
+          </div>
+          <div class="profile-editor-actions borrow-cancel-actions">
+            <button class="ath-btn-outline" type="button" :disabled="renewingBorrow"
+              @click="closeRenewBorrowModal">Để sau</button>
+            <button class="borrow-renew-confirm" type="button" :disabled="renewingBorrow"
+              @click="confirmRenewBorrow">
+              {{ renewingBorrow ? 'Đang gia hạn...' : 'Xác nhận gia hạn' }}
             </button>
           </div>
         </div>
@@ -524,6 +590,9 @@ export default {
       showCancelBorrowModal: false,
       cancelTarget: null,
       cancellingBorrow: false,
+      showRenewBorrowModal: false,
+      renewTarget: null,
+      renewingBorrow: false,
       showEditProfileModal: false,
       savingProfile: false,
       selectedAvatarFile: null,
@@ -578,8 +647,8 @@ export default {
       return this.readerInfo?.SoLanViPham || this.currentUser?.SoLanViPham || 0;
     },
     activeBorrows() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
-    pendingBorrows() { return this.borrows.filter(b => b.TrangThai === "ChoDuyet"); },
-    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy"].includes(b.TrangThai)); },
+    pendingBorrows() { return this.borrows.filter(b => ["ChoDuyet", "ChoNhan"].includes(b.TrangThai)); },
+    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy", "QuaHanNhan"].includes(b.TrangThai)); },
     currentTabList() {
       if (this.activeTab === "active") return this.activeBorrows;
       if (this.activeTab === "pending") return this.pendingBorrows;
@@ -612,6 +681,16 @@ export default {
         document.removeEventListener("keydown", this.handleCancelBorrowKeydown);
       }
     },
+    showRenewBorrowModal(isOpen) {
+      if (isOpen) {
+        this.previousBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.addEventListener("keydown", this.handleRenewBorrowKeydown);
+      } else {
+        document.body.style.overflow = this.previousBodyOverflow;
+        document.removeEventListener("keydown", this.handleRenewBorrowKeydown);
+      }
+    },
   },
   created() {
     this.currentUser = authService.getUser();
@@ -627,6 +706,10 @@ export default {
     if (this.showCancelBorrowModal) {
       document.body.style.overflow = this.previousBodyOverflow;
       document.removeEventListener("keydown", this.handleCancelBorrowKeydown);
+    }
+    if (this.showRenewBorrowModal) {
+      document.body.style.overflow = this.previousBodyOverflow;
+      document.removeEventListener("keydown", this.handleRenewBorrowKeydown);
     }
   },
   methods: {
@@ -708,7 +791,7 @@ export default {
       if (!this.savingProfile) this.showEditProfileModal = false;
     },
     openCancelBorrowModal(item) {
-      if (item?.TrangThai !== "ChoDuyet") return;
+      if (!["ChoDuyet", "ChoNhan"].includes(item?.TrangThai)) return;
       this.cancelTarget = item;
       this.showCancelBorrowModal = true;
     },
@@ -735,6 +818,48 @@ export default {
         this.$refs.toast?.show(err.response?.data?.message || err.message || "Không thể hủy yêu cầu mượn.", "error");
       } finally {
         this.cancellingBorrow = false;
+      }
+    },
+    canRenew(item) {
+      if (!this.isReader || item?.TrangThai !== "DangMuon" || Number(item.SoLanGiaHan || 0) >= 1 || !item.NgayHenTra) return false;
+      const now = new Date();
+      const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      return item.NgayHenTra > today;
+    },
+    openRenewBorrowModal(item) {
+      if (!this.canRenew(item)) return;
+      this.renewTarget = item;
+      this.showRenewBorrowModal = true;
+    },
+    closeRenewBorrowModal() {
+      if (this.renewingBorrow) return;
+      this.showRenewBorrowModal = false;
+      this.renewTarget = null;
+    },
+    handleRenewBorrowKeydown(event) {
+      if (event.key === "Escape") this.closeRenewBorrowModal();
+    },
+    renewalDuePreview() {
+      if (!this.renewTarget?.NgayHenTra) return "";
+      const [year, month, day] = this.renewTarget.NgayHenTra.split("-").map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + 7);
+      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+    },
+    async confirmRenewBorrow() {
+      if (!this.renewTarget || this.renewingBorrow) return;
+      const borrowId = this.renewTarget._id;
+      this.renewingBorrow = true;
+      try {
+        const result = await theoDoiService.giaHan(borrowId);
+        this.borrows = this.borrows.map((borrow) => borrow._id === borrowId ? result.data : borrow);
+        this.showRenewBorrowModal = false;
+        this.renewTarget = null;
+        this.$refs.toast?.show(result.message || "Đã gia hạn thêm 7 ngày.");
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || err.message || "Không thể gia hạn phiếu mượn.", "error");
+      } finally {
+        this.renewingBorrow = false;
       }
     },
     handleProfileEditorKeydown(event) {
@@ -845,7 +970,9 @@ export default {
 }
 
 .borrow-cancel-button,
-.borrow-cancel-confirm {
+.borrow-cancel-confirm,
+.borrow-renew-button,
+.borrow-renew-confirm {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -870,20 +997,39 @@ export default {
   color: var(--ink-primary, #111);
 }
 
+.borrow-renew-button,
+.borrow-renew-confirm {
+  background: var(--brand-yellow, #fdc800);
+  color: var(--ink-primary, #111);
+}
+
+.borrow-renew-status {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .borrow-cancel-button:hover:not(:disabled),
-.borrow-cancel-confirm:hover:not(:disabled) {
+.borrow-cancel-confirm:hover:not(:disabled),
+.borrow-renew-button:hover:not(:disabled),
+.borrow-renew-confirm:hover:not(:disabled) {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 var(--ink-primary);
 }
 
 .borrow-cancel-button:focus-visible,
-.borrow-cancel-confirm:focus-visible {
+.borrow-cancel-confirm:focus-visible,
+.borrow-renew-button:focus-visible,
+.borrow-renew-confirm:focus-visible {
   outline: 3px solid var(--neo-violet, #432dd7);
   outline-offset: 3px;
 }
 
 .borrow-cancel-button:disabled,
-.borrow-cancel-confirm:disabled {
+.borrow-cancel-confirm:disabled,
+.borrow-renew-button:disabled,
+.borrow-renew-confirm:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -922,6 +1068,20 @@ export default {
   border-radius: 0.65rem;
   background: #fff3d6;
   color: #9a3b13;
+  box-shadow: 2px 2px 0 var(--ink-primary, #111);
+}
+
+.borrow-renew-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 0.65rem;
+  background: #fff3bd;
+  color: var(--neo-violet, #432dd7);
   box-shadow: 2px 2px 0 var(--ink-primary, #111);
 }
 
@@ -1029,6 +1189,11 @@ export default {
 }
 
 .borrow-cancel-confirm:hover:not(:disabled) {
+  background: #f2bd00;
+}
+
+.borrow-renew-confirm:hover:not(:disabled),
+.borrow-renew-button:hover:not(:disabled) {
   background: #f2bd00;
 }
 

@@ -17,11 +17,17 @@ router.route("/:id")
 router.route("/:id/duyet")
     .put(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.duyetMuon);
 
+router.route("/:id/giao-sach")
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.giaoSach);
+
 router.route("/:id/tu-choi")
     .put(authenticate, authorizeStaff("STAFF", "ADMIN"), allowFields("lyDo"), controller.tuChoiMuon);
 
 router.route("/:id/huy")
     .put(authenticate, authorizeReader, controller.huyDangKy);
+
+router.route("/:id/gia-han")
+    .put(authenticate, authorizeReader, allowFields(), controller.giaHan);
 
 router.route("/:id/tra-sach")
     .put(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.xacNhanTra);

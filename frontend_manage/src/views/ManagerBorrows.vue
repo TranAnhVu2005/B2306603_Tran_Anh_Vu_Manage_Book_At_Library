@@ -23,7 +23,7 @@
         <div class="vg-stat-card accent-yellow" @click="activeTab = 'pending'; onlyOverdue = false" role="button"
           tabindex="0">
           <div class="vg-stat-inner">
-            <span class="vg-stat-label">Chờ xét duyệt</span>
+            <span class="vg-stat-label">Chờ duyệt / nhận</span>
             <span class="vg-stat-number" style="color: #F59E0B;">{{ pendingList.length }}</span>
             <span class="vg-stat-sub">đơn yêu cầu</span>
           </div>
@@ -66,7 +66,7 @@
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" />
                 </svg>
-                Chờ duyệt <span class="tc">{{ pendingList.length }}</span>
+                Chờ xử lý <span class="tc">{{ pendingList.length }}</span>
               </button>
               <button class="vg-tab" :class="{ 'is-active': activeTab === 'borrowing' }"
                 @click="activeTab = 'borrowing'" type="button">
@@ -130,8 +130,8 @@
                 <tr>
                   <th>Độc giả</th>
                   <th>Sách mượn</th>
-                  <th>Ngày mượn</th>
-                  <th>Hạn trả</th>
+                  <th>Ngày đăng ký / mượn</th>
+                  <th>Hạn nhận / trả</th>
                   <th>Trạng thái</th>
                   <th>Ghi chú / Bồi thường</th>
                   <th style="text-align: right;">Hành động</th>
@@ -153,81 +153,93 @@
                     <span class="row-sub font-mono-code">{{ item.MaSach }} · {{
                       bookPrice(item.MaSach).toLocaleString('vi-VN') }} ₫</span>
                   </td>
-                  <td class="font-mono-code row-date">{{ item.NgayMuon || '—' }}</td>
+                  <td class="font-mono-code row-date">{{ item.TrangThai === 'DangMuon' ? item.NgayMuon :
+                    (item.NgayDangKy || item.NgayDuyet || '—') }}</td>
                   <td>
-                    <span class="font-mono-code row-date" :class="isLate(item) ? 'overdue-text' : ''">{{ item.NgayHenTra
-                      || '—' }}</span>
+                    <span class="font-mono-code row-date" :class="isLate(item) ? 'overdue-text' : ''">{{ item.TrangThai
+                      === 'ChoNhan' ? item.HanNhan : item.NgayHenTra || '—' }}</span>
+                    <span v-if="item.TrangThai === 'ChoNhan'" class="row-sub d-block">Hạn đến nhận</span>
                     <span v-if="isLate(item)" class="ath-badge ath-badge-out"
                       style="display: block; margin-top: 3px; font-size: 0.6rem;">Quá hạn!</span>
                   </td>
                   <td>
                     <span v-if="item.TrangThai === 'ChoDuyet'" class="ath-badge ath-badge-pending">Chờ duyệt</span>
+                    <span v-else-if="item.TrangThai === 'ChoNhan'" class="ath-badge ath-badge-pending">Chờ nhận
+                      sách</span>
                     <span v-else-if="item.TrangThai === 'DangMuon'" class="ath-badge ath-badge-available">Đang
                       mượn</span>
                     <span v-else-if="item.TrangThai === 'DaTra'" class="ath-badge ath-badge-neutral">Đã trả</span>
                     <span v-else-if="item.TrangThai === 'MatSach'" class="ath-badge ath-badge-out">Mất sách</span>
                     <span v-else-if="item.TrangThai === 'TuChoi'" class="ath-badge ath-badge-rejected">Từ chối</span>
+                    <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn
+                      nhận</span>
                   </td>
                   <td class="row-sub">
                     {{ item.GhiChu || '—' }}
                     <div v-if="item.GiaTriBoiThuong > 0" class="boi-thuong">{{
                       item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫</div>
                     <div v-if="item.MSNV" class="font-mono-code"
-                      style="font-size: 0.7rem; color: var(--ink-muted); margin-top: 2px;">Duyệt bởi: {{ item.MSNV }}
+                      style="font-size: 0.7rem; color: var(--ink-muted); margin-top: 2px;">Nhân viên xử lý: {{ item.MSNV
+                      }}
                     </div>
                   </td>
                   <td style="text-align: right;">
-                    <template v-if="item.TrangThai === 'ChoDuyet'">
-                      <button class="ath-action-btn ath-action-btn-success" style="margin-right: 4px;"
-                        @click="handleApprove(item)" type="button">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.5" aria-hidden="true">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                          <path d="m9 11 3 3L22 4" />
-                        </svg>
-                        Duyệt
-                      </button>
-                      <button class="ath-action-btn ath-action-btn-danger" @click="openRejectModal(item)" type="button">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.5" aria-hidden="true">
-                          <path d="M18 6 6 18M6 6l12 12" />
-                        </svg>
-                        Từ chối
-                      </button>
-                    </template>
-                    <template v-else-if="item.TrangThai === 'DangMuon'">
-                      <button class="ath-action-btn ath-action-btn-success" style="margin-right: 4px;"
-                        @click="handleReturn(item)" type="button">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.5" aria-hidden="true">
-                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                          <path d="M21 3v5h-5" />
-                          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                          <path d="M8 16H3v5" />
-                        </svg>
-                        Đã trả
-                      </button>
-                      <button class="ath-action-btn ath-action-btn-danger" @click="openLossModal(item)" type="button">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.5" aria-hidden="true">
-                          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                          <path d="M12 9v4" />
-                          <circle cx="12" cy="17" r="1" fill="currentColor" />
-                        </svg>
-                        Báo mất
-                      </button>
-                    </template>
-                    <template v-else>
-                      <button class="ath-action-btn ath-action-btn-danger" @click="handleDelete(item)" type="button">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.5" aria-hidden="true">
-                          <path d="M3 6h18" />
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                        </svg>
-                        Xóa
-                      </button>
-                    </template>
+                    <div class="row-actions">
+                      <template v-if="item.TrangThai === 'ChoDuyet'">
+                        <button class="ath-action-btn ath-action-btn-success" @click="handleApprove(item)" type="button">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <path d="m9 11 3 3L22 4" />
+                          </svg>
+                          Duyệt & giữ sách
+                        </button>
+                        <button class="ath-action-btn ath-action-btn-danger" @click="openRejectModal(item)" type="button">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
+                            <path d="M18 6 6 18M6 6l12 12" />
+                          </svg>
+                          Từ chối
+                        </button>
+                      </template>
+                      <template v-else-if="item.TrangThai === 'ChoNhan'">
+                        <button class="ath-action-btn ath-action-btn-success" @click="handleHandover(item)" type="button">
+                          Xác nhận giao sách
+                        </button>
+                      </template>
+                      <template v-else-if="item.TrangThai === 'DangMuon'">
+                        <button class="ath-action-btn ath-action-btn-success" @click="handleReturn(item)" type="button">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                            <path d="M21 3v5h-5" />
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                            <path d="M8 16H3v5" />
+                          </svg>
+                          Đã trả
+                        </button>
+                        <button class="ath-action-btn ath-action-btn-danger" @click="openLossModal(item)" type="button">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                            <path d="M12 9v4" />
+                            <circle cx="12" cy="17" r="1" fill="currentColor" />
+                          </svg>
+                          Báo mất
+                        </button>
+                      </template>
+                      <template v-else>
+                        <button class="ath-action-btn ath-action-btn-danger" @click="handleDelete(item)" type="button">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" aria-hidden="true">
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                          Xóa
+                        </button>
+                      </template>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -302,17 +314,6 @@
               </button>
             </div>
             <div class="modal-body">
-              <div class="warning-box">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  aria-hidden="true">
-                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                  <path d="M12 9v4" />
-                  <circle cx="12" cy="17" r="1" fill="currentColor" />
-                </svg>
-                Khi báo mất, tồn kho sẽ <strong>không được cộng lại</strong>. Hệ thống sẽ tự động phạt độc giả số tiền
-                bằng
-                đúng đơn giá cuốn sách và tăng số lần vi phạm lên 1 (đạt 3 lần → tự động đưa vào Danh sách đen).
-              </div>
               <div class="mb-3">
                 <label class="form-label-sm">Lý do / Tình trạng ghi nhận:</label>
                 <input type="text" class="ath-input" v-model="lossReason"
@@ -361,13 +362,13 @@ export default {
     };
   },
   computed: {
-    pendingList() { return this.borrows.filter(b => b.TrangThai === "ChoDuyet"); },
+    pendingList() { return this.borrows.filter(b => ["ChoDuyet", "ChoNhan"].includes(b.TrangThai)); },
     borrowingList() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
     overdueList() {
       const today = new Date().toISOString().split("T")[0];
       return this.borrows.filter(b => b.TrangThai === "DangMuon" && b.NgayHenTra && today > b.NgayHenTra);
     },
-    completedList() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi"].includes(b.TrangThai)); },
+    completedList() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy", "QuaHanNhan"].includes(b.TrangThai)); },
     currentDisplayList() {
       if (this.activeTab === "pending") return this.pendingList;
       if (this.activeTab === "borrowing") return this.onlyOverdue ? this.overdueList : this.borrowingList;
@@ -451,9 +452,16 @@ export default {
     async handleApprove(item) {
       try {
         const res = await theoDoiService.duyet(item._id);
-        this.$refs.toast.show(res.message || "Đã duyệt mượn và trừ 1 cuốn trong kho.");
+        this.$refs.toast.show(res.message || "Đã duyệt và giữ sách trong 3 ngày để độc giả đến nhận.");
         this.fetchData();
       } catch (err) { this.$refs.toast.show(err.response?.data?.message || "Không thể duyệt yêu cầu mượn.", "error"); }
+    },
+    async handleHandover(item) {
+      try {
+        const res = await theoDoiService.giaoSach(item._id);
+        this.$refs.toast.show(res.message || "Đã xác nhận bàn giao. Hạn trả tính từ hôm nay.");
+        this.fetchData();
+      } catch (err) { this.$refs.toast.show(err.response?.data?.message || "Không thể xác nhận bàn giao sách.", "error"); }
     },
     openRejectModal(item) { this.selectedRejectItem = item; this.rejectReason = "Độc giả đã đạt định mức tối đa 3 cuốn đang mượn"; this.customRejectReason = ""; this.showRejectModal = true; },
     async confirmReject() {
@@ -759,7 +767,7 @@ export default {
 
 .table-wrap .ath-table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 1120px;
   margin: 0;
   border-collapse: separate;
   border-spacing: 0;
@@ -803,15 +811,15 @@ export default {
 }
 
 .table-wrap .ath-table th:nth-child(1) {
-  width: 18%;
+  width: 16%;
 }
 
 .table-wrap .ath-table th:nth-child(2) {
-  width: 21%;
+  width: 19%;
 }
 
 .table-wrap .ath-table th:nth-child(3) {
-  width: 10%;
+  width: 11%;
 }
 
 .table-wrap .ath-table th:nth-child(4) {
@@ -823,11 +831,11 @@ export default {
 }
 
 .table-wrap .ath-table th:nth-child(6) {
-  width: 17%;
+  width: 16%;
 }
 
 .table-wrap .ath-table th:nth-child(7) {
-  width: 13%;
+  width: 17%;
   text-align: right;
 }
 
@@ -899,9 +907,31 @@ export default {
   line-height: 1.35;
 }
 
-.ath-table td:last-child .ath-action-btn {
-  margin: .2rem 0 .2rem .25rem;
-  white-space: nowrap;
+.row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  width: calc(100% - .75rem);
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.row-actions .ath-action-btn {
+  width: 100%;
+  max-width: 10.5rem;
+  min-width: 0;
+  min-height: 2.35rem;
+  margin: 0;
+  padding: .42rem .55rem;
+  justify-content: center;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.row-actions .ath-action-btn svg {
+  flex: 0 0 auto;
 }
 
 .borrows-state {

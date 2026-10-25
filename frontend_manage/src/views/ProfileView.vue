@@ -197,7 +197,7 @@
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 6v6l4 2" />
                     </svg>
-                    Chờ duyệt <span class="tab-count">{{ pendingBorrows.length }}</span>
+                    Chờ xử lý <span class="tab-count">{{ pendingBorrows.length }}</span>
                   </button>
                   <button class="vg-tab" :class="{ 'is-active': activeTab === 'history' }"
                     @click="activeTab = 'history'" type="button">
@@ -235,8 +235,8 @@
                   <thead>
                     <tr>
                       <th class="ps-4">Sách</th>
-                      <th>Ngày mượn</th>
-                      <th>Hạn trả</th>
+                      <th>Ngày đăng ký / mượn</th>
+                      <th>Hạn nhận / trả</th>
                       <th>Trạng thái</th>
                       <th class="pe-4">Ghi chú / Bồi thường</th>
                     </tr>
@@ -250,12 +250,13 @@
                         <span class="font-mono-code text-muted d-block" style="font-size: 0.7rem;">{{ item.MaSach
                         }}</span>
                       </td>
-                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.NgayMuon || '—' }}</td>
+                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet || '—') }}</td>
                       <td class="text-nowrap">
                         <span class="font-mono-code" style="font-size: 0.82rem;"
                           :class="isOverdue(item) ? 'overdue-text' : ''">
-                          {{ item.NgayHenTra || '—' }}
+                          {{ item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra || '—' }}
                         </span>
+                        <span v-if="item.TrangThai === 'ChoNhan'" class="d-block small text-muted">Hạn đến nhận</span>
                         <span v-if="isOverdue(item)" class="ath-badge ath-badge-out d-inline-flex ms-1"
                           style="font-size: 0.6rem; padding: 0.1rem 0.35rem;">Quá hạn</span>
                       </td>
@@ -264,10 +265,12 @@
                           mượn</span>
                         <span v-else-if="item.TrangThai === 'ChoDuyet'" class="ath-badge ath-badge-pending">Chờ
                           duyệt</span>
+                        <span v-else-if="item.TrangThai === 'ChoNhan'" class="ath-badge ath-badge-pending">Chờ nhận sách</span>
                         <span v-else-if="item.TrangThai === 'DaTra'" class="ath-badge ath-badge-neutral">Đã trả</span>
                         <span v-else-if="item.TrangThai === 'MatSach'" class="ath-badge ath-badge-out">Mất sách</span>
                         <span v-else-if="item.TrangThai === 'TuChoi'" class="ath-badge ath-badge-rejected">Từ
                           chối</span>
+                        <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn nhận</span>
                       </td>
                       <td class="pe-4" style="font-size: 0.82rem; color: var(--ink-muted);">
                         <span>{{ item.GhiChu || '—' }}</span>
@@ -498,8 +501,8 @@ export default {
       return this.readerInfo?.SoLanViPham || this.currentUser?.SoLanViPham || 0;
     },
     activeBorrows() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
-    pendingBorrows() { return this.borrows.filter(b => b.TrangThai === "ChoDuyet"); },
-    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi"].includes(b.TrangThai)); },
+    pendingBorrows() { return this.borrows.filter(b => ["ChoDuyet", "ChoNhan"].includes(b.TrangThai)); },
+    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy", "QuaHanNhan"].includes(b.TrangThai)); },
     currentTabList() {
       if (this.activeTab === "active") return this.activeBorrows;
       if (this.activeTab === "pending") return this.pendingBorrows;

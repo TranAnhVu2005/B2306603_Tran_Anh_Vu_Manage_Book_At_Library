@@ -643,7 +643,8 @@ async function runTests() {
         if (
             res.status !== 201 ||
             res.data.data.TrangThai !== "ChoDuyet" ||
-            !hasOnlyFields(res.data.data, ["_id", "MaDocGia", "MaSach", "NgayMuon", "MSNV", "NgayHenTra", "NgayTra", "TrangThai", "GiaTriBoiThuong", "GhiChu"])
+            !hasOnlyFields(res.data.data, ["_id", "MaDocGia", "MaSach", "NgayDangKy", "NgayDuyet", "HanNhan", "NgayMuon", "MSNV", "NgayHenTra", "SoLanGiaHan", "NgayGiaHan", "NgayTra", "TrangThai", "GiaTriBoiThuong", "GhiChu"])
+            || !res.data.data.NgayDangKy || res.data.data.NgayMuon !== null || res.data.data.NgayHenTra !== null
         ) {
             throw new Error(`Kỳ vọng HTTP 201 & ChoDuyet, nhận status=${res.status}, response=${JSON.stringify(res.data)}`);
         }
@@ -753,6 +754,53 @@ async function runTests() {
         }
     });
 
+    await assert("TC-CANCEL-02: Hủy phiếu đã duyệt nhưng chưa nhận hoàn lại sách giữ", async () => {
+        const requested = await request("POST", "/api/theodoimuonsach", {
+            MaDocGia: temporaryReaderId, MaSach: cancellationBookCode,
+        }, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (requested.status !== 201) throw new Error(`Không tạo được yêu cầu nhận sách, HTTP ${requested.status}`);
+        cancellationBorrowIds.push(requested.data.data._id);
+
+        const approved = await request("PUT", `/api/theodoimuonsach/${requested.data.data._id}/duyet`, null, {
+            Authorization: `Bearer ${temporaryStaffToken}`,
+        });
+        if (approved.status !== 200 || approved.data.data.TrangThai !== "ChoNhan") {
+            throw new Error(`Duyệt phải chuyển phiếu sang ChoNhan, HTTP ${approved.status}`);
+        }
+        let stock = await MongoDB.client.db().collection("sach").findOne({ MaSach: cancellationBookCode }, { projection: { SoQuyen: 1 } });
+        if (stock?.SoQuyen !== 0) throw new Error(`Duyệt phải giữ 1 cuốn trong kho, tồn=${stock?.SoQuyen}`);
+
+        const cancelled = await request("PUT", `/api/theodoimuonsach/${requested.data.data._id}/huy`, null, {
+            Authorization: `Bearer ${temporaryReaderToken}`,
+        });
+        if (cancelled.status !== 200 || cancelled.data.data.TrangThai !== "DaHuy") {
+            throw new Error(`Độc giả phải hủy được trước bàn giao, HTTP ${cancelled.status}`);
+        }
+        stock = await MongoDB.client.db().collection("sach").findOne({ MaSach: cancellationBookCode }, { projection: { SoQuyen: 1 } });
+        if (stock?.SoQuyen !== 1) throw new Error(`Hủy phiếu ChoNhan phải hoàn cuốn đã giữ, tồn=${stock?.SoQuyen}`);
+    });
+
+    await assert("TC-BORROW-EXPIRY-01: Phiếu quá hạn nhận đóng và hoàn lại sách", async () => {
+        const expiredAt = new Date();
+        expiredAt.setDate(expiredAt.getDate() - 4);
+        const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        const inserted = await MongoDB.client.db().collection("theodoimuonsach").insertOne({
+            MaDocGia: temporaryReaderId, MaSach: cancellationBookCode,
+            NgayDangKy: dateKey(expiredAt), NgayDuyet: dateKey(expiredAt), HanNhan: dateKey(expiredAt),
+            NgayMuon: null, NgayHenTra: null, NgayTra: null, MSNV: temporaryStaffCode,
+            TrangThai: "ChoNhan", GiaTriBoiThuong: 0, GhiChu: "Fixture kiểm thử hạn nhận", CreatedAt: new Date(),
+        });
+        cancellationBorrowIds.push(String(inserted.insertedId));
+        await MongoDB.client.db().collection("sach").updateOne({ MaSach: cancellationBookCode }, { $inc: { SoQuyen: -1 } });
+
+        const listed = await request("GET", "/api/theodoimuonsach", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        const expiredRecord = listed.data.find((item) => item._id === String(inserted.insertedId));
+        const stock = await MongoDB.client.db().collection("sach").findOne({ MaSach: cancellationBookCode }, { projection: { SoQuyen: 1 } });
+        if (expiredRecord?.TrangThai !== "QuaHanNhan" || stock?.SoQuyen !== 1) {
+            throw new Error(`Phiếu quá hạn phải thành QuaHanNhan và hoàn kho; trạng thái=${expiredRecord?.TrangThai}, tồn=${stock?.SoQuyen}`);
+        }
+    });
+
     // TC-BORROW-02: Chặn mượn sách khi đã hết tồn kho
     await assert("TC-BORROW-02: Chặn mượn sách khi đã hết trong kho (SoQuyen == 0)", async () => {
         const res = await request("POST", "/api/theodoimuonsach", {
@@ -787,7 +835,7 @@ async function runTests() {
     });
 
     // TC-BORROW-05: Chỉ nhân viên/Admin được duyệt và MSNV lấy từ JWT
-    await assert("TC-BORROW-05: Thủ thư duyệt mượn, trừ kho và gán hạn trả 14 ngày", async () => {
+    await assert("TC-BORROW-05: Duyệt giữ sách, bàn giao mới bắt đầu hạn mượn 14 ngày", async () => {
         const unauthorized = await request("PUT", `/api/theodoimuonsach/${borrowId}/duyet`);
         if (unauthorized.status !== 401) {
             throw new Error(`Kỳ vọng HTTP 401 khi thiếu token, nhận status=${unauthorized.status}`);
@@ -816,11 +864,16 @@ async function runTests() {
         );
         if (
             res.status !== 200 ||
-            res.data.data.TrangThai !== "DangMuon" ||
-            res.data.data.MSNV !== temporaryStaffCode
+            res.data.data.TrangThai !== "ChoNhan" ||
+            res.data.data.MSNV !== temporaryStaffCode ||
+            res.data.data.NgayMuon !== null || res.data.data.NgayHenTra !== null || !res.data.data.HanNhan
         ) {
-            throw new Error(`Kỳ vọng HTTP 200 & DangMuon, nhận status=${res.status}`);
+            throw new Error(`Kỳ vọng HTTP 200 & ChoNhan, không bắt đầu hạn mượn trước bàn giao; nhận status=${res.status}`);
         }
+        const pickupDate = new Date();
+        pickupDate.setDate(pickupDate.getDate() + 3);
+        const expectedPickupDate = `${pickupDate.getFullYear()}-${String(pickupDate.getMonth() + 1).padStart(2, "0")}-${String(pickupDate.getDate()).padStart(2, "0")}`;
+        if (res.data.data.HanNhan !== expectedPickupDate) throw new Error(`HanNhan phải bằng ngày duyệt + 3; kỳ vọng=${expectedPickupDate}, thực tế=${res.data.data.HanNhan}`);
         const readerInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
         if (readerInbox.status !== 200 || !readerInbox.data.data.some((item) => item.LoaiThongBao === "PHIEU_DUYET_MUON")) {
             throw new Error("Độc giả không nhận được thông báo phiếu mượn đã duyệt.");
@@ -829,6 +882,70 @@ async function runTests() {
         const checkBook = await request("GET", `/api/sach/${testBookCode}`);
         if (checkBook.data.SoQuyen !== 9) {
             throw new Error(`Kỳ vọng SoQuyen=9, nhận ${checkBook.data.SoQuyen}`);
+        }
+
+        const unauthenticatedHandover = await request("PUT", `/api/theodoimuonsach/${borrowId}/giao-sach`);
+        const readerHandover = await request("PUT", `/api/theodoimuonsach/${borrowId}/giao-sach`, null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (unauthenticatedHandover.status !== 401 || readerHandover.status !== 403) throw new Error("Chỉ nhân viên/Admin được xác nhận bàn giao.");
+        const handover = await request("PUT", `/api/theodoimuonsach/${borrowId}/giao-sach`, null, { Authorization: `Bearer ${temporaryStaffToken}` });
+        if (handover.status !== 200 || handover.data.data.TrangThai !== "DangMuon" || !handover.data.data.NgayMuon || !handover.data.data.NgayHenTra) {
+            throw new Error(`Bàn giao phải chuyển DangMuon và ghi mốc ngày, nhận HTTP ${handover.status}`);
+        }
+        const borrowDate = new Date(`${handover.data.data.NgayMuon}T00:00:00`);
+        borrowDate.setDate(borrowDate.getDate() + 14);
+        const expectedDueDate = `${borrowDate.getFullYear()}-${String(borrowDate.getMonth() + 1).padStart(2, "0")}-${String(borrowDate.getDate()).padStart(2, "0")}`;
+        if (handover.data.data.NgayHenTra !== expectedDueDate) throw new Error(`Hạn trả phải là ngày bàn giao + 14; kỳ vọng=${expectedDueDate}, thực tế=${handover.data.data.NgayHenTra}`);
+        const handedOverInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (handedOverInbox.status !== 200 || !handedOverInbox.data.data.some((item) => item.LoaiThongBao === "PHIEU_GIAO_SACH")) {
+            throw new Error("Độc giả chưa nhận được thông báo xác nhận bàn giao sách.");
+        }
+    });
+
+    await assert("TC-BORROW-08: Độc giả gia hạn đúng điều kiện thêm 7 ngày", async () => {
+        const path = `/api/theodoimuonsach/${borrowId}/gia-han`;
+        const anonymous = await request("PUT", path);
+        const staffAttempt = await request("PUT", path, null, { Authorization: `Bearer ${temporaryStaffToken}` });
+        const otherReaderAttempt = await request("PUT", path, null, { Authorization: `Bearer ${temporaryOtherReaderToken}` });
+        const forgedBody = await request("PUT", path, { MaDocGia: temporaryOtherReaderId }, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (anonymous.status !== 401 || staffAttempt.status !== 403 || otherReaderAttempt.status !== 403 || forgedBody.status !== 400) {
+            throw new Error(`Gia hạn phải giới hạn chủ phiếu ở độc giả hiện tại; HTTP anonymous/staff/other/forged=${anonymous.status}/${staffAttempt.status}/${otherReaderAttempt.status}/${forgedBody.status}`);
+        }
+
+        const borrows = MongoDB.client.db().collection("theodoimuonsach");
+        const before = await borrows.findOne({ _id: new ObjectId(borrowId) });
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+        await borrows.updateOne({ _id: new ObjectId(borrowId) }, { $set: { NgayHenTra: yesterdayKey } });
+        const overdueAttempt = await request("PUT", path, null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        await borrows.updateOne({ _id: new ObjectId(borrowId) }, { $set: { NgayHenTra: before.NgayHenTra } });
+        if (overdueAttempt.status !== 409) throw new Error(`Phiếu đã đến hạn không được gia hạn, nhận HTTP ${overdueAttempt.status}`);
+
+        const concurrentAttempts = await Promise.all([
+            request("PUT", path, null, { Authorization: `Bearer ${temporaryReaderToken}` }),
+            request("PUT", path, null, { Authorization: `Bearer ${temporaryReaderToken}` }),
+        ]);
+        if (concurrentAttempts.filter((item) => item.status === 200).length !== 1 || concurrentAttempts.filter((item) => item.status === 409).length !== 1) {
+            throw new Error(`Hai request đồng thời phải chỉ gia hạn thành công một lần, nhận HTTP ${concurrentAttempts.map((item) => item.status).join("/")}`);
+        }
+        const response = concurrentAttempts.find((item) => item.status === 200);
+        const [year, month, day] = before.NgayHenTra.split("-").map(Number);
+        const expected = new Date(year, month - 1, day);
+        expected.setDate(expected.getDate() + 7);
+        const expectedDate = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, "0")}-${String(expected.getDate()).padStart(2, "0")}`;
+        if (response.status !== 200 || response.data.data.NgayHenTra !== expectedDate || response.data.data.SoLanGiaHan !== 1 || !response.data.data.NgayGiaHan) {
+            throw new Error(`Gia hạn phải cộng 7 ngày và ghi nhận một lần, HTTP=${response.status}, data=${JSON.stringify(response.data?.data)}`);
+        }
+        const repeated = await request("PUT", path, null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (repeated.status !== 409) throw new Error(`Không được gia hạn lần thứ hai, nhận HTTP ${repeated.status}`);
+
+        const inbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (inbox.status !== 200 || !inbox.data.data.some((item) => item.LoaiThongBao === "PHIEU_GIA_HAN")) {
+            throw new Error("Thiếu thông báo xác nhận gia hạn.");
+        }
+        const audit = await request("GET", `/api/nhatkykiemtoan?MaDocGia=${encodeURIComponent(temporaryReaderId)}&HanhDong=PHIEU_GIA_HAN`, null, { Authorization: `Bearer ${temporaryAdminToken}` });
+        if (audit.status !== 200 || !audit.data.items?.some((entry) => entry.MaDoiTuong === borrowId && entry.ChiTiet?.SoNgayGiaHan === 7)) {
+            throw new Error("Thiếu nhật ký kiểm toán cho thao tác gia hạn.");
         }
     });
 
@@ -857,15 +974,25 @@ async function runTests() {
             throw new Error(`Không tạo được phiếu mượn kiểm thử mất sách, nhận status=${borrowRes.status}`);
         }
         lossBorrowId = borrowRes.data.data._id;
-        // Duyệt mượn -> kho còn 9
+        // Duyệt giữ sách trong 3 ngày; sách chưa được coi là đang mượn.
         const approval = await request(
             "PUT",
             `/api/theodoimuonsach/${lossBorrowId}/duyet`,
             null,
             { Authorization: `Bearer ${temporaryAdminToken}` }
         );
-        if (approval.status !== 200 || approval.data.data.MSNV !== temporaryAdminId) {
+        if (approval.status !== 200 || approval.data.data.MSNV !== temporaryAdminId || approval.data.data.TrangThai !== "ChoNhan") {
             throw new Error(`Admin phải duyệt được phiếu và được ghi nhận MSNV của token, nhận status=${approval.status}`);
+        }
+
+        const handover = await request(
+            "PUT",
+            `/api/theodoimuonsach/${lossBorrowId}/giao-sach`,
+            null,
+            { Authorization: `Bearer ${temporaryStaffToken}` }
+        );
+        if (handover.status !== 200 || handover.data.data.TrangThai !== "DangMuon") {
+            throw new Error(`Phải xác nhận bàn giao trước khi báo mất sách, nhận status=${handover.status}`);
         }
 
         // Báo mất sách

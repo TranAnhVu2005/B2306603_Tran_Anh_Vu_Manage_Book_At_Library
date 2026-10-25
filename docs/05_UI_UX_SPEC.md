@@ -89,22 +89,23 @@ Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
    * Hai cổng dùng cùng cấu trúc chi tiết sách: breadcrumb quay lại danh mục; khung nội dung giấy ngà viền mực 2px và bóng cứng; ảnh bìa giữ tỷ lệ 3:4, mã sách và trạng thái kho ở cột ảnh; cột nội dung có tên sách, tác giả, thông số và tóm tắt.
    * Tiêu đề và nội dung dùng Be Vietnam Pro, không dùng font serif riêng cho trang; phân cấp chữ rõ, không phóng tiêu đề hoặc badge quá mức. Khối thông số nền sáng phẳng, không dùng mảng vàng lớn hay bóng mềm.
    * Thông số hiển thị gồm thể loại, nhà xuất bản, năm xuất bản và đơn giá bảo lưu; mã NXB là thông tin phụ. Nhãn thể loại phải tra từ danh mục `theloai` qua `MaTheLoai`, fallback “Chưa phân loại” khi thiếu dữ liệu.
-   * Cổng độc giả có CTA đăng ký mượn khi còn sách, trạng thái vô hiệu khi hết sách và ghi chú hạn mượn 14 ngày/địa điểm nhận sách; xác nhận tiếp tục qua Borrow Modal hiện có. Cổng quản lý chỉ hiển thị tồn kho, không cung cấp thao tác mượn.
+   * Cổng độc giả có CTA đăng ký mượn khi còn sách, trạng thái vô hiệu khi hết sách và ghi chú nhận trong 3 ngày kể từ khi duyệt; hạn mượn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao tại quầy. Borrow Modal nêu rõ hai mốc thời gian.
    * Ở 320–420px, thông số chuyển một cột; dưới 768px ảnh bìa thu gọn và nội dung xếp dọc. Tiêu đề/mã dài được phép ngắt dòng, nút không tràn ngang. Không xóa hoặc thay ảnh bìa/ảnh nền hiện có.
 3. **Modal Xác Nhận Mượn Sách (Borrow Dialog)**:
    * Dùng nền giấy ngà, vùng thông tin sách violet, điểm nhấn vàng, mực đậm; loại bỏ gradient trang trí, glass/blur, bóng mềm và nền xanh rêu của kiểu cũ.
    * Các bề mặt, thẻ thông tin, input và nút dùng viền mực 2–3px, góc vừa phải và bóng cứng 2–5px; focus-visible violet và trạng thái disabled/loading dễ nhận biết.
    * Ảnh bìa sách phải được giữ nguyên; modal desktop chia cột sách/thông tin, mobile xếp dọc và cuộn trong modal, không làm tràn ngang ở 320px.
-   * Hiển thị tựa sách, thời hạn mượn mặc định (14 ngày), địa điểm nhận sách vật lý tại quầy.
-   * Thông báo: Đơn ở trạng thái `ChoDuyet` chờ thủ thư kiểm tra.
+   * Hiển thị tựa sách, hạn nhận trong 3 ngày sau khi duyệt và thời hạn mượn 14 ngày tính từ lúc bàn giao tại quầy.
+   * Thông báo: Đơn ở trạng thái `ChoDuyet`; sau khi duyệt thành `ChoNhan`, sách được giữ đến hết `HanNhan`. Sau xác nhận bàn giao mới chuyển `DangMuon` và chạy hạn trả.
 4. **Trang hồ sơ cá nhân (`/profile`)**:
    * Sau khi đăng nhập, header desktop, menu tài khoản và menu mobile đều có mục **Hồ sơ cá nhân** trỏ tới `/profile`; nhãn điều hướng không chỉ nói về sách đang mượn.
    * Trang có tiêu đề rõ ràng **Hồ sơ cá nhân**; phần thông tin thẻ và chỉnh sửa hồ sơ được phân biệt trực quan với phần sách đang mượn/lịch sử.
    * Thông tin thẻ: Mã độc giả, Họ tên, Trạng thái thẻ (Hoạt động / Tạm khóa / Danh sách đen).
    * Cho phép độc giả chỉnh sửa họ tên, ngày sinh, giới tính, địa chỉ và số điện thoại đăng nhập của chính mình; không cho sửa vai trò, trạng thái thẻ hoặc số lần vi phạm.
    * Sau khi cập nhật thành công, hồ sơ và dữ liệu user lưu phiên phải đồng bộ; báo lỗi API ngay trong toast nếu cập nhật thất bại.
-   * Bảng hoạt động mượn hiển thị trạng thái đang mượn, chờ duyệt và lịch sử, gồm cả phiếu `DaHuy`.
-   * Trong tab `Chờ duyệt`, độc giả có nút **Hủy yêu cầu**. Dialog xác nhận nêu rõ phiếu chỉ hủy được trước khi thủ thư duyệt, không ảnh hưởng tồn kho và hạn mức mượn được giải phóng; thành công chuyển phiếu sang lịch sử `Đã hủy`.
+   * Bảng hoạt động mượn hiển thị trạng thái đang mượn, chờ duyệt, chờ nhận và lịch sử, gồm `DaHuy`/`QuaHanNhan`; hiển thị riêng ngày đăng ký, hạn nhận, ngày bàn giao và hạn trả theo trạng thái.
+   * Trong tab chờ xử lý, độc giả có thể hủy phiếu `ChoDuyet`/`ChoNhan` trước khi nhận. Dialog nêu rõ phiếu đã duyệt sẽ trả sách giữ về kho; thành công chuyển phiếu sang lịch sử `DaHuy`.
+   * Trong tab đang mượn, độc giả có thể mở dialog **Gia hạn 7 ngày** nếu phiếu chưa đến hạn và chưa từng gia hạn; dialog hiển thị hạn cũ/mới, giải thích giới hạn một lần và trạng thái tải khi xác nhận. Sau khi thành công, bảng cập nhật hạn trả và ẩn nút gia hạn.
    * Dialog hủy dùng nền giấy, viền mực và bóng cứng theo Neo-brutalism; tên sách là vùng thông tin riêng, giải thích ngắn gọn và nút xác nhận màu vàng. Chỉ dùng đỏ/cam làm dấu hiệu cảnh báo nhỏ, tránh biến hành động hủy thành nút đỏ quá nặng. Header, nội dung và footer có khoảng cách nhất quán; trên mobile hai nút xếp dọc, rộng vừa khung và không tràn.
    * Bảng gọn, nhãn trạng thái rõ và cuộn trong wrapper nếu viewport hẹp.
    * Với nhân viên và quản trị viên, trang `/profile` hiển thị hồ sơ nhân viên, cho phép tự sửa `HoTenNV`, `SoDienThoai`, `DiaChi`; không cho sửa `MSNV` hoặc `ChucVu`. Không hiển thị CTA “Tìm thêm sách” trên hồ sơ cổng quản lý; chức năng tra cứu đã nằm trong điều hướng chính. Cổng quản lý yêu cầu nhân viên đăng nhập bằng số điện thoại đã đăng ký; MSNV chỉ hiển thị làm mã hồ sơ.
@@ -115,8 +116,10 @@ Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
 * **Layout tổng thể**: Dùng cùng Header/Footer của cổng độc giả; vùng nội dung đặt trong cùng `.container` và dùng các component/bảng của design system. Sidebar catalog chỉ tham gia layout desktop, không fixed; thu gọn thành nút mở/đóng trên màn hình nhỏ để giữ chiều rộng nội dung.
 1. **Quản lý Mượn - Trả & Phê Duyệt (`/manager/borrows`)**:
    * Hàng tab và lọc: ô tìm kiếm co giãn để dùng phần không gian còn lại cạnh các tab; bộ lọc quá hạn vẫn nằm cạnh ô tìm kiếm khi phù hợp. Ở màn hình hẹp, các cụm được phép xuống hàng và ô tìm kiếm chiếm bề rộng khả dụng.
-   * **Tab 1: Chờ duyệt**: Danh sách yêu cầu mượn từ độc giả. Nút **[Duyệt mượn]** (trừ kho tự động) / **[Từ chối]**.
-   * **Tab 2: Đang mượn**: Bảng theo dõi, hiển thị số ngày còn lại, badge màu theo mức độ khẩn cấp.
+   * **Tab 1: Chờ xử lý**: `ChoDuyet` có nút **[Duyệt và giữ sách]** / **[Từ chối]**; `ChoNhan` có nút **[Xác nhận giao sách]**. Duyệt giữ kho và đặt hạn nhận 3 ngày; bàn giao mới ghi ngày mượn và hạn trả 14 ngày.
+   * Bảng mượn-trả phải nằm gọn trong panel; khi tổng chiều rộng cột lớn hơn viewport, chỉ wrapper của bảng cuộn ngang. Cột **Hành động** có đủ chỗ cho nút dài; các nút xếp theo chiều dọc, căn giữa, tự xuống dòng và chừa khoảng cách cho viền/bóng cứng trong ô. Không để nút chạm hoặc che viền bảng, không làm tràn trang.
+   * Phiếu `ChoNhan` quá hạn tự chuyển `QuaHanNhan`, trả sách về kho và hiển thị trong lịch sử.
+   * **Tab 2: Đang mượn**: Bảng theo dõi tính từ ngày bàn giao, hiển thị số ngày còn lại và hạn trả.
    * **Nút hành động nhanh**:
      * **[Xác nhận trả sách]**: Trạng thái → `DaTra`, cộng lại tồn kho. Trả trễ → tăng vi phạm độc giả.
      * **[Báo mất sách]**: Trạng thái → `MatSach`, hiển thị đơn giá đền bù, không hoàn kho, tăng vi phạm +1.

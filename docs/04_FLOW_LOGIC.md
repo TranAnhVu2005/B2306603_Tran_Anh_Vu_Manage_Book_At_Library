@@ -10,14 +10,18 @@ Tài liệu này định nghĩa chi tiết các quy tắc ràng buộc logic ngh
 stateDiagram-v2
     [*] --> ChoDuyet: Độc giả đăng ký mượn trực tuyến
     ChoDuyet --> TuChoi: Thủ thư từ chối (Không đủ điều kiện)
-    ChoDuyet --> DangMuon: Thủ thư duyệt cấp sách (Kho SoQuyen - 1, Gán MSNV & Hạn 14 ngày)
+    ChoDuyet --> ChoNhan: Thủ thư duyệt (Kho SoQuyen - 1, giữ sách 3 ngày)
+    ChoNhan --> DangMuon: Thủ thư xác nhận bàn giao (bắt đầu hạn 14 ngày)
+    ChoNhan --> QuaHanNhan: Hết 3 ngày không nhận (Kho SoQuyen + 1)
     ChoDuyet --> DaHuy: Độc giả hủy trước khi thủ thư xử lý
+    ChoNhan --> DaHuy: Độc giả hủy trước khi nhận sách (Kho SoQuyen + 1)
     DangMuon --> DaTra: Thủ thư xác nhận trả (Kho SoQuyen + 1, Kiểm tra trễ hạn)
     DangMuon --> MatSach: Ghi nhận mất sách (GiaTriBoiThuong = DonGia, Kho giữ nguyên, Tăng vi phạm +1)
     MatSach --> DaThanhToan: Thanh toán bồi hoàn qua MoMo / Quầy
     DaTra --> [*]
     TuChoi --> [*]
     DaHuy --> [*]
+    QuaHanNhan --> [*]
     DaThanhToan --> [*]
 ```
 
@@ -31,13 +35,19 @@ stateDiagram-v2
    - `DanhSachDen`: Chế tài khi đạt từ 3 lần vi phạm; hệ thống từ chối mượn, khác với khóa khẩn cấp.
    - Cả `Khoa` và `DanhSachDen` đều bị từ chối mượn với HTTP 403, nhưng được quản lý bằng các thao tác riêng.
 2. **Hạn mức mượn tối đa 3 cuốn**:
-   - Mỗi độc giả chỉ được phép giữ tối đa 3 cuốn sách ở trạng thái đang lưu thông (`ChoDuyet` + `DangMuon`). Nếu đã đủ 3 cuốn, hệ thống từ chối yêu cầu mượn mới cho đến khi hoàn trả sách cũ.
-   - Độc giả được hủy phiếu của mình khi còn `ChoDuyet`. Phiếu chuyển thành `DaHuy`, không xóa lịch sử, không làm thay đổi tồn kho và không còn tính vào hạn mức; sau đó độc giả có thể đăng ký sách khác.
-   - Hủy, duyệt và từ chối dùng cập nhật có điều kiện trên trạng thái hiện tại. Nếu thủ thư duyệt đúng lúc độc giả hủy, chỉ một thao tác chuyển trạng thái thành công; không thể duyệt phiếu đã hủy hoặc hủy phiếu đã duyệt.
+   - Mỗi độc giả chỉ được phép có tối đa 3 phiếu đang lưu thông (`ChoDuyet`, `ChoNhan`, `DangMuon`). Phiếu hết hạn nhận được đóng và giải phóng hạn mức.
+   - Độc giả được hủy phiếu `ChoDuyet` hoặc `ChoNhan` trước khi nhận sách. Phiếu chuyển thành `DaHuy`, không xóa lịch sử; hủy `ChoDuyet` không đổi kho, hủy `ChoNhan` hoàn lại cuốn đã giữ.
+   - Hủy, duyệt, bàn giao và từ chối dùng cập nhật có điều kiện. Chỉ một thao tác cạnh tranh có thể đổi trạng thái thành công; bàn giao không thể hoàn tất sau khi hết hạn nhận.
 3. **Kiểm tra tồn kho thời gian thực**:
    - Chỉ cho phép đăng ký mượn khi sách có `SoQuyen > 0`.
-   - Trạng thái `ChoDuyet`: Chưa trừ kho.
-   - Khi Thủ thư nhấn **Duyệt cấp sách**: Hệ thống tự động trừ kho `SoQuyen = SoQuyen - 1`, chuyển trạng thái sang `DangMuon`, gán ngày mượn và hạn trả (`NgayHenTra = NgayMuon + 14 ngày`), ghi nhận `MSNV` của nhân viên phụ trách duyệt.
+   - `ChoDuyet`: Chưa trừ kho. Khi thủ thư duyệt, trừ `SoQuyen` một cuốn để giữ chỗ, chuyển sang `ChoNhan`, ghi `NgayDuyet` và `HanNhan = NgayDuyet + 3 ngày`. Độc giả có thể nhận đến hết ngày `HanNhan`.
+   - Nếu qua hết `HanNhan` mà chưa nhận, hệ thống tự chuyển `QuaHanNhan`, cộng trả một cuốn vào kho, ghi audit và gửi thông báo. Tác vụ chạy khi backend khởi động, định kỳ mỗi phút và trước các lần đọc/đăng ký mượn để trạng thái/kho được cập nhật.
+   - Tại quầy, thủ thư chỉ chọn **Xác nhận giao sách** sau khi bàn giao vật lý. Khi đó chuyển `ChoNhan` sang `DangMuon`, ghi `NgayMuon` bằng ngày bàn giao và `NgayHenTra = NgayMuon + 14 ngày`; ghi nhận nhân viên bàn giao. Duyệt không bắt đầu thời hạn mượn.
+4. **Gia hạn mượn sách**:
+   - Chủ phiếu là độc giả đã đăng nhập, phiếu đang `DangMuon`, còn trước ngày `NgayHenTra` và `SoLanGiaHan = 0` mới được gia hạn.
+   - Mỗi phiếu chỉ gia hạn tối đa một lần; hạn trả mới bằng hạn hiện tại cộng 7 ngày, không tính lại từ ngày thao tác.
+   - Không cho gia hạn vào chính ngày đến hạn hoặc sau hạn. Cập nhật có điều kiện để tránh gia hạn lặp do nhiều request đồng thời.
+   - Ghi `SoLanGiaHan = 1`, `NgayGiaHan`, audit `PHIEU_GIA_HAN` và thông báo kết quả cho độc giả. Thao tác này không làm thay đổi tồn kho hay trạng thái phiếu.
 
 ---
 

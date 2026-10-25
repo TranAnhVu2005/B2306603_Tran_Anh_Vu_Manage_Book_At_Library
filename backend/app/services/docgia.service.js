@@ -344,7 +344,7 @@ class DocGiaService {
         // Ràng buộc toàn vẹn: Không được xóa nếu còn đơn mượn đang xử lý hoặc đang mượn
         const activeBorrows = await this.TheoDoi.countDocuments({
             MaDocGia: current.MaDocGia,
-            TrangThai: { $in: ["DangMuon", "ChoDuyet"] }
+            TrangThai: { $in: ["DangMuon", "ChoDuyet", "ChoNhan"] }
         });
 
         if (activeBorrows > 0) {

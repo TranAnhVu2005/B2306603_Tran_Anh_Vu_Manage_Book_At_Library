@@ -12,7 +12,7 @@
 
 Hệ thống được thiết kế theo tiêu chuẩn thực tế của một thư viện hiện đại:
 - **Số hóa toàn diện**: Thay thế sổ sách thủ công bằng nền tảng ứng dụng web tập trung với ngăn xếp công nghệ MEVN Stack (MongoDB, Express.js 5, Vue.js 3, Node.js).
-- **Kiểm soát kho tồn theo thời gian thực**: Trừ kho tức thì khi duyệt mượn sách, cộng hoàn kho khi độc giả hoàn trả đúng hạn.
+- **Kiểm soát kho tồn theo thời gian thực**: Khi duyệt, giữ một cuốn trong 3 ngày chờ độc giả nhận; nếu hết hạn nhận, hoàn kho. Thời hạn mượn 14 ngày chỉ bắt đầu từ lúc thủ thư xác nhận bàn giao thực tế.
 - **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; đưa thẻ vào `DanhSachDen` khi vi phạm đạt 3 lần.
 - **Bảo mật và an toàn dữ liệu**: Bảo vệ mật khẩu bằng Bcrypt; kiểm soát quyền theo chức năng ở backend; xác thực và quản lý phiên; kiểm tra dữ liệu chống NoSQL injection; giảm thiểu XSS, CSRF/XSRF, XXE và SSRF phù hợp với kiến trúc MongoDB/JSON hiện tại. Các biện pháp này là yêu cầu cần triển khai và xác minh, không được xem là hoàn tất chỉ từ mô tả tài liệu.
 - **Truy cứu hoạt động**: Lưu log append-only cho thao tác sách và vòng đời mượn-trả; Admin được lọc theo sách, độc giả, nhân viên và thời gian. Xóa sách dùng soft delete để giữ lịch sử và dữ liệu gốc.
@@ -28,7 +28,8 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Quyền hạn**:
   - Tìm kiếm, lọc và xem thông tin chi tiết từng đầu sách, nhà xuất bản.
   - Đăng ký mượn sách trực tuyến (giới hạn tối đa **3 quyển** đang lưu thông).
-  - Xem lịch sử mượn trả cá nhân; hủy yêu cầu `ChoDuyet` trước khi thủ thư xử lý. Trạng thái phiếu gồm `ChoDuyet`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`, `DaHuy`.
+  - Xem lịch sử mượn trả cá nhân; hủy yêu cầu `ChoDuyet` hoặc `ChoNhan` trước khi nhận sách. Trạng thái phiếu gồm `ChoDuyet`, `ChoNhan`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`, `DaHuy`, `QuaHanNhan`.
+  - Trước hạn trả, độc giả có thể gia hạn một lần thêm 7 ngày cho mỗi phiếu đang mượn.
   - Xem trạng thái thẻ thư viện và thanh toán tiền phạt / bồi thường bồi hoàn.
 
 ### 2.2. Nhân viên Quản lý / Thủ thư (Staff / STAFF)
@@ -37,7 +38,8 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
   - Quản lý kho sách (Thêm, Sửa, Xóa sách; kiểm kê số lượng tồn kho `SoQuyen`).
   - Quản lý danh mục Nhà xuất bản (Thêm, Sửa, Xóa NXB).
   - Quản lý quy trình Mượn - Trả:
-    - **Duyệt phiếu mượn**: Chuyển `ChoDuyet` -> `DangMuon`, trừ kho 1 cuốn, gán hạn trả 14 ngày, ghi nhận `MSNV`.
+    - **Duyệt phiếu mượn**: Chuyển `ChoDuyet` -> `ChoNhan`, giữ kho một cuốn và cho độc giả 3 ngày để đến nhận.
+    - **Bàn giao sách**: Thủ thư xác nhận nhận sách tại quầy; chuyển `ChoNhan` -> `DangMuon`, ghi ngày mượn và hạn trả sau 14 ngày kể từ bàn giao.
     - **Xác nhận trả sách**: Chuyển sang `DaTra`, hoàn lại kho 1 cuốn, tự động phát hiện trễ hạn.
     - **Xử lý mất sách**: Chuyển sang `MatSach`, tự động tính tiền bồi thường `GiaTriBoiThuong = Sach.DonGia`, không hoàn kho, tăng số lần vi phạm độc giả.
 

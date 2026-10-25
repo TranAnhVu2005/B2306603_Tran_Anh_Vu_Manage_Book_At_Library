@@ -242,7 +242,7 @@ class SachService {
         // Ràng buộc toàn vẹn: Không xóa nếu sách đang có người mượn hoặc chờ duyệt
         const borrowingCount = await this.TheoDoi.countDocuments({
             MaSach: current.MaSach,
-            TrangThai: { $in: ["DangMuon", "ChoDuyet"] }
+            TrangThai: { $in: ["DangMuon", "ChoDuyet", "ChoNhan"] }
         });
 
         if (borrowingCount > 0) {
