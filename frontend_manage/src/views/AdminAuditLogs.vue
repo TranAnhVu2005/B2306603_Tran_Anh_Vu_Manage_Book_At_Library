@@ -80,7 +80,14 @@
           <tbody>
             <tr v-for="entry in logs" :key="entry._id">
               <td class="audit-time">{{ formatDate(entry.ThoiGian) }}</td>
-              <td><span class="audit-action" :class="`audit-${entry.LoaiDoiTuong}`">{{ actionLabel(entry.HanhDong) }}</span></td>
+              <td class="audit-event-cell">
+                <div class="audit-event">
+                  <span class="audit-action" :class="`audit-${entry.LoaiDoiTuong}`">{{ actionLabel(entry.HanhDong) }}</span>
+                  <small v-if="actionDescription(entry.HanhDong)" class="audit-event-description">
+                    {{ actionDescription(entry.HanhDong) }}
+                  </small>
+                </div>
+              </td>
               <td>
                 <strong class="d-block">{{ entry.TenSach || "—" }}</strong>
                 <small class="font-mono-code text-muted">{{ entry.MaSach || "" }}</small>
@@ -93,7 +100,15 @@
                 <strong class="d-block">{{ entry.TenNhanVien || (entry.LoaiTacNhan === 'nhanvien' ? entry.TenTacNhan : "—") }}</strong>
                 <small class="font-mono-code text-muted">{{ entry.MSNV || (entry.LoaiTacNhan === 'nhanvien' ? entry.MaTacNhan : "") }}</small>
               </td>
-              <td class="audit-details">{{ formatDetails(entry.ChiTiet) }}</td>
+              <td class="audit-details-cell">
+                <div v-if="detailItems(entry.ChiTiet).length" class="audit-detail-list">
+                  <div v-for="(item, index) in detailItems(entry.ChiTiet)" :key="`${item.label}-${index}`" class="audit-detail-item">
+                    <span class="audit-detail-label">{{ item.label }}</span>
+                    <span class="audit-detail-value">{{ item.value }}</span>
+                  </div>
+                </div>
+                <span v-else class="audit-no-details">Không có thông tin bổ sung</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -125,6 +140,74 @@ const actionLabels = {
   PHIEU_TRA_SACH: "Xác nhận trả sách",
   PHIEU_BAO_MAT_SACH: "Ghi nhận mất sách",
   PHIEU_XOA: "Xóa phiếu mượn",
+  NHANVIEN_DANG_KY: "Đăng ký làm nhân viên",
+  NHANVIEN_DUYET_DANG_KY: "Duyệt hồ sơ nhân viên",
+  NHANVIEN_TU_CHOI_DANG_KY: "Từ chối hồ sơ nhân viên",
+  NHANVIEN_KHOA_TAI_KHOAN: "Khóa tài khoản thủ thư",
+  NHANVIEN_MO_KHOA_TAI_KHOAN: "Mở khóa tài khoản thủ thư",
+  DOCGIA_GO_DANH_SACH_DEN: "Gỡ độc giả khỏi danh sách đen",
+};
+
+const actionDescriptions = {
+  SACH_TAO: "Thêm một đầu sách vào kho.",
+  SACH_CAP_NHAT: "Cập nhật thông tin hoặc số lượng sách.",
+  SACH_XOA_MEM: "Ẩn sách khỏi danh mục đang hoạt động.",
+  SACH_KHOI_PHUC: "Đưa sách đã xóa trở lại danh mục.",
+  PHIEU_DANG_KY_MUON: "Độc giả gửi yêu cầu mượn sách.",
+  PHIEU_DUYET_MUON: "Thủ thư chấp thuận yêu cầu mượn.",
+  PHIEU_TU_CHOI_MUON: "Thủ thư từ chối yêu cầu mượn.",
+  PHIEU_TRA_SACH: "Ghi nhận sách đã được trả.",
+  PHIEU_BAO_MAT_SACH: "Ghi nhận sách bị mất và tiền bồi thường.",
+  PHIEU_XOA: "Xóa phiếu khỏi danh sách nghiệp vụ.",
+  NHANVIEN_DANG_KY: "Nhân viên gửi hồ sơ để quản trị viên xét duyệt.",
+  NHANVIEN_DUYET_DANG_KY: "Quản trị viên chấp thuận hồ sơ đăng ký.",
+  NHANVIEN_TU_CHOI_DANG_KY: "Quản trị viên từ chối hồ sơ đăng ký.",
+  NHANVIEN_KHOA_TAI_KHOAN: "Nhân viên không thể đăng nhập cho đến khi được mở khóa.",
+  NHANVIEN_MO_KHOA_TAI_KHOAN: "Nhân viên có thể đăng nhập lại bằng phiên mới.",
+  DOCGIA_GO_DANH_SACH_DEN: "Admin duyệt gỡ thẻ và đặt lại số lần vi phạm về 0.",
+};
+
+const detailLabels = {
+  Tu: "Trạng thái trước",
+  Den: "Trạng thái sau",
+  ThayDoi: "Thay đổi",
+  TruongDuocTao: "Thông tin được tạo",
+  LyDo: "Lý do",
+  QuaHan: "Trả quá hạn",
+  GiaTriBoiThuong: "Tiền bồi thường",
+  HoTenNV: "Họ tên nhân viên",
+  TrangThaiThe: "Trạng thái thẻ",
+  SoLanViPham: "Số lần vi phạm",
+  SoDienThoai: "Số điện thoại",
+  DiaChi: "Địa chỉ",
+  ChucVu: "Chức vụ",
+  TrangThai: "Trạng thái hồ sơ",
+  TrangThaiThe: "Trạng thái tài khoản",
+  TenSach: "Tên sách",
+  TacGia: "Tác giả",
+  MaSach: "Mã sách",
+  MaTheLoai: "Mã thể loại",
+  MaNXB: "Mã nhà xuất bản",
+  DonGia: "Đơn giá",
+  SoQuyen: "Số lượng",
+  NamXuatBan: "Năm xuất bản",
+  HinhAnh: "Ảnh bìa",
+  MoTa: "Mô tả",
+  NgayMuon: "Ngày mượn",
+  NgayTra: "Ngày trả",
+  HanTra: "Hạn trả",
+};
+
+const statusLabels = {
+  HoatDong: "Hoạt động",
+  Khoa: "Đã khóa",
+  DanhSachDen: "Danh sách đen",
+  ChoDuyet: "Chờ duyệt",
+  DaDuyet: "Đã duyệt",
+  TuChoi: "Đã từ chối",
+  DangMuon: "Đang mượn",
+  DaTra: "Đã trả",
+  MatSach: "Báo mất sách",
 };
 
 export default {
@@ -162,21 +245,52 @@ export default {
       this.filters = { MaSach: "", MaDocGia: "", MSNV: "", LoaiDoiTuong: "", HanhDong: "", from: "", to: "" };
       this.loadLogs(true);
     },
-    actionLabel(action) { return actionLabels[action] || action || "Sự kiện"; },
+    actionLabel(action) { return actionLabels[action] || this.humanizeKey(action) || "Sự kiện khác"; },
+    actionDescription(action) { return actionDescriptions[action] || "Ghi nhận thao tác trong hệ thống."; },
     formatDate(value) {
       if (!value) return "—";
       return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "medium" }).format(new Date(value));
     },
-    formatDetails(details) {
-      if (!details) return "—";
-      if (details.Tu !== undefined || details.Den !== undefined) {
-        return `${details.Tu ?? "mới"} → ${details.Den ?? "đã xóa"}`;
+    humanizeKey(key) {
+      return String(key || "").replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
+    },
+    displayValue(value, key = "") {
+      if (typeof value === "boolean") {
+        if (key === "QuaHan") return value ? "Có, trả quá hạn" : "Không quá hạn";
+        return value ? "Có" : "Không";
       }
-      const labels = { ThayDoi: "Thay đổi", TruongDuocTao: "Trường đã tạo", LyDo: "Lý do", QuaHan: "Quá hạn", GiaTriBoiThuong: "Bồi thường", Truoc: "Trước", Sau: "Sau" };
-      const formatValue = (value) => value && typeof value === "object"
-        ? Object.entries(value).map(([key, item]) => `${labels[key] || key}: ${formatValue(item)}`).join(", ")
-        : String(value ?? "—");
-      return Object.entries(details).map(([key, value]) => `${labels[key] || key}: ${formatValue(value)}`).join(" · ");
+      if (value === null || value === undefined || value === "") return "Chưa có";
+      if (typeof value === "string") return statusLabels[value] || value;
+      if (Array.isArray(value)) return value.map(item => detailLabels[item] || this.humanizeKey(item)).join(", ");
+      if (typeof value === "object") return "";
+      if (key === "GiaTriBoiThuong" || key === "DonGia") return new Intl.NumberFormat("vi-VN").format(value) + " ₫";
+      return String(value);
+    },
+    detailItems(details) {
+      if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+      const items = [];
+      const append = (key, value, prefix = "") => {
+        const label = detailLabels[key] || this.humanizeKey(key);
+        if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
+          Object.entries(value).forEach(([nestedKey, nestedValue]) => append(nestedKey, nestedValue, `${label}: `));
+          return;
+        }
+        const fullLabel = `${prefix}${label}`;
+        const shownValue = this.displayValue(value, key);
+        if (shownValue) items.push({ label: fullLabel, value: shownValue });
+      };
+
+      if (details.Tu !== undefined || details.Den !== undefined) {
+        const hasStaffStatus = [details.Tu, details.Den].some(value => ["HoatDong", "Khoa"].includes(value));
+        items.push({
+          label: hasStaffStatus ? "Trạng thái tài khoản" : "Trạng thái phiếu",
+          value: `${this.displayValue(details.Tu ?? "Mới") } → ${this.displayValue(details.Den ?? "Đã xóa")}`,
+        });
+      }
+      Object.entries(details)
+        .filter(([key]) => key !== "Tu" && key !== "Den")
+        .forEach(([key, value]) => append(key, value));
+      return items;
     },
   },
 };
@@ -199,9 +313,18 @@ export default {
 .audit-table { min-width: 1040px; }
 .audit-table th { white-space: nowrap; }
 .audit-time { min-width: 150px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.audit-action { display: inline-flex; padding: .3rem .65rem; border-radius: 999px; background: #edf2ee; color: #214d39; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.audit-event-cell { min-width: 250px; }
+.audit-event { display: grid; justify-items: start; gap: .45rem; max-width: 260px; }
+.audit-action { display: inline-flex; align-items: center; min-height: 32px; max-width: 100%; padding: .35rem .6rem; border: 1px solid #17633b; border-radius: 6px; background: #e8f4eb; color: #174d32; font-size: .8rem; font-weight: 750; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; }
 .audit-phieumuon { background: #fff3dc; color: #805414; }
-.audit-details { max-width: 240px; color: var(--ink-secondary); font-size: .78rem; overflow-wrap: anywhere; }
+.audit-yeucaunhanvien { border-color: #432dd7; background: #eeeaff; color: #30217f; }
+.audit-event-description { max-width: 260px; color: var(--ink-muted); font-size: .78rem; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.audit-details-cell { min-width: 270px; max-width: 370px; color: var(--ink-secondary); font-size: .83rem; line-height: 1.55; }
+.audit-detail-list { display: grid; gap: .5rem; }
+.audit-detail-item { display: grid; gap: .1rem; min-width: 0; }
+.audit-detail-label { color: var(--ink-muted); font-size: .7rem; font-weight: 750; letter-spacing: .025em; }
+.audit-detail-value { color: var(--ink-primary); overflow-wrap: anywhere; }
+.audit-no-details { color: var(--ink-muted); font-size: .78rem; }
 .audit-state { padding: 3rem 1rem; text-align: center; color: var(--ink-muted); }
 @media (max-width: 767.98px) {
   .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -211,5 +334,6 @@ export default {
   .audit-filters { grid-template-columns: minmax(0, 1fr); }
   .audit-filter-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .audit-immutable { margin-left: 0; }
+  .audit-event-cell, .audit-details-cell { min-width: 230px; }
 }
 </style>

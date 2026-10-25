@@ -73,7 +73,7 @@
         <!-- Dropdown Quản trị Hệ thống -->
         <div v-if="isAdmin" class="dropdown ath-nav-item" ref="adminDropdown">
           <button
-            class="ath-nav-link text-nowrap dropdown-toggle bg-transparent border-0 d-inline-flex align-items-center fw-bold text-danger"
+            class="ath-nav-link text-nowrap dropdown-toggle bg-transparent border-0 d-inline-flex align-items-center fw-bold text-danger me-4"
             :class="{ 'active bg-light': isAdminActive }" type="button" @click="toggleAdminMenu"
             aria-expanded="isAdminMenuOpen">
             Quản trị người dùng
@@ -84,8 +84,8 @@
               @click="isAdminMenuOpen = false">
               Quản lý tài khoản
             </router-link>
-            <router-link to="/admin/staff-applications" class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center"
-              @click="isAdminMenuOpen = false">
+            <router-link to="/admin/staff-applications"
+              class="dropdown-item py-2 px-3 rounded-2 d-flex align-items-center" @click="isAdminMenuOpen = false">
               Duyệt hồ sơ nhân viên
             </router-link>
             <router-link to="/admin/users?filter=danhsachden"
@@ -133,7 +133,7 @@
                 <strong class="d-block text-dark text-truncate">{{ authService.getDisplayName(user) ||
                   authService.getIdentifier(user) }}</strong>
                 <small class="font-monospace text-muted" style="font-size: 0.72rem;">{{ authService.getIdentifier(user)
-                  }}</small>
+                }}</small>
               </div>
               <router-link to="/profile" class="dropdown-item py-2 px-3 rounded-2" @click="isMenuOpen = false">
 
@@ -166,15 +166,21 @@
 
         <!-- Guest State (Đăng nhập / Đăng ký đồng bộ kích thước và căn chỉnh) -->
         <template v-else>
-          <router-link to="/login"
-            class="me-lg-2 btn btn-outline-secondary text-decoration-none py-1.5 px-3 rounded-pill d-inline-flex align-items-center">
+          <router-link to="/login" aria-label="Đăng nhập nhân viên" title="Đăng nhập nhân viên"
+            class="guest-header-action me-lg-2 btn btn-outline-secondary text-decoration-none py-1.5 px-3 rounded-pill d-inline-flex align-items-center">
             <i class="fas fa-sign-in-alt me-1.5"></i>
-            <span class="d-none d-sm-inline">Đăng nhập nhân viên</span>
+            <span class="d-none d-sm-inline">Đăng nhập</span>
             <span class="d-inline d-sm-none">Đăng nhập</span>
           </router-link>
-          <a :href="readerPortalUrl" target="_blank" rel="noopener noreferrer"
-            class="btn btn-primary text-decoration-none py-1.5 px-3 rounded-pill d-none d-sm-inline-flex align-items-center shadow-sm">
-            <i class="fas fa-book-open me-1.5"></i> Cổng độc giả
+          <router-link to="/staff-register" aria-label="Đăng ký nhân viên" title="Đăng ký nhân viên"
+            class="guest-header-action btn btn-outline-secondary text-decoration-none py-1.5 px-3 rounded-pill d-none d-lg-inline-flex align-items-center">
+            <i class="fas fa-user-plus me-1.5" aria-hidden="true"></i>
+            <span>Đăng ký</span>
+          </router-link>
+          <a :href="readerPortalUrl" target="_blank" rel="noopener noreferrer" aria-label="Mở cổng độc giả"
+            title="Mở cổng độc giả"
+            class="guest-header-action btn btn-primary text-decoration-none py-1.5 px-3 rounded-pill d-none d-sm-inline-flex align-items-center shadow-sm">
+            <i class="fas fa-book-open me-1.5" aria-hidden="true"></i> <span>Cổng độc giả</span>
           </a>
         </template>
 
@@ -242,6 +248,11 @@
         </template>
 
         <div v-if="!user" class="pt-3">
+          <router-link to="/staff-register"
+            class="btn btn-outline-secondary w-100 py-2.5 text-decoration-none text-center d-block mb-2"
+            @click="isMobileNavOpen = false">
+            <i class="fas fa-user-plus me-1" aria-hidden="true"></i> Đăng ký nhân viên
+          </router-link>
           <a :href="readerPortalUrl" target="_blank" rel="noopener noreferrer"
             class="btn btn-primary w-100 py-2.5 text-decoration-none shadow-sm rounded-pill text-center d-block"
             @click="isMobileNavOpen = false">
@@ -443,6 +454,14 @@ export default {
   transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s cubic-bezier(.2, .8, .2, 1), background-color .18s cubic-bezier(.2, .8, .2, 1);
 }
 
+.guest-header-action {
+  flex: 0 0 auto;
+  gap: .2rem;
+  white-space: nowrap;
+  padding-inline: .75rem !important;
+  font-size: .94rem;
+}
+
 .header-actions>.dropdown>.btn:hover,
 .header-actions>.btn:hover {
   transform: translate(2px, 2px);
@@ -548,6 +567,38 @@ export default {
 
   .ath-nav-link {
     padding-inline: .6rem;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+  .header-navigation-shell {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 16px;
+  }
+
+  .header-primary-nav {
+    justify-self: center;
+    min-width: 0;
+    gap: .1rem !important;
+  }
+
+  .ath-nav-link {
+    padding-inline: .42rem;
+    font-size: .9rem;
+  }
+
+  .header-actions {
+    gap: .65rem !important;
+  }
+
+  .header-actions .badge {
+    display: none !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .header-actions {
+    gap: .5rem !important;
   }
 }
 </style>

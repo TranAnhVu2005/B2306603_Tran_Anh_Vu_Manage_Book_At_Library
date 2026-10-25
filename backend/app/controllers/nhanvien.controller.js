@@ -2,6 +2,7 @@ const NhanVienService = require("../services/nhanvien.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 const ThongBaoService = require("../services/thongbao.service");
+const AuditLogService = require("../services/audit-log.service");
 
 // Tạo tài khoản nhân viên - Completed
 exports.create = async (req, res, next) => {
@@ -92,3 +93,53 @@ exports.delete = async (req, res, next) => {
         return next(new ApiError(400, error.message));
     }
 };
+
+async function updateStaffAccountStatus(req, res, next, status) {
+    try {
+        const reason = typeof req.body?.LyDo === "string" ? req.body.LyDo.trim() : "";
+        if (!reason || reason.length > 500) {
+            return next(new ApiError(400, "Vui lòng nhập lý do từ 1 đến 500 ký tự."));
+        }
+
+        const service = new NhanVienService(MongoDB.client);
+        const result = await service.setAccountStatus(req.params.id, status, {
+            id: req.user?.id,
+            username: req.user?.username,
+        });
+        const locked = status === "Khoa";
+        const action = locked ? "STAFF_ACCOUNT_LOCKED" : "STAFF_ACCOUNT_UNLOCKED";
+        const verb = locked ? "khóa" : "mở khóa";
+
+        await new AuditLogService(MongoDB.client).record({
+            action,
+            entityType: "staff",
+            entityId: result.MSNV,
+            actorType: "staff",
+            actorId: req.user.username,
+            actorName: req.user.HoTenNV,
+            MSNV: result.MSNV,
+            TenNhanVien: result.HoTenNV,
+            Details: { reason, from: locked ? "HoatDong" : "Khoa", to: status },
+        });
+        await new ThongBaoService(MongoDB.client).createSafely({
+            recipientId: String(result._id),
+            recipientType: "nhanvien",
+            type: locked ? "TAI_KHOAN_NHAN_VIEN_BI_KHOA" : "TAI_KHOAN_NHAN_VIEN_DUOC_MO_KHOA",
+            title: locked ? "Tài khoản nhân viên đã bị khóa" : "Tài khoản nhân viên đã được mở khóa",
+            message: locked
+                ? `Quản trị viên đã khóa tài khoản của bạn. Lý do: ${reason}`
+                : `Quản trị viên đã mở khóa tài khoản của bạn. Lý do: ${reason}`,
+            reference: result.MSNV,
+        });
+
+        return res.json({
+            message: locked ? "Đã khóa tài khoản thủ thư." : "Đã mở khóa tài khoản thủ thư.",
+            data: result,
+        });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+}
+
+exports.lockAccount = (req, res, next) => updateStaffAccountStatus(req, res, next, "Khoa");
+exports.unlockAccount = (req, res, next) => updateStaffAccountStatus(req, res, next, "HoatDong");

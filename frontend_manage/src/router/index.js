@@ -2,9 +2,10 @@ import { createRouter, createWebHistory } from "vue-router";
 import authService from "@/services/auth.service";
 
 const routes = [
-  { path: "/", redirect: "/catalog" },
-  { path: "/catalog", name: "manager.catalog", component: () => import("@/views/ManagerCatalog.vue"), meta: { role: "staff" } },
-  { path: "/catalog/books/:id", name: "manager.catalog.book", component: () => import("@/views/ManagerBookDetail.vue"), meta: { role: "staff" } },
+  { path: "/", redirect: "/login" },
+  // Tra cứu danh mục/chi tiết là công khai; thao tác nghiệp vụ vẫn được bảo vệ riêng ở API.
+  { path: "/catalog", name: "manager.catalog", component: () => import("@/views/ManagerCatalog.vue") },
+  { path: "/catalog/books/:id", name: "manager.catalog.book", component: () => import("@/views/ManagerBookDetail.vue") },
   { path: "/login", name: "login", component: () => import("@/views/StaffLoginView.vue") },
   { path: "/staff-register", name: "staff-register", component: () => import("@/views/StaffRegisterView.vue") },
   { path: "/profile", name: "profile", component: () => import("@/views/ProfileView.vue"), meta: { role: "staff" } },
@@ -24,14 +25,23 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
-  if (to.path === "/login") return true;
+  if (to.path === "/login") {
+    if (!authService.isStaffOrAdmin()) return true;
+    const requested = typeof to.query.redirect === "string" ? to.query.redirect : "";
+    if (/^\/(manager\/|admin\/|profile(?:\?|$)|catalog(?:\/|\?|$))/.test(requested) && !requested.startsWith("//")) {
+      return requested;
+    }
+    return authService.isAdmin() ? { name: "admin.users" } : { name: "manager.borrows" };
+  }
   if (!to.meta.role) return true;
 
   if (!authService.isLoggedIn()) {
     return { name: "login", query: { redirect: to.fullPath } };
   }
 
-  if (!authService.isStaffOrAdmin()) return { name: "login" };
+  if (!authService.isStaffOrAdmin()) {
+    return { name: "login", query: { redirect: to.fullPath } };
+  }
   if (to.meta.role === "admin" && !authService.isAdmin()) return { name: "manager.borrows" };
   return true;
 });

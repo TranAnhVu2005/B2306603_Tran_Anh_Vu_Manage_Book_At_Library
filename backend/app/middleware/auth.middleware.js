@@ -28,10 +28,16 @@ async function authenticate(req, res, next) {
         const id = ObjectId.isValid(decoded.id) ? new ObjectId(decoded.id) : null;
         const currentAccount = id
             ? await MongoDB.client.db().collection(collection).findOne({ _id: id }, {
-                projection: decoded.type === "staff" ? { ChucVu: 1 } : { VaiTro: 1 },
+                projection: decoded.type === "staff" ? { ChucVu: 1, TrangThaiThe: 1, PhienBanToken: 1 } : { VaiTro: 1 },
             })
             : null;
         if (!currentAccount) return next(new ApiError(401, "Tài khoản không còn hợp lệ."));
+        if (decoded.type === "staff" && currentAccount.TrangThaiThe === "Khoa") {
+            return next(new ApiError(401, "Tài khoản nhân viên đã bị khóa. Vui lòng liên hệ quản trị viên."));
+        }
+        if (decoded.type === "staff" && (decoded.sessionVersion || 0) !== (currentAccount.PhienBanToken || 0)) {
+            return next(new ApiError(401, "Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại."));
+        }
         decoded.role = decoded.type === "staff"
             ? (currentAccount.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER")
             : "USER";

@@ -19,14 +19,19 @@ class AuthController {
         try {
             const { identifier, password } = req.body;
             if (!identifier || !password) return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu."));
-            const staff = await new NhanVienService(MongoDB.client).login(identifier, password);
+            const staffAuth = await new NhanVienService(MongoDB.client).loginWithStatus(identifier, password);
+            if (staffAuth.status === "locked") {
+                return next(new ApiError(403, "Tài khoản thủ thư của bạn đang bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."));
+            }
+            const staff = staffAuth.staff;
             if (staff) {
                 const role = staff.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER";
                 const data = {
                     _id: String(staff._id), MSNV: staff.MSNV, HoTenNV: staff.HoTenNV,
                     ChucVu: staff.ChucVu, SoDienThoai: staff.SoDienThoai, DiaChi: staff.DiaChi,
+                    TrangThaiThe: staff.TrangThaiThe || "HoatDong",
                 };
-                const token = JwtUtil.sign({ id: String(staff._id), username: staff.MSNV, role, type: "staff" });
+                const token = JwtUtil.sign({ id: String(staff._id), username: staff.MSNV, role, type: "staff", sessionVersion: staff.PhienBanToken || 0 });
                 return res.json({ message: `Đăng nhập thành công với vai trò ${role === "ADMIN" ? "Quản trị viên" : "Thủ thư"}.`, token, data });
             }
             const status = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(identifier, password);
@@ -49,7 +54,11 @@ class AuthController {
             const docGiaService = new DocGiaService(MongoDB.client);
 
             // 1. Kiểm tra tài khoản Nhân viên / Quản trị viên trước
-            const staff = await nhanVienService.login(identifier, password);
+            const staffAuth = await nhanVienService.loginWithStatus(identifier, password);
+            if (staffAuth.status === "locked") {
+                return next(new ApiError(403, "Tài khoản nhân viên của bạn đang bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."));
+            }
+            const staff = staffAuth.staff;
             if (staff) {
                 const vaiTro = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
                 const userData = {
@@ -59,6 +68,7 @@ class AuthController {
                     ChucVu: staff.ChucVu,
                     SoDienThoai: staff.SoDienThoai,
                     DiaChi: staff.DiaChi,
+                    TrangThaiThe: staff.TrangThaiThe || "HoatDong",
                 };
 
                 const token = JwtUtil.sign({
@@ -66,6 +76,7 @@ class AuthController {
                     username: staff.MSNV,
                     role: vaiTro,
                     type: "staff",
+                    sessionVersion: staff.PhienBanToken || 0,
                 });
 
                 return res.json({
@@ -213,6 +224,7 @@ class AuthController {
                     SoDienThoai: staff.SoDienThoai,
                     DiaChi: staff.DiaChi,
                     AnhDaiDien: staff.AnhDaiDien,
+                    TrangThaiThe: staff.TrangThaiThe || "HoatDong",
                 };
             } else {
                 const docGiaService = new DocGiaService(MongoDB.client);

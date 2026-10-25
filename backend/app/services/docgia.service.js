@@ -292,12 +292,12 @@ class DocGiaService {
         return result ? this.findById(id) : null;
     }
 
-    // Xét gỡ khỏi danh sách đen, giữ nguyên lịch sử vi phạm.
+    // Admin xét gỡ khỏi danh sách đen: reset bộ đếm vi phạm của chu kỳ mới.
     async reinstate(id) {
         const filter = this.buildIdFilter(id);
         const result = await this.DocGia.findOneAndUpdate(
             { ...filter, TrangThaiThe: "DanhSachDen" },
-            { $set: { TrangThaiThe: "HoatDong", UpdatedAt: new Date() } },
+            { $set: { TrangThaiThe: "HoatDong", SoLanViPham: 0, UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
         return result ? this.findById(id) : null;

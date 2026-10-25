@@ -83,8 +83,12 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Quản lý danh sách toàn bộ tài khoản người dùng và nhân viên.
    - Xét duyệt/từ chối hồ sơ ứng tuyển nhân viên. Chỉ khi được duyệt mới sinh hồ sơ nhân viên `THUTHU`; hồ sơ độc giả không được chuyển đổi.
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
-   - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); giữ nguyên `SoLanViPham` để bảo toàn lịch sử. Vi phạm mới tiếp tục cộng dồn và sẽ áp dụng lại chế tài khi đạt ngưỡng.
+   - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); đặt `SoLanViPham = 0` để bắt đầu chu kỳ theo dõi mới theo quyết định có chủ đích của Admin. Nhật ký kiểm toán vẫn lưu các sự kiện vi phạm và quyết định xét gỡ trước đó.
+   - Sau khi gỡ, JWT độc giả hiện tại vẫn hợp lệ; frontend đồng bộ hồ sơ qua `/api/auth/me` khi nhận thông báo thay đổi trạng thái và kiểm tra trạng thái mới nhất ngay trước khi mở luồng mượn. API mượn luôn đối chiếu MongoDB, không dùng trạng thái cache trong JWT/localStorage làm quyền quyết định.
    - Quyền xóa tài khoản vi phạm vĩnh viễn khỏi CSDL.
+   - Được khóa/mở khóa tài khoản thủ thư bằng `nhanvien.TrangThaiThe`; không khóa tài khoản Admin. Backend từ chối yêu cầu tự khóa, kể cả khi Admin gọi API trực tiếp.
+   - Khi khóa, tăng `PhienBanToken`; đăng nhập mới bị từ chối và middleware chặn JWT đã cấp trước đó. Mở khóa chỉ cho phép phiên đăng nhập mới, không kích hoạt token cũ trở lại. Ghi lý do kiểm toán và thông báo thủ thư.
+   - Nếu thủ thư nhập đúng số điện thoại và mật khẩu trong lúc tài khoản đang khóa, trả thông báo “Tài khoản thủ thư của bạn đang bị khóa...” để hướng dẫn liên hệ Admin; nếu thông tin xác thực sai, tiếp tục trả lỗi chung 401. Không cấp token khi tài khoản khóa.
 
 ### Ma trận quyền theo chức năng (thực thi bắt buộc tại Backend)
 
@@ -100,6 +104,7 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 | Đọc/tìm kiếm nhật ký kiểm toán | — | — | — | ✓ |
 | Xem/khôi phục sách đã xóa mềm | — | — | — | ✓ |
 | Thăng/hạ quyền, khóa/mở khóa, xét gỡ danh sách đen, xóa tài khoản | — | — | — | ✓ |
+| Khóa/mở khóa tài khoản thủ thư | — | — | — | ✓ |
 | Cập nhật hồ sơ nhân viên của chính mình | — | — | ✓ | ✓ |
 
 Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở server; vai trò hoặc mã nhân viên gửi từ trình duyệt không được dùng làm nguồn thẩm quyền. Các route guard frontend chỉ hỗ trợ điều hướng.

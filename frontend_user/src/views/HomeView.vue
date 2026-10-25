@@ -221,6 +221,7 @@ export default {
       availableOnly: false,
       showBorrowModal: false,
       selectedBook: null,
+      checkingBorrowStatus: false,
       revealObserver: null,
     };
   },
@@ -372,14 +373,28 @@ export default {
       this.selectedPriceRange = "all";
       this.availableOnly = false;
     },
-    openBorrowModal(book) {
-      const user = authService.getUser();
+    async openBorrowModal(book) {
+      let user = authService.getUser();
       if (!authService.isLoggedIn() || !user) {
         this.$router.push("/login?redirect=/");
         return;
       }
       if (!authService.isReader(user)) {
         this.$refs.toast.show("Chỉ độc giả mới có thể đăng ký mượn sách.", "error");
+        return;
+      }
+      if (this.checkingBorrowStatus) return;
+      this.checkingBorrowStatus = true;
+      try {
+        user = await authService.fetchMe();
+      } catch (error) {
+        this.$refs.toast.show(error.response?.data?.message || "Không thể kiểm tra trạng thái thẻ lúc này. Vui lòng thử lại.", "error", 5000);
+        this.checkingBorrowStatus = false;
+        return;
+      }
+      this.checkingBorrowStatus = false;
+      if (!user || !authService.isReader(user)) {
+        this.$refs.toast.show("Không thể xác minh hồ sơ độc giả. Vui lòng đăng nhập lại.", "error", 5000);
         return;
       }
       if (user.TrangThaiThe === "DanhSachDen") {

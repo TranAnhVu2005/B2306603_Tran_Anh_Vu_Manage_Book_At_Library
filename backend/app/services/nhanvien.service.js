@@ -9,6 +9,7 @@ const publicFields = {
     SoDienThoai: 1,
     DiaChi: 1,
     AnhDaiDien: 1,
+    TrangThaiThe: 1,
 };
 
 /**
@@ -68,6 +69,8 @@ class NhanVienService {
         if (isCreating) {
             if (!data.ChucVu) data.ChucVu = "THUTHU";
             if (data.DiaChi === undefined) data.DiaChi = "";
+            data.TrangThaiThe = "HoatDong";
+            data.PhienBanToken = 0;
         }
 
         return data;
@@ -108,6 +111,8 @@ class NhanVienService {
             DiaChi: String(request.DiaChi || "").trim(),
             MatKhau: request.MatKhau,
             ChucVu: "THUTHU",
+            TrangThaiThe: "HoatDong",
+            PhienBanToken: 0,
             CreatedAt: new Date(),
             UpdatedAt: new Date(),
             MaYeuCauDangKy: String(request._id),
@@ -155,17 +160,71 @@ class NhanVienService {
     }
 
     //Xác thực đăng nhập cho nhân viên thủ thư/ quản trị viên - Completed
-    async login(identifier, password) {
+    async loginWithStatus(identifier, password) {
         const accountIdentifier = String(identifier || "").trim();
-        if (!/^\+?[0-9]{9,15}$/.test(accountIdentifier)) return null;
+        if (!/^\+?[0-9]{9,15}$/.test(accountIdentifier)) return { staff: null, status: "invalid" };
         const staff = await this.NhanVien.findOne({ SoDienThoai: accountIdentifier });
 
-        if (!staff) return null; //Không tìm thấy
+        if (!staff) return { staff: null, status: "invalid" };
 
         const passwordHash = staff.MatKhau;
         const isValid = await PasswordUtil.compare(password, passwordHash);
-        if (!isValid) return null;
-        return staff;
+        if (!isValid) return { staff: null, status: "invalid" };
+        if (staff.TrangThaiThe === "Khoa") return { staff: null, status: "locked" };
+        return { staff, status: "authenticated" };
+    }
+
+    async login(identifier, password) {
+        const result = await this.loginWithStatus(identifier, password);
+        return result.staff;
+    }
+
+    async setAccountStatus(id, status, actor = {}) {
+        const target = await this.findById(id);
+        if (!target) {
+            const error = new Error("Không tìm thấy nhân viên cần cập nhật trạng thái.");
+            error.statusCode = 404;
+            throw error;
+        }
+        if (String(target._id) === String(actor.id || "") || target.MSNV === String(actor.username || "")) {
+            const error = new Error("Không thể khóa hoặc mở khóa tài khoản của chính mình.");
+            error.statusCode = 403;
+            throw error;
+        }
+        if (target.ChucVu !== "THUTHU") {
+            const error = new Error("Chỉ có thể khóa hoặc mở khóa tài khoản thủ thư.");
+            error.statusCode = 403;
+            throw error;
+        }
+        if (!["HoatDong", "Khoa"].includes(status)) {
+            const error = new Error("Trạng thái tài khoản không hợp lệ.");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const currentStatus = target.TrangThaiThe || "HoatDong";
+        if (currentStatus === status) {
+            const error = new Error(status === "Khoa" ? "Tài khoản thủ thư đã bị khóa." : "Tài khoản thủ thư đang hoạt động.");
+            error.statusCode = 409;
+            throw error;
+        }
+
+        const expectedStatus = currentStatus === "HoatDong"
+            ? { $or: [{ TrangThaiThe: "HoatDong" }, { TrangThaiThe: { $exists: false } }] }
+            : { TrangThaiThe: currentStatus };
+        const result = await this.NhanVien.updateOne(
+            { _id: target._id, ChucVu: "THUTHU", ...expectedStatus },
+            {
+                $set: { TrangThaiThe: status, UpdatedAt: new Date() },
+                ...(status === "Khoa" ? { $inc: { PhienBanToken: 1 } } : {}),
+            }
+        );
+        if (!result.modifiedCount) {
+            const error = new Error("Trạng thái tài khoản vừa thay đổi. Vui lòng tải lại danh sách.");
+            error.statusCode = 409;
+            throw error;
+        }
+        return this.findById(target._id.toString());
     }
 
     // Cập nhật thông tin nhân viên - Completed

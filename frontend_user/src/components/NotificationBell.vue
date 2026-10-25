@@ -27,10 +27,11 @@
 
 <script>
 import thongBaoService from "../services/thongbao.service";
+import authService from "../services/auth.service";
 
 export default {
   name: "NotificationBell",
-  data: () => ({ items: [], unreadCount: 0, isOpen: false, loading: false, error: false, timer: null }),
+  data: () => ({ items: [], unreadCount: 0, isOpen: false, loading: false, error: false, timer: null, syncingUser: false }),
   created() {
     this.refresh();
     this.timer = window.setInterval(this.refresh, 30000);
@@ -50,8 +51,34 @@ export default {
         this.items = response.data || [];
         this.unreadCount = response.unreadCount || 0;
         this.error = false;
+        await this.syncReaderCardStatus();
       } catch {
         this.error = true;
+      }
+    },
+    async syncReaderCardStatus() {
+      const user = authService.getUser();
+      if (this.syncingUser || !authService.isReader(user)) return;
+
+      const cardStateEvents = new Set(["THE_GO_DANH_SACH_DEN", "THE_KHOA", "THE_MO_KHOA", "THE_VAO_DANH_SACH_DEN"]);
+      const latestEvent = this.items.find(item => cardStateEvents.has(item.LoaiThongBao));
+      if (!latestEvent) return;
+
+      const expectedStatus = {
+        THE_GO_DANH_SACH_DEN: "HoatDong",
+        THE_KHOA: "Khoa",
+        THE_VAO_DANH_SACH_DEN: "DanhSachDen",
+      }[latestEvent.LoaiThongBao];
+      if (expectedStatus && user.TrangThaiThe === expectedStatus) return;
+      if (latestEvent.LoaiThongBao === "THE_MO_KHOA" && user.TrangThaiThe !== "Khoa") return;
+
+      this.syncingUser = true;
+      try {
+        await authService.fetchMe();
+      } catch {
+        // Borrow actions re-check the server state before displaying eligibility.
+      } finally {
+        this.syncingUser = false;
       }
     },
     async toggle(event) {

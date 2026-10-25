@@ -19,4 +19,10 @@ router.route("/:id")
     .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoTenNV", "SoDienThoai", "DiaChi"), controller.update)
     .delete(authenticate, authorizeAdmin, controller.delete);
 
+router.route("/:id/lock")
+    .put(authenticate, authorizeAdmin, allowFields("LyDo"), controller.lockAccount);
+
+router.route("/:id/unlock")
+    .put(authenticate, authorizeAdmin, allowFields("LyDo"), controller.unlockAccount);
+
 module.exports = router;

@@ -2,6 +2,7 @@ const DocGiaService = require("../services/docgia.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 const ThongBaoService = require("../services/thongbao.service");
+const AuditLogService = require("../services/audit-log.service");
 
 async function notifyReader(reader, type, title, message) {
     if (!reader?._id) return;
@@ -137,7 +138,7 @@ exports.lock = async (req, res, next) => {
     }
 };
 
-// Xét gỡ người dùng khỏi danh sách đen nhưng giữ lịch sử vi phạm.
+// Xét gỡ người dùng khỏi danh sách đen và bắt đầu lại bộ đếm vi phạm.
 exports.reinstate = async (req, res, next) => {
     try {
         if (req.user?.type !== "staff" || req.user?.role !== "ADMIN") {
@@ -145,13 +146,27 @@ exports.reinstate = async (req, res, next) => {
         }
 
         const service = new DocGiaService(MongoDB.client);
+        const previous = await service.findById(req.params.id);
         const result = await service.reinstate(req.params.id);
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy độc giả đang ở trạng thái danh sách đen."));
         }
-        await notifyReader(result, "THE_GO_DANH_SACH_DEN", "Thẻ đã được gỡ khỏi danh sách đen", "Quản trị viên đã xét gỡ thẻ của bạn khỏi Danh sách đen. Lịch sử vi phạm vẫn được lưu; bạn có thể tiếp tục sử dụng các chức năng theo trạng thái thẻ hiện tại.");
+        await new AuditLogService(MongoDB.client).record({
+            action: "READER_BLACKLIST_REINSTATED",
+            entityType: "reader",
+            entityId: result.MaDocGia,
+            MaDocGia: result.MaDocGia,
+            TenDocGia: [result.HoLot, result.Ten].filter(Boolean).join(" "),
+            actorType: req.user.type,
+            actorId: req.user.username,
+            Details: {
+                from: { TrangThaiThe: previous?.TrangThaiThe, SoLanViPham: previous?.SoLanViPham },
+                to: { TrangThaiThe: result.TrangThaiThe, SoLanViPham: result.SoLanViPham },
+            },
+        });
+        await notifyReader(result, "THE_GO_DANH_SACH_DEN", "Thẻ đã được gỡ khỏi danh sách đen", "Quản trị viên đã xét gỡ thẻ của bạn khỏi Danh sách đen và đặt lại số lần vi phạm về 0. Bạn có thể tiếp tục sử dụng các chức năng theo trạng thái thẻ hiện tại.");
         return res.json({
-            message: "Đã gỡ thẻ khỏi danh sách đen sau khi xét duyệt. Lịch sử vi phạm được giữ nguyên.",
+            message: "Đã gỡ thẻ khỏi danh sách đen sau khi xét duyệt và đặt lại số lần vi phạm về 0.",
             data: result,
         });
     } catch (error) {

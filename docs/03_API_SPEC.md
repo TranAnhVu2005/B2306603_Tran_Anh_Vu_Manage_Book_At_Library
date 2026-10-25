@@ -18,7 +18,7 @@
 - **Xác thực input và NoSQL injection**: Chỉ nhận JSON với schema, kiểu và giới hạn kích thước rõ ràng; không gán trực tiếp `req.body` vào MongoDB query/update, không nhận toán tử MongoDB do client gửi, không tạo query bằng nối chuỗi. Dùng MongoDB Native Driver có cấu trúc. SQL injection không áp dụng trực tiếp vì dự án không dùng SQL; cần giữ quy tắc tương đương nếu bổ sung SQL sau này.
 - **XSS**: Trả dữ liệu theo JSON, không phản chiếu HTML không tin cậy; dữ liệu UI phải được render/encode theo ngữ cảnh, HTML rich text (nếu có) phải sanitize allowlist. Cấu hình CSP và security headers ở backend.
 - **CSRF/XSRF**: Với JWT truyền trong `Authorization` header và không dùng cookie xác thực, trình duyệt không tự gắn token nên CSRF cổ điển được giảm thiểu; bảo vệ XSS vẫn bắt buộc. Nếu dùng cookie, bật `HttpOnly`, `Secure`, `SameSite`, CSRF token cho request thay đổi trạng thái và kiểm tra `Origin`/`Referer`.
-- **Broken authentication/session**: Bcrypt; phản hồi lỗi đăng nhập chung; rate limit đăng nhập/đăng ký/Google auth (bộ đếm hiện giữ trong bộ nhớ tiến trình); JWT dùng secret từ env, thuật toán allowlist, hạn dùng và xác minh claim. Hiện có thu hồi token khi logout; thu hồi khi đổi mật khẩu/khóa tài khoản và khoá phiên phân tán nhiều instance vẫn cần hoàn thiện. Không log thông tin xác thực; HTTPS bắt buộc ở triển khai.
+- **Broken authentication/session**: Bcrypt; thông tin đăng nhập sai nhận lỗi chung để tránh dò tài khoản, trạng thái bị khóa chỉ được thông báo sau khi mật khẩu đúng; rate limit đăng nhập/đăng ký/Google auth (bộ đếm hiện giữ trong bộ nhớ tiến trình); JWT dùng secret từ env, thuật toán allowlist, hạn dùng và xác minh claim. Hiện có thu hồi token khi logout; thu hồi khi đổi mật khẩu/khóa tài khoản và khoá phiên phân tán nhiều instance vẫn cần hoàn thiện. Không log thông tin xác thực; HTTPS bắt buộc ở triển khai.
 - **XXE**: API hiện không có nhu cầu nhận XML. Từ chối XML nếu không được hỗ trợ; nếu bổ sung parser XML phải tắt DTD, external entities, XInclude và truy cập file/network bên ngoài, giới hạn kích thước/độ sâu.
 - **SSRF**: Backend hiện không có tính năng fetch URL do client cung cấp; ảnh sách/avatar được upload vào storage cục bộ, Google auth xác minh token qua thư viện cấu hình sẵn. Nếu bổ sung outbound request (bao gồm MoMo tương lai), phải allowlist host/protocol, kiểm tra IP sau DNS resolution, chặn loopback/private/link-local/metadata, giới hạn redirect/timeout/response size.
 - **CORS, headers, lỗi và vận hành**: CORS allowlist theo môi trường, body size limit, HTTPS, security headers/CSP, lỗi production không lộ stack/secret, secrets trong biến môi trường; audit các thao tác nhạy cảm mà không ghi token/mật khẩu.
@@ -39,7 +39,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ## 1. Phân Hệ Xác Thực & Tài Khoản (`/api/auth`)
 
 ### 📌 `POST /api/auth/login` (Đăng nhập hệ thống)
-* **Mô tả**: Độc giả đăng nhập bằng số điện thoại hoặc mã độc giả; Thủ thư/Quản trị viên bắt buộc đăng nhập bằng số điện thoại đã đăng ký. Mã nhân viên (MSNV) chỉ dùng làm mã hồ sơ và ghi nhận nghiệp vụ, không dùng đăng nhập.
+* **Mô tả**: Độc giả đăng nhập bằng số điện thoại hoặc mã độc giả; Thủ thư/Quản trị viên bắt buộc đăng nhập bằng số điện thoại đã đăng ký. Mã nhân viên (MSNV) chỉ dùng làm mã hồ sơ và ghi nhận nghiệp vụ, không dùng đăng nhập. Tài khoản nhân viên bị khóa chỉ nhận thông báo trạng thái riêng khi số điện thoại và mật khẩu chính xác; thông tin sai vẫn nhận lỗi chung để không tiết lộ tài khoản.
 * **Request Body**:
   ```json
   {
@@ -50,7 +50,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ### 📌 `POST /api/auth/staff-login` (Đăng nhập cổng nhân viên)
 * **Quyền truy cập**: Public, rate limit.
-* **Mô tả**: Chỉ xác thực hồ sơ `nhanvien`; không nhận phiên độc giả kể cả khi dùng cùng số điện thoại. Hồ sơ ứng tuyển đang chờ/từ chối chỉ nhận thông báo trạng thái nếu số điện thoại và mật khẩu khớp; không cấp JWT.
+* **Mô tả**: Chỉ xác thực hồ sơ `nhanvien`; không nhận phiên độc giả kể cả khi dùng cùng số điện thoại. Hồ sơ ứng tuyển đang chờ/từ chối chỉ nhận thông báo trạng thái nếu số điện thoại và mật khẩu khớp; tài khoản thủ thư đã khóa nhận HTTP 403 và hướng dẫn liên hệ quản trị viên chỉ khi thông tin xác thực khớp. Thông tin sai vẫn nhận lỗi chung HTTP 401; không trường hợp nào trong số này được cấp JWT.
 * **Response (200 OK)**:
   ```json
   {
@@ -109,12 +109,15 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ### Danh sách nhân viên (`GET /api/nhanvien`)
 * **Quyền truy cập**: Chỉ `ADMIN` (JWT nhân viên có chức vụ ADMIN); MANAGER/USER bị từ chối.
 * **Mô tả**: Trả danh sách hồ sơ từ collection `nhanvien`, hỗ trợ `?search=...` theo mã nhân viên, họ tên hoặc số điện thoại và `?chucVu=...` để lọc chức vụ.
-* **Response**: Mảng hồ sơ chỉ gồm `_id`, `MSNV`, `HoTenNV`, `ChucVu`, `SoDienThoai`, `DiaChi`, `AnhDaiDien`; tuyệt đối không có `MatKhau`. Đây là danh sách nhân sự riêng, không phải danh sách hồ sơ độc giả.
+* **Response**: Mảng hồ sơ chỉ gồm `_id`, `MSNV`, `HoTenNV`, `ChucVu`, `SoDienThoai`, `DiaChi`, `AnhDaiDien`, `TrangThaiThe`; tuyệt đối không có `MatKhau` hoặc `PhienBanToken`. Đây là danh sách nhân sự riêng, không phải danh sách hồ sơ độc giả.
 
 ### Tạo tài khoản nhân viên (`POST /api/nhanvien`)
 * **Quyền truy cập**: Chỉ ADMIN.
 * **Trường bắt buộc**: `HoTenNV`, `SoDienThoai`, `MatKhau`; số điện thoại phải có 9–15 chữ số (có thể có tiền tố `+`) và chưa được dùng bởi nhân viên khác. Hệ thống tự sinh `MSNV`.
 * **Đăng nhập**: Tài khoản nhân viên dùng `SoDienThoai`; đăng nhập bằng `MSNV` bị từ chối.
+* `PUT /api/nhanvien/:id/lock`: [ADMIN] Nhận `{ "LyDo": "..." }`; chỉ khóa thủ thư đang hoạt động. Admin tự khóa hoặc tác động lên tài khoản Admin khác bị từ chối 403. Tăng `PhienBanToken`, ghi nhật ký kiểm toán và thông báo thủ thư.
+* `PUT /api/nhanvien/:id/unlock`: [ADMIN] Nhận `{ "LyDo": "..." }`; chỉ mở khóa thủ thư đang bị khóa. Giữ nguyên phiên bản token đã tăng, ghi nhật ký và thông báo.
+* Khi `TrangThaiThe = "Khoa"`, số điện thoại và mật khẩu đúng nhận HTTP 403 với thông báo tài khoản đang bị khóa; mật khẩu sai hoặc tài khoản không tồn tại vẫn nhận HTTP 401 chung. Không cấp JWT trong cả hai trường hợp bị từ chối. Middleware kiểm tra trạng thái và phiên bản JWT trên mọi request đã xác thực; token cũ vẫn bị thu hồi sau khi mở khóa, nên không thể bỏ qua bằng Postman.
 
 ---
 
@@ -157,7 +160,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Số điện thoại phải đúng định dạng và chưa được tài khoản khác sử dụng.
 * `PUT /api/docgia/:id/lock`: [Super Admin] Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`), không thay đổi `SoLanViPham`.
 * `PUT /api/docgia/:id/unblock`: [Super Admin] Chỉ mở khóa thẻ trạng thái `Khoa`; giữ nguyên `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, trạng thái sau mở khóa là `DanhSachDen`.
-* `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); giữ nguyên lịch sử `SoLanViPham`. Không dùng thay cho mở khóa khẩn cấp.
+* `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`) và đặt `SoLanViPham = 0` cho chu kỳ tiếp theo; ghi sự kiện `DOCGIA_GO_DANH_SACH_DEN` với giá trị trước/sau vào `nhatkykiemtoan`. Không dùng thay cho mở khóa khẩn cấp.
 * `DELETE /api/docgia/:id`: [Super Admin] Xóa độc giả vĩnh viễn (Chặn xóa nếu còn phiếu mượn chưa hoàn tất).
 
 ---

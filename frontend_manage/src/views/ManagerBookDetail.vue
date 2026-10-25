@@ -84,6 +84,10 @@
                   <dd>{{ publisherName }} <span class="font-mono-code" style="font-size: 0.7rem; color: var(--ink-muted);">({{ book.MaNXB }})</span></dd>
                 </div>
                 <div class="spec-item">
+                  <dt>Thể loại</dt>
+                  <dd>{{ genreName }}</dd>
+                </div>
+                <div class="spec-item">
                   <dt>Năm xuất bản</dt>
                   <dd>{{ book.NamXuatBan || '—' }}</dd>
                 </div>
@@ -123,6 +127,7 @@
 import ToastNotification from "../components/ToastNotification.vue";
 import sachService from "../services/sach.service";
 import nxbService from "../services/nhaxuatban.service";
+import theloaiService from "../services/theloai.service";
 
 export default {
   name: "ManagerBookDetail",
@@ -131,6 +136,7 @@ export default {
     return {
       book: null,
       publishers: [],
+      genres: [],
       loading: false,
       defaultCover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
       revealObserver: null,
@@ -141,7 +147,11 @@ export default {
       if (!this.book || !this.book.MaNXB) return "—";
       const p = this.publishers.find(n => n.MaNXB === this.book.MaNXB);
       return p ? p.TENNXB : this.book.MaNXB;
-    }
+    },
+    genreName() {
+      const genre = this.genres.find(item => item.MaTheLoai === this.book?.MaTheLoai);
+      return genre?.TenTheLoai || "Chưa phân loại";
+    },
   },
   watch: {
     "$route.params.id"() {
@@ -166,12 +176,10 @@ export default {
       try {
         const id = this.$route.params.id;
         this.book = await sachService.get(id);
-        try {
-          this.publishers = await nxbService.getAll();
-        } catch (error) {
-          this.publishers = [];
-          this.$refs.toast.show(error.response?.data?.message || "Không thể tải danh mục nhà xuất bản.", "error");
-        }
+        const [publishers, genres] = await Promise.allSettled([nxbService.getAll(), theloaiService.getAll()]);
+        this.publishers = publishers.status === "fulfilled" ? publishers.value : [];
+        this.genres = genres.status === "fulfilled" ? genres.value : [];
+        if (publishers.status === "rejected") this.$refs.toast.show(publishers.reason.response?.data?.message || "Không thể tải danh mục nhà xuất bản.", "error");
       } catch (error) {
         this.$refs.toast.show(error.response?.data?.message || "Không tìm thấy thông tin cuốn sách.", "error");
       } finally {
@@ -189,32 +197,35 @@ export default {
 </script>
 
 <style scoped>
-/* Detail grid layout */
 .book-detail-grid {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 3rem;
-  align-items: flex-start;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 2.75rem);
+  align-items: start;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding: clamp(1rem, 2.4vw, 2rem);
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 1rem;
+  background: var(--paper, #fffdf2);
+  box-shadow: 5px 5px 0 var(--ink-primary, #111);
 }
-@media (max-width: 991.98px) {
-  .book-detail-grid { grid-template-columns: 1fr; gap: 2rem; }
-  .cover-col { position: static; display: flex; flex-direction: column; align-items: center; }
-}
-
-/* Cover */
-.cover-col { position: sticky; top: 1.5rem; }
+.cover-col { min-width: 0; }
 .meta-col { min-width: 0; }
 .cover-shell {
-  padding: 5px;
-  border-radius: 1.25rem;
-  background: var(--tray);
-  box-shadow: inset 0 0 0 1px var(--hair), 0 20px 40px -20px rgba(20, 53, 41, 0.3);
+  max-width: 280px;
+  margin-inline: auto;
+  padding: 0.45rem;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 0.85rem;
+  background: var(--paper-subtle, #fff);
+  box-shadow: 4px 4px 0 var(--ink-primary, #111);
 }
 .cover-core {
   position: relative;
-  border-radius: calc(1.25rem - 5px);
+  border-radius: 0.5rem;
   overflow: hidden;
-  background: var(--paper-subtle);
+  background: var(--paper-subtle, #fff);
 }
 .cover-img {
   display: block;
@@ -227,7 +238,7 @@ export default {
   inset: 0 auto 0 0;
   width: 10px;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(0,0,0,0.26), rgba(255,255,255,0.12) 45%, rgba(0,0,0,0.06));
+  background: linear-gradient(90deg, rgba(0,0,0,.24), rgba(255,255,255,.12) 45%, rgba(0,0,0,.06));
 }
 .cover-status-wrap {
   display: flex;
@@ -235,50 +246,64 @@ export default {
   margin-top: 1rem;
 }
 
-/* Meta */
+.cover-status-wrap { padding-inline: 0.25rem; }
+.cover-status-wrap :deep(.ath-badge) { white-space: normal; text-align: center; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  max-width: 100%;
+  padding: .4rem .65rem;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: .45rem;
+  background: var(--brand-yellow, #fdc800);
+  color: var(--ink-primary, #111);
+  font: 700 .75rem/1.3 var(--font-sans, "Be Vietnam Pro", sans-serif);
+  letter-spacing: .06em;
+  overflow-wrap: anywhere;
+}
 .book-title {
-  font-family: var(--font-serif);
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-family: var(--font-sans, "Be Vietnam Pro", sans-serif);
+  font-size: clamp(1.8rem, 3.4vw, 2.8rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
   color: var(--ink-primary);
-  margin: 1rem 0 0.75rem;
+  margin: .9rem 0 .5rem;
+  overflow-wrap: anywhere;
 }
 .book-author {
-  font-family: var(--font-serif);
-  font-size: 1.1rem;
+  font-family: var(--font-sans, "Be Vietnam Pro", sans-serif);
+  font-size: 1rem;
   color: var(--ink-secondary);
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
 }
 .book-author em { font-style: italic; color: var(--ink-primary); font-weight: 600; }
-
-/* Spec Double-Bezel */
 .spec-shell {
-  padding: 5px;
-  border-radius: 1.25rem;
-  background: var(--tray);
-  box-shadow: inset 0 0 0 1px var(--hair);
-  margin-bottom: 2rem;
+  padding: .85rem;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: .75rem;
+  background: var(--paper-subtle, #fff);
+  box-shadow: 3px 3px 0 var(--ink-primary, #111);
+  margin-bottom: 1.5rem;
 }
 .spec-core {
-  border-radius: calc(1.25rem - 5px);
-  background: var(--paper-subtle);
-  padding: 1rem;
+  background: transparent;
 }
 .spec-grid {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .35rem .75rem;
 }
-@media (max-width: 575px) { .spec-grid { grid-template-columns: 1fr; } }
 .spec-item {
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  min-width: 0;
+  padding: .7rem;
+  border-left: 3px solid var(--brand-violet, #432dd7);
+  background: var(--paper, #fffdf2);
 }
 .spec-item dt {
-  font-size: 0.64rem;
+  font-size: 0.67rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -287,68 +312,56 @@ export default {
 }
 .spec-item dd {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: .9rem;
+  font-weight: 600;
   color: var(--ink-primary);
+  overflow-wrap: anywhere;
 }
-
-/* Description */
-.book-desc { margin-bottom: 2rem; }
+.book-desc { margin-bottom: 1.5rem; }
 .desc-heading {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.72rem;
+  font-size: .75rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--ink-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: .55rem;
 }
 .desc-text {
-  font-size: 0.95rem;
+  font-size: .95rem;
   line-height: 1.75;
   color: var(--ink-secondary);
+  overflow-wrap: anywhere;
 }
-
-/* CTA row */
 .cta-row {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--paper-border);
+  padding-top: 1rem;
+  border-top: 2px solid var(--ink-primary, #111);
 }
-.borrow-btn { min-width: 220px; justify-content: space-between; padding: 0.55rem 0.55rem 0.55rem 1.4rem; }
 .cta-note {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
+  align-items: flex-start;
+  gap: .5rem;
+  font-size: .85rem;
   color: var(--ink-muted);
   margin: 0;
+  line-height: 1.6;
 }
-
-/* Common */
 .state-center { display: flex; flex-direction: column; align-items: center; padding: 5rem 1rem; gap: 1rem; }
 .state-text { font-size: 0.9rem; color: var(--ink-muted); margin: 0; }
 .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4rem 2rem; gap: 1rem; }
-.empty-title { font-family: var(--font-serif); font-size: 1.4rem; font-weight: 700; color: var(--ink-primary); margin: 0; }
+.empty-title { font-family: var(--font-sans, "Be Vietnam Pro", sans-serif); font-size: 1.4rem; font-weight: 700; color: var(--ink-primary); margin: 0; }
 .empty-sub { font-size: 0.9rem; color: var(--ink-muted); margin: 0; }
-
-.btn-island {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.14);
-  flex-shrink: 0;
-  transition: transform 0.5s var(--ease-spring), background 0.4s;
+.btn-island { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: .5rem; border: 2px solid currentColor; border-radius: .35rem; flex-shrink: 0;
 }
-.ath-btn-primary:hover .btn-island {
-  transform: translate(2px, -1px) scale(1.08);
-  background: rgba(255,255,255,0.22);
+@media (max-width: 767px) {
+  .book-detail-grid { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .cover-shell { width: min(100%, 220px); }
+}
+@media (max-width: 420px) {
+  .book-detail-grid { padding: .85rem; box-shadow: 3px 3px 0 var(--ink-primary, #111); }
+  .spec-grid { grid-template-columns: minmax(0, 1fr); }
+  .book-title { font-size: clamp(1.55rem, 8vw, 2rem); }
 }
 </style>

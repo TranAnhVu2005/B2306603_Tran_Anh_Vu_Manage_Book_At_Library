@@ -46,7 +46,7 @@ Bảng `docgia` lưu thông tin cá nhân người mượn sách, tài khoản �
 }
 ```
 
-* **Quy tắc Danh sách đen tự động**: Khi số lần vi phạm tăng đến ngưỡng 3, hệ thống tự động chuyển `TrangThaiThe = "DanhSachDen"` và từ chối yêu cầu mượn mới. Trạng thái khóa khẩn cấp (`Khoa`) là nghiệp vụ riêng, không làm thay đổi số lần vi phạm; mở khóa khẩn cấp ở ngưỡng 3 sẽ chuyển về `DanhSachDen`. Admin có thể xét gỡ khỏi Danh sách đen qua thao tác riêng nhưng không xóa lịch sử `SoLanViPham`; nếu phát sinh vi phạm mới, hệ thống áp dụng lại chế tài.
+* **Quy tắc Danh sách đen tự động**: Khi số lần vi phạm tăng đến ngưỡng 3, hệ thống tự động chuyển `TrangThaiThe = "DanhSachDen"` và từ chối yêu cầu mượn mới. Trạng thái khóa khẩn cấp (`Khoa`) là nghiệp vụ riêng, không làm thay đổi số lần vi phạm; mở khóa khẩn cấp ở ngưỡng 3 sẽ chuyển về `DanhSachDen`. Khi Admin xét gỡ khỏi Danh sách đen, hệ thống chuyển thẻ về `HoatDong` và đặt `SoLanViPham = 0` cho chu kỳ tiếp theo. Các sự kiện vi phạm và quyết định xét gỡ vẫn được lưu trong nhật ký kiểm toán.
 
 ---
 
@@ -83,9 +83,13 @@ Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và q
   "ChucVu": "ADMIN",                  // ["THUTHU" | "ADMIN"] Chức danh công tác
   "SoDienThoai": "0901234567",        // [Bắt buộc, duy nhất trong nhanvien] Dùng đăng nhập; MSNV chỉ là mã hồ sơ
   "DiaChi": "Ninh Kiều, Cần Thơ",    // Địa chỉ liên hệ của nhân viên
+  "TrangThaiThe": "HoatDong",         // ["HoatDong" | "Khoa"] Trạng thái tài khoản nhân viên
+  "PhienBanToken": 0,                  // Trường nội bộ tăng khi khóa, làm mất hiệu lực JWT cũ
   "MaYeuCauDangKy": "ObjectId string" // Metadata nội bộ để bảo đảm thao tác duyệt idempotent; không xuất hiện trong API
 }
 ```
+
+`TrangThaiThe` của `nhanvien` là trạng thái tài khoản, không áp dụng quy tắc vi phạm của độc giả. Chỉ Admin được khóa/mở khóa nhân viên `THUTHU`; không được tự khóa hoặc tác động lên tài khoản Admin. `PhienBanToken` không xuất API; middleware so sánh phiên bản trong JWT để thu hồi token cũ kể cả sau khi tài khoản được mở khóa.
 
 ---
 

@@ -32,6 +32,9 @@ Backend chạy tại `http://localhost:3000`; mỗi app proxy `/api` về backen
 
 **Header hai cổng:** Giữ ảnh nền `/bookshelf.jpg` có thể nhận biết rõ; phủ ảnh bằng tông mực trung tính để chữ sáng dễ đọc, tránh overlay tím bão hòa làm ảnh ngả magenta. Thanh điều hướng dùng nền giấy ngà `#FFFDF2`, chữ mực, trạng thái đang chọn màu vàng `#FDC800`, và viền/bóng mực cứng. Ở desktop, logo nằm bên trái, điều hướng cân giữa và hành động phiên/tài khoản bên phải; ở mobile, giữ logo bên trái và gom hành động cùng nút menu bên phải. Cấu trúc, màu sắc và chiều cao hai header phải đồng nhất, chỉ khác đường dẫn/nội dung theo quyền.
 
+Ở cổng quản lý desktop 1200–1400px, phân bổ cột điều hướng và cụm tài khoản theo chiều rộng thực tế; menu Admin không được nằm dưới chuông thông báo. Giữ khoảng cách thao tác giữa chuông và menu tài khoản; khi cần ở chiều rộng này có thể ẩn nhãn vai trò phụ trong nút tài khoản để tránh chồng lấn.
+Ở cổng quản lý desktop, cần có khoảng cách nhìn thấy rõ giữa cụm điều hướng (bao gồm menu Quản trị người dùng) và chuông thông báo ở cụm tài khoản; không để các control chạm viền/chồng lấn khi chiều rộng trình duyệt ở khoảng 1200–1400px. Trên mobile, chuông và tài khoản vẫn là các control riêng có khoảng cách thao tác.
+
 **Thẻ KPI nghiệp vụ:** Các thẻ tóm tắt số liệu ngắn cần ưu tiên độ quét nhanh và tiết kiệm chiều cao. Đặt nhãn/mô tả thành cụm bên trái, số liệu nổi bật bên phải; giảm padding theo breakpoint, giữ màu trạng thái, vùng bấm/focus dễ nhận biết và cho nhãn dài tự xuống dòng an toàn.
 
 ---
@@ -81,7 +84,11 @@ Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
      * Khối thông số: Số lượng còn lại trong kho, đơn giá đền bù nếu mất.
      * Nút CTA vàng có viền đậm `Đăng ký mượn` (còn sách) hoặc badge `Tạm hết sách`.
 2. **Chi tiết sách (`/books/:id`)**:
-   * Layout Editorial Split: Tóm tắt nội dung + thông số xuất bản chi tiết + nút mở Modal xác nhận mượn.
+   * Hai cổng dùng cùng cấu trúc chi tiết sách: breadcrumb quay lại danh mục; khung nội dung giấy ngà viền mực 2px và bóng cứng; ảnh bìa giữ tỷ lệ 3:4, mã sách và trạng thái kho ở cột ảnh; cột nội dung có tên sách, tác giả, thông số và tóm tắt.
+   * Tiêu đề và nội dung dùng Be Vietnam Pro, không dùng font serif riêng cho trang; phân cấp chữ rõ, không phóng tiêu đề hoặc badge quá mức. Khối thông số nền sáng phẳng, không dùng mảng vàng lớn hay bóng mềm.
+   * Thông số hiển thị gồm thể loại, nhà xuất bản, năm xuất bản và đơn giá bảo lưu; mã NXB là thông tin phụ. Nhãn thể loại phải tra từ danh mục `theloai` qua `MaTheLoai`, fallback “Chưa phân loại” khi thiếu dữ liệu.
+   * Cổng độc giả có CTA đăng ký mượn khi còn sách, trạng thái vô hiệu khi hết sách và ghi chú hạn mượn 14 ngày/địa điểm nhận sách; xác nhận tiếp tục qua Borrow Modal hiện có. Cổng quản lý chỉ hiển thị tồn kho, không cung cấp thao tác mượn.
+   * Ở 320–420px, thông số chuyển một cột; dưới 768px ảnh bìa thu gọn và nội dung xếp dọc. Tiêu đề/mã dài được phép ngắt dòng, nút không tràn ngang. Không xóa hoặc thay ảnh bìa/ảnh nền hiện có.
 3. **Modal Xác Nhận Mượn Sách (Borrow Dialog)**:
    * Dùng nền giấy ngà, vùng thông tin sách violet, điểm nhấn vàng, mực đậm; loại bỏ gradient trang trí, glass/blur, bóng mềm và nền xanh rêu của kiểu cũ.
    * Các bề mặt, thẻ thông tin, input và nút dùng viền mực 2–3px, góc vừa phải và bóng cứng 2–5px; focus-visible violet và trạng thái disabled/loading dễ nhận biết.
@@ -123,12 +130,16 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
 1. **Quản lý Người Dùng & Phân Quyền (`/admin/users`)**:
    * Danh sách tất cả tài khoản độc giả và nhân viên.
    * Bộ lọc trạng thái riêng cho `DanhSachDen` và thẻ bị khóa (`Khoa`); hiển thị trạng thái thẻ thực tế, không gộp hai trạng thái.
+   * Hiển thị trạng thái tài khoản thủ thư (`HoatDong`/`Khoa`), cho Admin khóa/mở khóa thủ thư kèm lý do; bộ lọc tài khoản/thẻ bị khóa đếm cả hai loại hồ sơ.
+   * Lý do khóa/mở khóa nhập trong dialog giao diện theo Neo-brutalism, có thông tin nhân viên, mô tả tác động, giới hạn 500 ký tự, trạng thái đang xử lý, xác nhận/hủy, hỗ trợ Escape và focus bàn phím; không dùng hộp thoại trình duyệt mặc định.
+   * Không hiển thị thao tác khóa Admin; backend vẫn phải từ chối Admin tự khóa và không cho khóa Admin khác.
    * **Khóa thẻ** chỉ dành cho thẻ `HoatDong`; **Mở khóa** chỉ dành cho thẻ `Khoa` và giữ nguyên `SoLanViPham`. Nếu đã đạt 3 vi phạm, mở khóa khẩn cấp vẫn để thẻ ở `DanhSachDen`.
-   * Thẻ `DanhSachDen` có thao tác **Xét gỡ khỏi danh sách đen** riêng; khi được duyệt, trạng thái trở về `HoatDong` nhưng lịch sử vi phạm không bị xóa.
+   * Thẻ `DanhSachDen` có thao tác **Xét gỡ khỏi danh sách đen** riêng; khi được duyệt, trạng thái trở về `HoatDong` và `SoLanViPham` được đặt lại về 0 cho chu kỳ mới. Nhật ký kiểm toán vẫn giữ lịch sử vi phạm và quyết định xét gỡ.
    * Admin có trang riêng để xem hồ sơ ứng tuyển nhân viên, duyệt hoặc từ chối kèm lý do; không chuyển đổi hồ sơ độc giả thành nhân viên.
 2. **Nhật ký kiểm toán (`/admin/audit-logs`)**:
    * Chỉ ADMIN được xem lịch sử sách và phiếu mượn; lọc theo hành động, mã sách, độc giả, nhân viên, loại đối tượng và khoảng thời gian.
    * Hiển thị thời điểm, hành động, tên/mã sách, tên/mã độc giả, nhân viên chịu trách nhiệm và chi tiết trạng thái/thay đổi; hỗ trợ tải thêm theo trang.
+   * Không hiển thị mã hành động kỹ thuật dạng chữ hoa có gạch dưới; dùng nhãn tiếng Việt có dấu và mô tả ngắn dễ hiểu. Chi tiết dùng nhãn tiếng Việt, dịch trạng thái nghiệp vụ sang cách viết có dấu, chia thành từng dòng thoáng; nội dung dài được ngắt dòng và không dính liền nhau.
    * Nhật ký chỉ đọc; giao diện không có thao tác sửa/xóa log.
 3. **Quản lý tài khoản (`/admin/users`)**:
    * Hiển thị độc giả và nhân viên đã được tạo trong cùng một danh sách; bộ lọc thẻ chỉ áp dụng cho độc giả.
@@ -142,7 +153,7 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
 
 ## 3. Các Thành Phần Giao Diện Tái Sử Dụng (Vue Components)
 
-Header cổng quản lý phải phản ánh phiên đang đăng nhập: khi xác thực thành công hiển thị tên và nhãn vai trò (`Thủ thư` hoặc `Quản trị viên`), điều hướng nghiệp vụ phù hợp và nút `Đăng xuất`; chỉ hiển thị `Đăng nhập nhân viên` khi chưa có phiên nhân viên. Khi tải lại trang, đồng bộ người dùng với API để tránh trạng thái header cũ. Cung cấp liên kết `Cổng độc giả` dùng URL từ env.
+Header cổng quản lý phải phản ánh phiên đang đăng nhập: khi xác thực thành công hiển thị tên và nhãn vai trò (`Thủ thư` hoặc `Quản trị viên`), điều hướng nghiệp vụ phù hợp và nút `Đăng xuất`; chỉ hiển thị `Đăng nhập nhân viên` khi chưa có phiên nhân viên. Sau đăng nhập không có redirect được yêu cầu, ADMIN mặc định vào `/admin/users`, MANAGER vào `/manager/borrows`. Nếu đăng nhập từ route nghiệp vụ có redirect hợp lệ thì giữ nguyên đích đó. Truy cập `/login` khi đã đăng nhập cũng chuyển ADMIN tới `/admin/users` và MANAGER tới `/manager/borrows`. Khi tải lại trang, đồng bộ người dùng với API để tránh trạng thái header cũ. Cung cấp liên kết `Cổng độc giả` dùng URL từ env.
 
 Các component cần xây dựng/cập nhật theo neo-brutalism:
 
@@ -166,7 +177,7 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 ## 5. Bản đồ route theo frontend
 
 - `frontend_user/`: `/`, `/books`, `/books/:id`, `/profile`, `/login`, `/register`, trang 404 dành cho độc giả. Không đăng ký các route `/manager/*` hoặc `/admin/*`.
-- `frontend_manage/`: `/catalog` và `/catalog/books/:id` để tra cứu danh mục/chi tiết (không đăng ký mượn), `/login` và `/staff-register` dành cho nhân viên; trang đăng ký chỉ gửi hồ sơ, chưa tạo phiên. Các route nghiệp vụ gồm `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/admin/staff-applications`, `/admin/audit-logs`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; route Admin chỉ ADMIN.
+- `frontend_manage/`: đường dẫn gốc `/` ưu tiên chuyển tới `/login` để nhân viên gặp luồng đăng nhập đầu tiên. `/catalog` và `/catalog/books/:id` vẫn là route tra cứu công khai khi người dùng chủ động mở; chúng không yêu cầu đăng nhập và không có thao tác mượn. `/login` và `/staff-register` dành cho nhân viên. Trang đăng ký chỉ gửi hồ sơ, chưa tạo phiên; đăng ký phải được đặt đường dẫn dễ thấy tại header/menu mobile và trang login. Sau khi đăng nhập, chỉ chuyển tới đường dẫn nội bộ hợp lệ được yêu cầu; route nghiệp vụ gồm `/manager/borrows`, `/manager/books`, `/manager/publishers`, `/admin/users`, `/admin/staff-applications`, `/admin/audit-logs`, `/profile` nhân viên và trang 404 quản trị. MANAGER và ADMIN cùng có route nghiệp vụ thủ thư; route Admin chỉ ADMIN.
 - Hồ sơ nhân viên (`nhanvien`) và độc giả (`docgia`) là hai danh tính độc lập. MANAGER/ADMIN có thể tra cứu sách công khai qua cổng độc giả, nhưng các thao tác cá nhân độc giả yêu cầu phiên đăng nhập USER riêng cho đến khi có tính năng liên kết hồ sơ.
 - Cổng quản lý có thể liên kết về domain độc giả và ngược lại bằng URL gốc lấy từ env/config cho các luồng cần đổi ứng dụng. Tra cứu sách của nhân viên phải dùng route nội bộ `/catalog` để giữ origin/phiên nhân viên.
 - Guard phía client chỉ điều hướng và ẩn UI; API phải tiếp tục áp dụng JWT/RBAC/kiểm tra quyền sở hữu ở backend.
@@ -182,3 +193,4 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 - Mở chuông sẽ hiển thị panel có tiêu đề, nội dung, thời gian và phân biệt chưa đọc; hỗ trợ đánh dấu từng tin hoặc tất cả đã đọc. Nội dung dài được cuộn trong panel, không làm tràn toàn trang.
 - Dùng nền giấy, mực đậm, nhấn violet cho trạng thái chưa đọc, viền/bóng theo Neo-brutalism. Trên màn hình 320px panel nằm trong viewport.
 - Hộp thư lưu trên server và được đồng bộ khi mở, focus lại tab và mỗi 30 giây.
+- Khi nhận thông báo khóa/mở khóa hoặc gỡ Danh sách đen, cổng độc giả đồng bộ hồ sơ hiện tại qua `/api/auth/me`; trước khi mở Borrow Modal cũng tải trạng thái mới nhất để không chặn nhầm theo localStorage cũ. Backend vẫn là nơi quyết định cuối cùng khi tạo phiếu.

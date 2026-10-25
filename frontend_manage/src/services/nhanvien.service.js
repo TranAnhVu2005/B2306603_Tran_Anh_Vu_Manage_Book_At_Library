@@ -15,6 +15,14 @@ class NhanVienService {
             headers: isFormData ? { "Content-Type": "multipart/form-data" } : {}
         })).data;
     }
+
+    async lockAccount(id, LyDo) {
+        return (await this.api.put(`/${id}/lock`, { LyDo })).data;
+    }
+
+    async unlockAccount(id, LyDo) {
+        return (await this.api.put(`/${id}/unlock`, { LyDo })).data;
+    }
 }
 
 export default new NhanVienService();

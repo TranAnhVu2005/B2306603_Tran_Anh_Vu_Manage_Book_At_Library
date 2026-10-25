@@ -4,7 +4,6 @@
       <!-- ===== PAGE HEADER ===== -->
       <div class="vg-page-header d-flex justify-content-between align-items-center flex-wrap gap-3 reveal" data-reveal>
         <div>
-          <span class="vg-section-label">Nghiệp Vụ Thủ Thư &amp; Quản Trị</span>
           <h1 class="page-title">Quản Lý Mượn — Trả Sách &amp; Phê Duyệt</h1>
         </div>
         <button class="ath-btn-outline" @click="fetchData" type="button">
@@ -143,7 +142,7 @@
                   <td>
                     <strong class="row-name">{{ readerName(item.MaDocGia) }}</strong>
                     <span class="row-sub font-mono-code">{{ item.MaDocGia }} · {{ readerPhone(item.MaDocGia) || '—'
-                      }}</span>
+                    }}</span>
                     <span v-if="readerFor(item.MaDocGia)?.TrangThaiThe === 'DanhSachDen'"
                       class="ath-badge ath-badge-danh-sach-den" style="margin-top: 4px; font-size: 0.6rem;">
                       Danh sách đen ({{ readerFor(item.MaDocGia).SoLanViPham }} lỗi)
