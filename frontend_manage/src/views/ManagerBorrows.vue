@@ -662,6 +662,7 @@ export default {
 
 .filter-row {
   display: flex;
+  flex: 1 1 320px;
   align-items: center;
   justify-content: flex-end;
   gap: .75rem;
@@ -709,10 +710,11 @@ export default {
 
 .table-search-wrap {
   display: flex;
+  flex: 1 1 290px;
   align-items: center;
   gap: .6rem;
-  width: min(100%, 290px);
-  min-width: 190px;
+  width: auto;
+  min-width: 0;
   padding: .65rem .9rem;
   border-radius: .8rem;
   border: 1px solid var(--paper-border, #e8e6df);

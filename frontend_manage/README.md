@@ -1,6 +1,6 @@
 # Frontend Thủ thư và Quản trị viên
 
-Ứng dụng Vue 3/Vite dành cho vai trò `MANAGER` và `ADMIN`. Luồng đăng nhập/đăng ký độc giả nằm trong `../frontend_user/`.
+Ứng dụng Vue 3/Vite dành cho vai trò `STAFF` và `ADMIN`. Luồng đăng nhập/đăng ký độc giả nằm trong `../frontend_user/`.
 
 ## Chạy phát triển
 

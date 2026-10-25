@@ -7,6 +7,7 @@ const DocGiaService = require("./app/services/docgia.service");
 const NhanVienService = require("./app/services/nhanvien.service");
 const ThongBaoService = require("./app/services/thongbao.service");
 const TheLoaiService = require("./app/services/theloai.service");
+const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
 const { ObjectId } = require("mongodb");
 
 let server = null;
@@ -61,6 +62,7 @@ async function runTests() {
 
     // Khởi động kết nối MongoDB và máy chủ kiểm thử nếu chưa chạy
     await MongoDB.connect(config.db.uri);
+    await migrateLegacyRoles(MongoDB.client.db());
     await new TheLoaiService(MongoDB.client).ensureDefaults();
     server = await new Promise((resolve) => {
         const s = app.listen(config.app.port, () => resolve(s));
@@ -72,6 +74,9 @@ async function runTests() {
     let temporaryReaderObjectId = null;
     let temporaryReaderPhone = null;
     let temporaryReaderToken = null;
+    let temporaryOtherReaderId = null;
+    let temporaryOtherReaderObjectId = null;
+    let temporaryOtherReaderToken = null;
     let temporaryStaffId = null;
     let createdNotificationStaffId = null;
     let createdNotificationStaffToken = null;
@@ -85,6 +90,9 @@ async function runTests() {
     let temporaryNotificationId = null;
     let testBookCode = null;
     let zeroStockBookCode = null;
+    let cancellationBookCode = null;
+    let cancellationBookTitle = null;
+    const cancellationBorrowIds = [];
     const testApplicationIds = [];
     const testStaffCodes = [];
     const testStaffObjectIds = [];
@@ -104,7 +112,7 @@ async function runTests() {
     await assert("TC-AUTH-01: Đăng nhập nhân viên thành công", async () => {
         const staff = await new NhanVienService(MongoDB.client).create({
             HoTenNV: "Nhân viên kiểm thử",
-            ChucVu: "THUTHU",
+            ChucVu: "STAFF",
             SoDienThoai: `09${String(Date.now()).slice(-8)}`,
             MatKhau: "staff_test_password"
         });
@@ -118,10 +126,18 @@ async function runTests() {
         temporaryStaffToken = res.data.token;
         if (
             res.status !== 200 ||
-            res.data.data.ChucVu !== "THUTHU" ||
+            res.data.data.ChucVu !== "STAFF" ||
+            JwtUtil.verify(res.data.token).role !== "STAFF" ||
             !hasOnlyFields(res.data.data, ["_id", "MSNV", "HoTenNV", "ChucVu", "SoDienThoai", "DiaChi", "TrangThaiThe"])
         ) {
-            throw new Error(`Kỳ vọng HTTP 200, chỉ trả trường ChucVu theo lược đồ nhân viên, nhận status=${res.status}`);
+            throw new Error(`Kỳ vọng HTTP 200, ChucVu và JWT role phải là STAFF, nhận status=${res.status}`);
+        }
+        const staffCollection = MongoDB.client.db().collection("nhanvien");
+        await staffCollection.updateOne({ _id: staff._id }, { $set: { ChucVu: "THUTHU" } });
+        const migration = await migrateLegacyRoles(MongoDB.client.db());
+        const migratedStaff = await staffCollection.findOne({ _id: staff._id }, { projection: { ChucVu: 1 } });
+        if (migration.staff < 1 || migratedStaff?.ChucVu !== "STAFF") {
+            throw new Error("Migration không chuyển chức vụ legacy của nhân viên thành STAFF.");
         }
         const codeLogin = await request("POST", "/api/auth/login", { identifier: temporaryStaffCode, password: "staff_test_password" });
         if (codeLogin.status !== 401) throw new Error("Đăng nhập nhân viên bằng mã MSNV vẫn được chấp nhận.");
@@ -177,13 +193,18 @@ async function runTests() {
         }
         temporaryReaderObjectId = res.data.data._id;
         temporaryReaderToken = res.data.token;
-        await MongoDB.client.db().collection("docgia").updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "MANAGER" } });
+        const readerCollection = MongoDB.client.db().collection("docgia");
+        await readerCollection.updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "MANAGER" } });
         const legacyRoleMe = await request("GET", "/api/auth/me", null, { Authorization: `Bearer ${temporaryReaderToken}` });
         const legacyRoleList = await request("GET", "/api/docgia", null, { Authorization: `Bearer ${temporaryStaffToken}` });
         if (legacyRoleMe.data?.data?.VaiTro !== "USER" || legacyRoleList.data?.find((item) => item.MaDocGia === temporaryReaderId)?.VaiTro !== "USER") {
             throw new Error("Vai trò MANAGER cũ của độc giả vẫn được dùng như quyền nhân viên.");
         }
-        await MongoDB.client.db().collection("docgia").updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "USER" } });
+        const migration = await migrateLegacyRoles(MongoDB.client.db());
+        const migratedReader = await readerCollection.findOne({ MaDocGia: temporaryReaderId }, { projection: { VaiTro: 1 } });
+        if (migration.readers < 1 || migratedReader?.VaiTro !== "USER") {
+            throw new Error("Migration không đưa vai trò legacy của độc giả về USER.");
+        }
     });
 
     await assert("TC-NOTIFICATION-01: Người dùng chỉ xem và đánh dấu đã đọc thông báo của chính mình", async () => {
@@ -329,10 +350,10 @@ async function runTests() {
         temporaryAdminToken = adminToken;
 
         const missingStaffPhone = await request("POST", "/api/nhanvien", {
-            HoTenNV: "Thiếu điện thoại", ChucVu: "THUTHU", MatKhau: "test_password",
+            HoTenNV: "Thiếu điện thoại", ChucVu: "STAFF", MatKhau: "test_password",
         }, { Authorization: `Bearer ${temporaryAdminToken}` });
         const duplicateStaffPhone = await request("POST", "/api/nhanvien", {
-            HoTenNV: "Trùng điện thoại", ChucVu: "THUTHU", SoDienThoai: temporaryStaffPhone, MatKhau: "test_password",
+            HoTenNV: "Trùng điện thoại", ChucVu: "STAFF", SoDienThoai: temporaryStaffPhone, MatKhau: "test_password",
         }, { Authorization: `Bearer ${temporaryAdminToken}` });
         if (missingStaffPhone.status !== 400 || duplicateStaffPhone.status !== 400) {
             throw new Error(`Kỳ vọng từ chối thiếu/trùng số điện thoại nhân viên, nhận ${missingStaffPhone.status}/${duplicateStaffPhone.status}`);
@@ -340,7 +361,7 @@ async function runTests() {
 
         const createdStaff = await request("POST", "/api/nhanvien", {
             HoTenNV: "Nhân viên nhận thông báo",
-            ChucVu: "THUTHU",
+            ChucVu: "STAFF",
             SoDienThoai: `07${String(Date.now() + 2000).slice(-8)}`,
             MatKhau: "notification_staff_password",
         }, { Authorization: `Bearer ${temporaryAdminToken}` });
@@ -354,7 +375,7 @@ async function runTests() {
         const createdStaffToken = JwtUtil.sign({
             id: createdNotificationStaffId,
             username: createdStaff.data.data.MSNV,
-            role: "MANAGER",
+            role: "STAFF",
             type: "staff",
         });
         createdNotificationStaffToken = createdStaffToken;
@@ -389,7 +410,7 @@ async function runTests() {
                 HoTenNV: "Quản trị đã cập nhật",
                 SoDienThoai: temporaryAdminPhone,
                 DiaChi: "Cần Thơ",
-                ChucVu: "THUTHU",
+                ChucVu: "STAFF",
                 MatKhau: "attacker_password"
             },
             { Authorization: `Bearer ${adminToken}` }
@@ -629,6 +650,109 @@ async function runTests() {
         borrowId = res.data.data._id;
     });
 
+    await assert("TC-CANCEL-01: Hủy phiếu chờ duyệt giải phóng hạn mức mượn", async () => {
+        cancellationBookTitle = `Sách kiểm thử hủy yêu cầu ${Date.now()}`;
+        const newBook = await request("POST", "/api/sach", {
+            TenSach: cancellationBookTitle,
+            DonGia: 30000,
+            SoQuyen: 1,
+            NamXuatBan: 2024,
+            MaNXB: "NXB-0001",
+            MaTheLoai: "TL-0002",
+            TacGia: "Tester",
+            MoTa: "Fixture kiểm thử hủy yêu cầu mượn",
+        }, { Authorization: `Bearer ${temporaryStaffToken}` });
+        if (newBook.status !== 201) throw new Error(`Không tạo được sách fixture, nhận HTTP ${newBook.status}`);
+        cancellationBookCode = newBook.data.data.MaSach;
+
+        const other = await new DocGiaService(MongoDB.client).create({
+            HoLot: "Kiểm thử",
+            Ten: "Người khác",
+            NgaySinh: "2000-01-01",
+            Phai: 1,
+            DienThoai: `08${String(Date.now()).slice(-8)}`,
+            MatKhau: "other_reader_test_password",
+        });
+        temporaryOtherReaderObjectId = String(other._id);
+        temporaryOtherReaderId = `DG-${String(800000 + Math.floor(Math.random() * 199999)).padStart(6, "0")}`;
+        const readers = MongoDB.client.db().collection("docgia");
+        while (await readers.findOne({ MaDocGia: temporaryOtherReaderId })) {
+            temporaryOtherReaderId = `DG-${String(800000 + Math.floor(Math.random() * 199999)).padStart(6, "0")}`;
+        }
+        await readers.updateOne({ _id: other._id }, { $set: { MaDocGia: temporaryOtherReaderId } });
+        temporaryOtherReaderToken = JwtUtil.sign({
+            id: temporaryOtherReaderObjectId,
+            username: temporaryOtherReaderId,
+            role: "USER",
+            type: "reader",
+        });
+
+        const otherAttempt = await request("PUT", `/api/theodoimuonsach/${borrowId}/huy`, null, {
+            Authorization: `Bearer ${temporaryOtherReaderToken}`,
+        });
+        if (otherAttempt.status !== 403) throw new Error(`Độc giả khác không được hủy phiếu, nhận HTTP ${otherAttempt.status}`);
+
+        const cancelInitial = await request("PUT", `/api/theodoimuonsach/${borrowId}/huy`, null, {
+            Authorization: `Bearer ${temporaryReaderToken}`,
+        });
+        if (cancelInitial.status !== 200 || cancelInitial.data.data.TrangThai !== "DaHuy") {
+            throw new Error(`Chủ phiếu phải hủy được yêu cầu đang chờ, nhận HTTP ${cancelInitial.status}`);
+        }
+        cancellationBorrowIds.push(borrowId);
+
+        const fixtureBorrowResult = await MongoDB.client.db().collection("theodoimuonsach").insertMany([
+            { MaDocGia: temporaryReaderId, MaSach: "FIXTURE-A", TrangThai: "DangMuon", NgayMuon: "2026-01-01", CreatedAt: new Date() },
+            { MaDocGia: temporaryReaderId, MaSach: "FIXTURE-B", TrangThai: "DangMuon", NgayMuon: "2026-01-01", CreatedAt: new Date() },
+        ]);
+        const fixtureBorrowIds = Object.values(fixtureBorrowResult.insertedIds);
+        try {
+            const atLimit = await request("POST", "/api/theodoimuonsach", {
+                MaDocGia: temporaryReaderId,
+                MaSach: cancellationBookCode,
+            }, { Authorization: `Bearer ${temporaryReaderToken}` });
+            if (atLimit.status !== 201) throw new Error(`Đăng ký thứ ba khi đang có hai cuốn phải thành công, nhận HTTP ${atLimit.status}`);
+            cancellationBorrowIds.push(atLimit.data.data._id);
+
+            const overLimit = await request("POST", "/api/theodoimuonsach", {
+                MaDocGia: temporaryReaderId,
+                MaSach: testBookCode,
+            }, { Authorization: `Bearer ${temporaryReaderToken}` });
+            if (overLimit.status !== 400) throw new Error(`Phiếu chờ duyệt phải tính vào hạn mức 3, nhận HTTP ${overLimit.status}`);
+
+            const cancelledAtLimit = await request("PUT", `/api/theodoimuonsach/${atLimit.data.data._id}/huy`, null, {
+                Authorization: `Bearer ${temporaryReaderToken}`,
+            });
+            if (cancelledAtLimit.status !== 200 || cancelledAtLimit.data.data.TrangThai !== "DaHuy") {
+                throw new Error(`Hủy phiếu thứ ba phải giải phóng hạn mức, nhận HTTP ${cancelledAtLimit.status}`);
+            }
+            const repeatCancel = await request("PUT", `/api/theodoimuonsach/${atLimit.data.data._id}/huy`, null, {
+                Authorization: `Bearer ${temporaryReaderToken}`,
+            });
+            if (repeatCancel.status !== 409) throw new Error(`Không được hủy lại phiếu đã hủy, nhận HTTP ${repeatCancel.status}`);
+
+            const newChoice = await request("POST", "/api/theodoimuonsach", {
+                MaDocGia: temporaryReaderId,
+                MaSach: testBookCode,
+            }, { Authorization: `Bearer ${temporaryReaderToken}` });
+            if (newChoice.status !== 201 || newChoice.data.data.TrangThai !== "ChoDuyet") {
+                throw new Error(`Sau khi hủy phải đăng ký được sách khác, nhận HTTP ${newChoice.status}`);
+            }
+            borrowId = newChoice.data.data._id;
+
+            const stock = await MongoDB.client.db().collection("sach").findOne({ MaSach: cancellationBookCode }, { projection: { SoQuyen: 1 } });
+            if (stock?.SoQuyen !== 1) throw new Error(`Hủy phiếu chờ duyệt không được trừ kho; tồn thực tế=${stock?.SoQuyen}`);
+
+            const audit = await request("GET", `/api/nhatkykiemtoan?MaDocGia=${encodeURIComponent(temporaryReaderId)}&HanhDong=PHIEU_HUY_DANG_KY`, null, {
+                Authorization: `Bearer ${temporaryAdminToken}`,
+            });
+            if (audit.status !== 200 || audit.data.items?.filter((entry) => cancellationBorrowIds.includes(entry.MaDoiTuong)).length < 2) {
+                throw new Error("Nhật ký phải ghi nhận các phiếu đã được độc giả hủy.");
+            }
+        } finally {
+            await MongoDB.client.db().collection("theodoimuonsach").deleteMany({ _id: { $in: fixtureBorrowIds } });
+        }
+    });
+
     // TC-BORROW-02: Chặn mượn sách khi đã hết tồn kho
     await assert("TC-BORROW-02: Chặn mượn sách khi đã hết trong kho (SoQuyen == 0)", async () => {
         const res = await request("POST", "/api/theodoimuonsach", {
@@ -676,7 +800,7 @@ async function runTests() {
             { Authorization: `Bearer ${JwtUtil.sign({
                 id: temporaryReaderObjectId,
                 username: temporaryReaderId,
-                role: "MANAGER",
+                role: "STAFF",
                 type: "reader"
             })}` }
         );
@@ -793,7 +917,7 @@ async function runTests() {
         }
         const approved = await request("PUT", `/api/yeu-cau-nhan-vien/${application._id}/approve`, {}, headers);
         if (approved.data?.data?._id) testStaffObjectIds.push(String(approved.data.data._id));
-        if (approved.status !== 200 || approved.data.data.ChucVu !== "THUTHU" || !approved.data.data.MSNV || "MatKhau" in approved.data.data) {
+        if (approved.status !== 200 || approved.data.data.ChucVu !== "STAFF" || !approved.data.data.MSNV || "MatKhau" in approved.data.data) {
             throw new Error(`Duyệt hồ sơ không tạo đúng tài khoản thủ thư, status=${approved.status}`);
         }
         const activeLogin = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
@@ -842,7 +966,7 @@ async function runTests() {
     });
 
     await assert("TC-STAFF-APPLICATION-03: Endpoint cũ thăng cấp độc giả đã bị gỡ", async () => {
-        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/role`, { role: "MANAGER" }, { Authorization: `Bearer ${temporaryAdminToken}` });
+        const res = await request("PUT", `/api/docgia/${temporaryReaderId}/role`, { role: "STAFF" }, { Authorization: `Bearer ${temporaryAdminToken}` });
         if (res.status !== 404) throw new Error(`Route thăng cấp vẫn tồn tại, nhận HTTP ${res.status}`);
     });
 
@@ -981,12 +1105,15 @@ async function runTests() {
     });
 
     // Dọn dẹp dữ liệu kiểm thử
-    const testBookCodes = [testBookCode, zeroStockBookCode].filter(Boolean);
+    const testBookCodes = [testBookCode, zeroStockBookCode, cancellationBookCode].filter(Boolean);
     const db = MongoDB.client.db();
     // Dọn trực tiếp theo ID/mã fixture để teardown không phụ thuộc API hoặc tạo thêm audit log xóa.
-    const borrowIds = [borrowId, lossBorrowId].filter(Boolean).filter(ObjectId.isValid).map(id => new ObjectId(id));
+    const borrowIds = [borrowId, lossBorrowId, ...cancellationBorrowIds].filter(Boolean).filter(ObjectId.isValid).map(id => new ObjectId(id));
     if (borrowIds.length) await db.collection("theodoimuonsach").deleteMany({ _id: { $in: borrowIds } });
     if (temporaryReaderId) await db.collection("docgia").deleteOne({ MaDocGia: temporaryReaderId });
+    if (temporaryOtherReaderObjectId && ObjectId.isValid(temporaryOtherReaderObjectId)) {
+        await db.collection("docgia").deleteOne({ _id: new ObjectId(temporaryOtherReaderObjectId) });
+    }
     const staffObjectIds = testStaffObjectIds.filter(ObjectId.isValid).map(id => new ObjectId(id));
     if (staffObjectIds.length) await db.collection("nhanvien").deleteMany({ _id: { $in: staffObjectIds } });
     if (temporaryAdminId) await db.collection("nhanvien").deleteOne({ MSNV: temporaryAdminId });
@@ -995,12 +1122,15 @@ async function runTests() {
     if (temporaryReaderObjectId && ObjectId.isValid(temporaryReaderObjectId)) {
         await db.collection("thongbao").deleteMany({ NguoiNhanId: new ObjectId(temporaryReaderObjectId) });
     }
+    if (temporaryOtherReaderObjectId && ObjectId.isValid(temporaryOtherReaderObjectId)) {
+        await db.collection("thongbao").deleteMany({ NguoiNhanId: new ObjectId(temporaryOtherReaderObjectId) });
+    }
     if (staffObjectIds.length) await db.collection("thongbao").deleteMany({ NguoiNhanId: { $in: staffObjectIds } });
     await db.collection("thongbao").deleteMany({ TieuDe: "Thông báo kiểm thử" });
 
     // API xóa sách chỉ soft-delete; loại fixture khỏi DB sau khi kết thúc kiểm thử.
     // Dọn fixture cũ cùng dấu hiệu chính xác do các lượt chạy trước để sót.
-    const testBookTitles = ["Giáo Trình Kiểm Thử Tự Động Web", "Sách kiểm thử hết kho"];
+    const testBookTitles = ["Giáo Trình Kiểm Thử Tự Động Web", "Sách kiểm thử hết kho", cancellationBookTitle].filter(Boolean);
     await db.collection("sach").deleteMany({
         $or: [
             { MaSach: { $in: testBookCodes } },

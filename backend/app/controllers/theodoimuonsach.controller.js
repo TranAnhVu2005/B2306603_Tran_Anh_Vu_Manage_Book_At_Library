@@ -57,6 +57,21 @@ exports.tuChoiMuon = async (req, res, next) => {
     }
 };
 
+// Độc giả hủy yêu cầu mượn của chính mình khi phiếu còn chờ duyệt.
+exports.huyDangKy = async (req, res, next) => {
+    try {
+        const service = new TheoDoiMuonSachService(MongoDB.client);
+        const result = await service.huyDangKy(req.params.id, req.user?.username);
+        if (!result) return next(new ApiError(404, "Không tìm thấy phiếu mượn."));
+        return res.json({
+            message: "Đã hủy yêu cầu mượn đang chờ duyệt. Bạn có thể đăng ký mượn sách khác.",
+            data: result,
+        });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+};
+
 // Xác nhận trả - Completed
 exports.xacNhanTra = async (req, res, next) => {
     try {

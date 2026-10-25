@@ -25,7 +25,7 @@ class AuthController {
             }
             const staff = staffAuth.staff;
             if (staff) {
-                const role = staff.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER";
+                const role = staff.ChucVu === "ADMIN" ? "ADMIN" : "STAFF";
                 const data = {
                     _id: String(staff._id), MSNV: staff.MSNV, HoTenNV: staff.HoTenNV,
                     ChucVu: staff.ChucVu, SoDienThoai: staff.SoDienThoai, DiaChi: staff.DiaChi,
@@ -60,7 +60,7 @@ class AuthController {
             }
             const staff = staffAuth.staff;
             if (staff) {
-                const vaiTro = (staff.ChucVu === "ADMIN") ? "ADMIN" : "MANAGER";
+                const vaiTro = (staff.ChucVu === "ADMIN") ? "ADMIN" : "STAFF";
                 const userData = {
                     _id: String(staff._id),
                     MSNV: staff.MSNV,

@@ -86,17 +86,24 @@
 
         <div v-else class="table-responsive manager-books-table-wrap">
           <table class="ath-table manager-books-table align-middle">
+            <colgroup>
+              <col class="manager-col-cover" />
+              <col class="manager-col-code" />
+              <col class="manager-col-content" />
+              <col class="manager-col-catalog" />
+              <col class="manager-col-edition" />
+              <col class="manager-col-stock" />
+              <col class="manager-col-actions" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Bìa</th>
-                <th style="min-width: 120px;">Mã</th>
+                <th>Mã sách</th>
                 <th>Tên sách & Tác giả</th>
-                <th>NXB</th>
-                <th>Thể loại</th>
-                <th>Năm XB</th>
-                <th style="min-width: 140px;">Tồn kho</th>
-                <th style="min-width: 110px;">Đơn giá</th>
-                <th class="text-end" style="min-width: 160px;">Hành động</th>
+                <th>NXB / Thể loại</th>
+                <th>Năm XB / Đơn giá</th>
+                <th>Tồn kho</th>
+                <th class="text-end manager-actions-heading">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -122,12 +129,23 @@
                   <small class="text-muted fst-italic">{{ book.TacGia }}</small>
                 </td>
                 <td>
-                  <span class="badge bg-light text-dark border" :title="book.MaNXB">
-                    {{ getPublisherName(book.MaNXB) }}
-                  </span>
+                  <div class="manager-book-metadata">
+                    <div class="manager-book-metadata-row" :title="getPublisherName(book.MaNXB)">
+                      <span class="manager-book-metadata-label">NXB</span>
+                      <span class="manager-book-metadata-value">{{ getPublisherName(book.MaNXB) }}</span>
+                    </div>
+                    <div class="manager-book-metadata-row" :title="getGenreName(book.MaTheLoai)">
+                      <span class="manager-book-metadata-label">Thể loại</span>
+                      <span class="manager-book-metadata-value">{{ getGenreName(book.MaTheLoai) }}</span>
+                    </div>
+                  </div>
                 </td>
-                <td><span class="badge bg-light text-dark border">{{ getGenreName(book.MaTheLoai) }}</span></td>
-                <td class="small text-nowrap">{{ book.NamXuatBan || '—' }}</td>
+                <td>
+                  <div class="manager-book-edition">
+                    <span class="manager-book-year">{{ book.NamXuatBan || '—' }}</span>
+                    <span class="manager-book-price">{{ formatCurrency(book.DonGia) }}</span>
+                  </div>
+                </td>
                 <td>
                   <span v-if="book.deleted" class="text-muted small">Đã ẩn khỏi mượn/tra cứu</span>
                   <div v-else class="d-flex align-items-center">
@@ -145,8 +163,7 @@
                     </button>
                   </div>
                 </td>
-                <td class="font-mono-code small text-nowrap">{{ formatCurrency(book.DonGia) }}</td>
-                <td class="text-end">
+                <td class="text-end manager-actions-cell">
                   <div class="d-flex align-items-center justify-content-end gap-1 flex-nowrap">
                     <button v-if="book.deleted && isAdmin" class="ath-action-btn px-2" @click="restoreBook(book)" title="Khôi phục sách">
                       <i class="fas fa-rotate-left" aria-hidden="true"></i> Khôi phục
@@ -546,7 +563,101 @@ export default {
 }
 
 .manager-books-table {
-  min-width: 960px;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.manager-books-table th,
+.manager-books-table td {
+  overflow-wrap: anywhere;
+}
+
+.manager-books-table th {
+  white-space: normal;
+}
+
+.manager-col-cover { width: 58px; }
+.manager-col-code { width: 118px; }
+.manager-col-content { width: 20%; }
+.manager-col-catalog { width: 23%; }
+.manager-col-edition { width: 15%; }
+.manager-col-stock { width: 112px; }
+.manager-col-actions { width: 188px; }
+
+.manager-book-metadata,
+.manager-book-edition {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.manager-book-metadata-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.manager-book-metadata-label {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.manager-book-metadata-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manager-book-year,
+.manager-book-price {
+  white-space: nowrap;
+}
+
+.manager-book-year {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.manager-book-price {
+  color: var(--ink-primary);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.manager-actions-heading,
+.manager-actions-cell {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--paper, #fffdf2);
+  box-shadow: -5px 0 0 -3px var(--ink-primary, #111);
+}
+
+.manager-actions-heading {
+  z-index: 3;
+}
+
+.manager-actions-cell > div {
+  justify-content: flex-end;
+  flex-wrap: wrap !important;
+  row-gap: 0.4rem;
+}
+
+@media (max-width: 1199.98px) {
+  .manager-books-table {
+    min-width: 980px;
+  }
 }
 
 .manager-book-thumbnail {

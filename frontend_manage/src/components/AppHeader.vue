@@ -121,7 +121,7 @@
               <span v-if="authService.getRole(user) === 'ADMIN'"
                 class="badge bg-danger ms-2 px-2 py-1 d-none d-md-inline" style="font-size: 0.65rem;">QUẢN TRỊ
                 VIÊN</span>
-              <span v-else-if="authService.getRole(user) === 'MANAGER'"
+              <span v-else-if="authService.getRole(user) === 'STAFF'"
                 class="badge bg-success ms-2 px-2 py-1 d-none d-md-inline" style="font-size: 0.65rem;">THỦ THƯ</span>
               <span v-else class="badge bg-light text-dark border ms-2 d-none d-md-inline px-2 py-1"
                 style="font-size: 0.65rem;">ĐỘC GIẢ</span>

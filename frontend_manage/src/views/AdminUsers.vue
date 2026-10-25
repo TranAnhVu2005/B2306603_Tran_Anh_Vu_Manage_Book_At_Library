@@ -179,7 +179,7 @@
                     </svg>
                   </button>
                 </td>
-                <td v-else-if="account._kind === 'staff' && account.ChucVu === 'THUTHU'" class="text-end">
+                <td v-else-if="account._kind === 'staff' && account.ChucVu === 'STAFF'" class="text-end">
                   <button v-if="account.TrangThaiThe !== 'Khoa'" class="ath-action-btn ath-action-btn-danger me-1"
                     @click="setStaffAccountStatus(account, true)" title="Khóa tài khoản thủ thư">
                     <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true">

@@ -2,12 +2,17 @@ const app = require("./app");
 const config = require("./app/config");
 const MongoDB = require("./app/utils/mongodb.util");
 const TheLoaiService = require("./app/services/theloai.service");
+const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
 
 async function startServer() {
     try {
         console.log("Đang khởi tạo kết nối cơ sở dữ liệu MongoDB...");
         await MongoDB.connect(config.db.uri);
         console.log(`-> Kết nối CSDL thành công tại: ${config.db.uri}`);
+        const roleMigration = await migrateLegacyRoles(MongoDB.client.db());
+        if (roleMigration.staff || roleMigration.readers) {
+            console.log(`-> Chuẩn hóa vai trò: ${roleMigration.staff} nhân viên và ${roleMigration.readers} độc giả.`);
+        }
         await MongoDB.client.db().collection("jwt_revocations").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
         const genres = new TheLoaiService(MongoDB.client);
         await genres.ensureDefaults();

@@ -157,8 +157,16 @@ class TheoDoiMuonSachService {
             throw new Error(`Sách '${record.MaSach}' đã hết trong kho, không thể duyệt.`);
         }
 
-        // Trừ 1 cuốn trong kho
-        await this.Sach.updateOne({ MaSach: record.MaSach }, { $inc: { SoQuyen: -1 }, $set: { UpdatedAt: new Date() } });
+        // Trừ kho có điều kiện; phiếu có thể bị hủy đồng thời trong lúc kiểm tra.
+        const stockUpdate = await this.Sach.updateOne(
+            { MaSach: record.MaSach, SoQuyen: { $gt: 0 }, deleted: { $ne: true } },
+            { $inc: { SoQuyen: -1 }, $set: { UpdatedAt: new Date() } }
+        );
+        if (!stockUpdate.modifiedCount) {
+            const err = new Error(`Sách '${record.MaSach}' đã hết trong kho, không thể duyệt.`);
+            err.statusCode = 409;
+            throw err;
+        }
 
         const today = new Date();
         const dueDate = new Date(today);
@@ -168,7 +176,7 @@ class TheoDoiMuonSachService {
         const dueDateStr = dueDate.toISOString().split("T")[0];
 
         const result = await this.TheoDoi.findOneAndUpdate(
-            { _id: record._id },
+            { _id: record._id, TrangThai: "ChoDuyet" },
             {
                 $set: {
                     TrangThai: "DangMuon",
@@ -180,6 +188,13 @@ class TheoDoiMuonSachService {
             },
             { returnDocument: "after" }
         );
+        if (!result) {
+            // Hủy/từ chối có thể thắng cuộc đua sau khi đã trừ kho.
+            await this.Sach.updateOne({ MaSach: record.MaSach }, { $inc: { SoQuyen: 1 }, $set: { UpdatedAt: new Date() } });
+            const err = new Error("Phiếu đã được hủy hoặc xử lý trước khi duyệt.");
+            err.statusCode = 409;
+            throw err;
+        }
         const updatedRecord = result ? await this.findById(String(record._id)) : null;
         if (updatedRecord) {
             const reader = await this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { _id: 1, HoLot: 1, Ten: 1 } });
@@ -216,7 +231,7 @@ class TheoDoiMuonSachService {
         }
 
         const result = await this.TheoDoi.findOneAndUpdate(
-            { _id: record._id },
+            { _id: record._id, TrangThai: "ChoDuyet" },
             {
                 $set: {
                     TrangThai: "TuChoi",
@@ -226,6 +241,11 @@ class TheoDoiMuonSachService {
             },
             { returnDocument: "after" }
         );
+        if (!result) {
+            const err = new Error("Phiếu đã được hủy hoặc xử lý trước khi từ chối.");
+            err.statusCode = 409;
+            throw err;
+        }
         const updatedRecord = result ? await this.findById(String(record._id)) : null;
         if (updatedRecord) {
             const [sach, reader] = await Promise.all([
@@ -246,6 +266,47 @@ class TheoDoiMuonSachService {
             });
         }
         return updatedRecord;
+    }
+
+    // Độc giả chỉ được hủy phiếu của mình khi phiếu vẫn đang chờ duyệt.
+    async huyDangKy(id, maDocGia) {
+        if (!ObjectId.isValid(id)) return null;
+        const record = await this.TheoDoi.findOne({ _id: new ObjectId(id) });
+        if (!record) return null;
+        if (record.MaDocGia !== String(maDocGia)) {
+            const err = new Error("Bạn không có quyền hủy phiếu mượn của độc giả khác.");
+            err.statusCode = 403;
+            throw err;
+        }
+        if (record.TrangThai !== "ChoDuyet") {
+            const err = new Error("Chỉ có thể hủy phiếu mượn khi phiếu còn ở trạng thái Chờ duyệt.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const result = await this.TheoDoi.findOneAndUpdate(
+            { _id: record._id, MaDocGia: String(maDocGia), TrangThai: "ChoDuyet" },
+            { $set: { TrangThai: "DaHuy", UpdatedAt: new Date() } },
+            { returnDocument: "after" }
+        );
+        if (!result) {
+            const err = new Error("Phiếu vừa được thủ thư xử lý; hãy tải lại danh sách để xem trạng thái mới.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const [sach, docGia] = await Promise.all([
+            this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } }),
+            this.DocGia.findOne({ MaDocGia: record.MaDocGia }, { projection: { HoLot: 1, Ten: 1 } }),
+        ]);
+        await this.AuditLog.record({
+            action: "BORROW_CANCELLED", entityType: "borrow", entityId: String(record._id),
+            MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
+            TenDocGia: [docGia?.HoLot, docGia?.Ten].filter(Boolean).join(" "),
+            actorType: "reader", actorId: String(maDocGia),
+            Details: { from: "ChoDuyet", to: "DaHuy" },
+        });
+        return await this.findById(String(record._id));
     }
 
     // Xác nhận trả sách có check có trễ hay không - Completed

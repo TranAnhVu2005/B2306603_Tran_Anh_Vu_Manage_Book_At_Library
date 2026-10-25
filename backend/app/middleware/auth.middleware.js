@@ -38,9 +38,10 @@ async function authenticate(req, res, next) {
         if (decoded.type === "staff" && (decoded.sessionVersion || 0) !== (currentAccount.PhienBanToken || 0)) {
             return next(new ApiError(401, "Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại."));
         }
-        decoded.role = decoded.type === "staff"
-            ? (currentAccount.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER")
-            : "USER";
+        if (decoded.type === "staff" && !["STAFF", "ADMIN"].includes(currentAccount.ChucVu)) {
+            return next(new ApiError(401, "Vai trò tài khoản nhân viên không hợp lệ. Vui lòng đăng nhập lại."));
+        }
+        decoded.role = decoded.type === "staff" ? currentAccount.ChucVu : "USER";
         req.user = decoded; // Gắn thông tin user vào request để các middleware sau sử dụng
         req.authToken = token;
         next();

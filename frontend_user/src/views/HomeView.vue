@@ -130,7 +130,7 @@
           <div>
             <span class="vg-section-label">Danh mục sách</span>
             <p class="catalog-count">
-              Hiển thị <strong>{{ filteredBooks.length }}</strong> trên tổng số <strong>{{ books.length }}</strong> ấn bản
+              Hiển thị <strong>{{ resultRangeStart }}–{{ resultRangeEnd }}</strong> trên <strong>{{ filteredBooks.length }}</strong> kết quả · trang <strong>{{ currentPage }}/{{ totalPages }}</strong>
             </p>
           </div>
           <button class="ath-btn-outline" @click="fetchBooks" type="button">
@@ -167,7 +167,7 @@
         <!-- Grid -->
         <div v-else class="books-grid">
           <div
-            v-for="(book, idx) in filteredBooks"
+            v-for="(book, idx) in paginatedBooks"
             :key="book._id"
             class="reveal"
             :class="`reveal-d${Math.min(idx % 6 + 1, 4)}`"
@@ -176,6 +176,11 @@
             <BookCard :book="book" :publisher-name="getPublisherName(book.MaNXB)" :genre-name="getGenreName(book.MaTheLoai)" @borrow="openBorrowModal" />
           </div>
         </div>
+        <nav v-if="totalPages > 1" class="catalog-pagination" aria-label="Phân trang danh mục sách">
+          <button class="catalog-page-button" type="button" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">Trước</button>
+          <button v-for="page in visiblePageNumbers" :key="page" class="catalog-page-button" :class="{ 'is-current': page === currentPage }" type="button" :aria-current="page === currentPage ? 'page' : undefined" :aria-label="`Trang ${page}`" @click="goToPage(page)">{{ page }}</button>
+          <button class="catalog-page-button" type="button" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">Sau</button>
+        </nav>
         </div>
       </div>
     </section>
@@ -219,6 +224,8 @@ export default {
       selectedGenre: "all",
       selectedPriceRange: "all",
       availableOnly: false,
+      currentPage: 1,
+      pageSize: 10,
       showBorrowModal: false,
       selectedBook: null,
       checkingBorrowStatus: false,
@@ -271,9 +278,30 @@ export default {
         return matchesKeyword && matchesPublisher && matchesGenre && matchesPrice && matchesAvailability;
       });
     },
+    totalPages() {
+      return Math.max(1, Math.ceil(this.filteredBooks.length / this.pageSize));
+    },
+    paginatedBooks() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.filteredBooks.slice(start, start + this.pageSize);
+    },
+    resultRangeStart() {
+      return this.filteredBooks.length ? (this.currentPage - 1) * this.pageSize + 1 : 0;
+    },
+    resultRangeEnd() {
+      return Math.min(this.currentPage * this.pageSize, this.filteredBooks.length);
+    },
+    visiblePageNumbers() {
+      const start = Math.max(1, Math.min(this.currentPage - 2, this.totalPages - 4));
+      return Array.from({ length: Math.min(5, this.totalPages) }, (_, index) => start + index);
+    },
   },
   watch: {
     filteredBooks() {
+      this.currentPage = 1;
+      this.$nextTick(() => this.initReveal());
+    },
+    paginatedBooks() {
       this.$nextTick(() => this.initReveal());
     },
   },
@@ -366,6 +394,11 @@ export default {
       }
     },
     clearSearch() { this.searchKeyword = ""; },
+    goToPage(page) {
+      if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+      this.currentPage = page;
+      this.$nextTick(() => this.$el.querySelector(".catalog-section")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    },
     resetFilters() {
       this.searchKeyword = "";
       this.selectedPublisher = "all";
@@ -738,6 +771,45 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.25rem;
+}
+
+.catalog-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.catalog-page-button {
+  min-width: 42px;
+  min-height: 40px;
+  padding: 0.45rem 0.75rem;
+  border: 2px solid var(--ink-primary);
+  border-radius: 0.65rem;
+  background: var(--paper);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--ink-primary);
+  cursor: pointer;
+}
+
+.catalog-page-button:hover:not(:disabled), .catalog-page-button.is-current {
+  background: var(--neo-yellow);
+}
+
+.catalog-page-button:focus-visible {
+  outline: 3px solid var(--neo-violet);
+  outline-offset: 3px;
+}
+
+.catalog-page-button:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 /* Loading / empty state */

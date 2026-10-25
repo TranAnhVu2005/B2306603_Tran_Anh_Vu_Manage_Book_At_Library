@@ -11,7 +11,7 @@ const router = express.Router();
 const upload = createUploader("avatars")
 
 router.route("/")
-    .get(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.findAll)
+    .get(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.findAll)
     .post(authenticate, authorizeAdmin, upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "MatKhau"), controller.create);
 
 router.route("/:id")

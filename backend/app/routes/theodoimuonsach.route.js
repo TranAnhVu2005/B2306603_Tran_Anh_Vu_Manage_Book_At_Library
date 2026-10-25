@@ -15,15 +15,18 @@ router.route("/:id")
     
 
 router.route("/:id/duyet")
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.duyetMuon);
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.duyetMuon);
 
 router.route("/:id/tu-choi")
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), allowFields("lyDo"), controller.tuChoiMuon);
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), allowFields("lyDo"), controller.tuChoiMuon);
+
+router.route("/:id/huy")
+    .put(authenticate, authorizeReader, controller.huyDangKy);
 
 router.route("/:id/tra-sach")
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.xacNhanTra);
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.xacNhanTra);
 
 router.route("/:id/bao-mat")
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), allowFields("ghiChu"), controller.baoMat);
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), allowFields("ghiChu"), controller.baoMat);
 
 module.exports = router;

@@ -7,11 +7,11 @@ const router = express.Router();
 
 router.route("/")
     .get(controller.findAll)
-    .post(authenticate, authorizeStaff("MANAGER", "ADMIN"), allowFields("TENNXB", "DiaChi"), controller.create);
+    .post(authenticate, authorizeStaff("STAFF", "ADMIN"), allowFields("TENNXB", "DiaChi"), controller.create);
 
 router.route("/:id")
     .get(controller.findOne)
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), allowFields("TENNXB", "DiaChi"), controller.update)
-    .delete(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.delete);
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), allowFields("TENNXB", "DiaChi"), controller.update)
+    .delete(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.delete);
 
 module.exports = router;

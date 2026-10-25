@@ -3,6 +3,7 @@
 * **Base URL**: `http://localhost:3000/api`
 * **Format**: JSON (`Content-Type: application/json`)
 * **Kiến trúc**: Phân lớp chuẩn mực (Routes -> Controllers -> Services -> MongoDB Native Driver).
+* **Vai trò chuẩn**: JWT và phân quyền backend dùng `USER`, `STAFF`, `ADMIN`. Hồ sơ độc giả lưu `VaiTro: USER`; hồ sơ nhân viên lưu `ChucVu: STAFF | ADMIN`. `MANAGER`/`THUTHU` chỉ là giá trị legacy được migration khi khởi động, không còn được cấp cho phiên mới.
 
 ## Origin và kết nối hai frontend
 
@@ -14,7 +15,7 @@
 
 ## Yêu cầu bảo mật áp dụng cho mọi endpoint
 
-- **RBAC theo chức năng**: Mỗi endpoint ghi rõ quyền `public`, `USER`, `MANAGER` hoặc `ADMIN`; backend xác thực JWT và kiểm tra vai trò/quyền sở hữu ngay tại route/controller. Không xem Vue Router guard là biện pháp phân quyền. Endpoint thao tác dữ liệu phải dùng whitelist trường và kiểm tra trạng thái hiện tại trước khi cập nhật.
+- **RBAC theo chức năng**: Mỗi endpoint ghi rõ quyền `public`, `USER`, `STAFF` hoặc `ADMIN`; backend xác thực JWT và kiểm tra vai trò/quyền sở hữu ngay tại route/controller. Không xem Vue Router guard là biện pháp phân quyền. Endpoint thao tác dữ liệu phải dùng whitelist trường và kiểm tra trạng thái hiện tại trước khi cập nhật.
 - **Xác thực input và NoSQL injection**: Chỉ nhận JSON với schema, kiểu và giới hạn kích thước rõ ràng; không gán trực tiếp `req.body` vào MongoDB query/update, không nhận toán tử MongoDB do client gửi, không tạo query bằng nối chuỗi. Dùng MongoDB Native Driver có cấu trúc. SQL injection không áp dụng trực tiếp vì dự án không dùng SQL; cần giữ quy tắc tương đương nếu bổ sung SQL sau này.
 - **XSS**: Trả dữ liệu theo JSON, không phản chiếu HTML không tin cậy; dữ liệu UI phải được render/encode theo ngữ cảnh, HTML rich text (nếu có) phải sanitize allowlist. Cấu hình CSP và security headers ở backend.
 - **CSRF/XSRF**: Với JWT truyền trong `Authorization` header và không dùng cookie xác thực, trình duyệt không tự gắn token nên CSRF cổ điển được giảm thiểu; bảo vệ XSS vẫn bắt buộc. Nếu dùng cookie, bật `HttpOnly`, `Secure`, `SameSite`, CSRF token cho request thay đổi trạng thái và kiểm tra `Origin`/`Referer`.
@@ -60,7 +61,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
       "_id": "670...",
       "MSNV": "NV-0001",
       "HoTenNV": "Nguyễn Văn A",
-      "ChucVu": "THUTHU",
+      "ChucVu": "STAFF",
       "SoDienThoai": "0912345678",
       "DiaChi": "Ninh Kiều, Cần Thơ"
     }
@@ -89,7 +90,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ### API duyệt hồ sơ nhân viên
 * `GET /api/yeu-cau-nhan-vien`: [ADMIN] Liệt kê hồ sơ chờ duyệt; không trả hash mật khẩu.
-* `PUT /api/yeu-cau-nhan-vien/:id/approve`: [ADMIN] Duyệt một hồ sơ đang chờ, tạo tài khoản `nhanvien` chức vụ `THUTHU`, đánh dấu `DaDuyet`, xóa hash khỏi hồ sơ và thông báo cho nhân viên mới.
+* `PUT /api/yeu-cau-nhan-vien/:id/approve`: [ADMIN] Duyệt một hồ sơ đang chờ, tạo tài khoản `nhanvien` chức vụ `STAFF`, đánh dấu `DaDuyet`, xóa hash khỏi hồ sơ và thông báo cho nhân viên mới.
 * `PUT /api/yeu-cau-nhan-vien/:id/reject`: [ADMIN] Nhận `{ "LyDoTuChoi": "..." }`, lưu trạng thái `TuChoi` và lý do. Ứng viên đăng nhập bằng đúng số điện thoại/mật khẩu đã đăng ký sẽ thấy trạng thái/lý do nhưng không nhận JWT.
 * Cả duyệt và từ chối ghi sự kiện append-only vào `nhatkykiemtoan`; API này không cho sửa/xóa hồ sơ đã xét duyệt.
 
@@ -107,7 +108,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * **Response**: `{ "message": "...", "data": { ... } }`; `data` chỉ gồm các trường nhân viên trong CDM và không chứa `MatKhau`.
 
 ### Danh sách nhân viên (`GET /api/nhanvien`)
-* **Quyền truy cập**: Chỉ `ADMIN` (JWT nhân viên có chức vụ ADMIN); MANAGER/USER bị từ chối.
+* **Quyền truy cập**: Chỉ `ADMIN` (JWT nhân viên có chức vụ ADMIN); STAFF/USER bị từ chối.
 * **Mô tả**: Trả danh sách hồ sơ từ collection `nhanvien`, hỗ trợ `?search=...` theo mã nhân viên, họ tên hoặc số điện thoại và `?chucVu=...` để lọc chức vụ.
 * **Response**: Mảng hồ sơ chỉ gồm `_id`, `MSNV`, `HoTenNV`, `ChucVu`, `SoDienThoai`, `DiaChi`, `AnhDaiDien`, `TrangThaiThe`; tuyệt đối không có `MatKhau` hoặc `PhienBanToken`. Đây là danh sách nhân sự riêng, không phải danh sách hồ sơ độc giả.
 
@@ -139,7 +140,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `GET /api/nhaxuatban`: Danh sách NXB trong hệ thống.
 * `GET /api/nhaxuatban/:id`: Chi tiết NXB theo ObjectId hoặc `MaNXB`.
 * `POST /api/nhaxuatban`: [Manager/Admin] Thêm NXB mới (`TENNXB`, `DiaChi`). Tự động sinh `MaNXB: NXB-0001`.
-* `PUT /api/nhaxuatban/:id`: [Manager/Admin] Cập nhật thông tin NXB.
+* `PUT /api/nhaxuatban/:id`: [Manager/Admin] Cập nhật thông tin NXB; body chỉ nhận `TENNXB`, `DiaChi` (không gửi `_id`/`MaNXB`, mã được giữ nguyên).
 * `DELETE /api/nhaxuatban/:id`: [Manager/Admin] Xóa NXB (Chặn xóa nếu còn sách trong kho tham chiếu).
 
 ---
@@ -150,7 +151,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ## Hộp thư thông báo (`/api/thongbao`)
 
-- `GET /api/thongbao?limit=10`: [USER/MANAGER/ADMIN đã đăng nhập] Lấy tối đa 50 thông báo mới nhất và tổng số chưa đọc. Phạm vi recipient id/type được xác định từ JWT; mỗi phiên chỉ đọc hộp thư của chính tài khoản hiện tại.
+- `GET /api/thongbao?limit=10`: [USER/STAFF/ADMIN đã đăng nhập] Lấy tối đa 50 thông báo mới nhất và tổng số chưa đọc. Phạm vi recipient id/type được xác định từ JWT; mỗi phiên chỉ đọc hộp thư của chính tài khoản hiện tại.
 - `PUT /api/thongbao/:id/read`: [Người nhận đã đăng nhập] Đánh dấu một thông báo của chính mình là đã đọc; trả 404 nếu id không tồn tại hoặc thuộc người khác.
 - `PUT /api/thongbao/read-all`: [Người nhận đã đăng nhập] Đánh dấu tất cả thông báo của tài khoản hiện tại đã đọc.
 - API không nhận nội dung/người nhận từ client và không cung cấp xóa thông báo. Backend tạo thông báo cho thay đổi trạng thái thẻ độc giả, duyệt/từ chối/trả/báo mất phiếu mượn, lúc Admin tạo nhân viên và khi hồ sơ ứng tuyển được duyệt.
@@ -179,11 +180,17 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
   - Chặn nếu sách đã hết trong kho `SoQuyen <= 0` (HTTP 400).
   - Tạo phiếu với `TrangThai: "ChoDuyet"`.
 
+### 📌 `PUT /api/theodoimuonsach/:id/huy` (Độc giả hủy yêu cầu đang chờ)
+* **Quyền truy cập**: Độc giả (`USER`) đã đăng nhập; chỉ được hủy phiếu của chính mình.
+* **Điều kiện**: Phiếu còn ở trạng thái `ChoDuyet`; phiếu đã được duyệt/từ chối/hủy trả HTTP 409. Hủy thành công chuyển sang trạng thái lịch sử `DaHuy`, không xóa phiếu và không thay đổi tồn kho.
+* **Kết quả**: Phiếu `DaHuy` không còn tính vào hạn mức 3 cuốn; ghi audit `PHIEU_HUY_DANG_KY`. Nếu hủy và duyệt xảy ra đồng thời, chỉ một chuyển trạng thái thắng; thao tác duyệt hoàn lại tồn kho nếu phiếu đã bị hủy trước khi hoàn tất.
+
 ### 📌 `PUT /api/theodoimuonsach/:id/duyet` (Thủ thư phê duyệt mượn)
-* **Quyền truy cập**: Bắt buộc JWT của nhân viên (`MANAGER`) hoặc quản trị viên (`ADMIN`). `MSNV` được lấy từ token, không nhận danh tính nhân viên từ request body.
+* **Quyền truy cập**: Bắt buộc JWT của nhân viên (`STAFF`) hoặc quản trị viên (`ADMIN`). `MSNV` được lấy từ token, không nhận danh tính nhân viên từ request body.
 * **Xử lý**:
   - Kiểm tra kho `SoQuyen > 0`, trừ kho: `SoQuyen = SoQuyen - 1`.
   - Cập nhật: `TrangThai: "DangMuon"`, gán `MSNV` từ tài khoản đang đăng nhập, `NgayHenTra = NgayMuon + 14 ngày`.
+  - Chuyển trạng thái chỉ khi phiếu vẫn là `ChoDuyet`; nếu độc giả đã hủy, trả HTTP 409 và hoàn lại cuốn vừa trừ.
 
 ### 📌 `PUT /api/theodoimuonsach/:id/tu-choi` (Từ chối yêu cầu)
 * **Request Body**: `{ "lyDo": "Không đủ điều kiện" }`
@@ -210,7 +217,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `GET /api/nhatkykiemtoan`: [Admin] Endpoint chỉ đọc; hỗ trợ lọc `HanhDong`, `LoaiDoiTuong`, `MaSach`, `MaDocGia`, `MSNV`, `from`, `to`, `limit`, `skip`; tối đa 300 bản ghi/trang.
 * Response: `{ "items": [ ... ], "total": 123, "limit": 50, "skip": 0 }`. Mỗi item dùng `HanhDong`, `LoaiDoiTuong`, `MaDoiTuong`, thông tin tác nhân, snapshot sách/độc giả/nhân viên, `ChiTiet` và `ThoiGian`.
 * Sự kiện ghi: thêm/sửa/xóa mềm/khôi phục sách; độc giả gửi yêu cầu mượn; nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất; Admin xóa phiếu lưu trữ.
-* Nhật ký append-only, không có API cập nhật/xóa; không ghi token/mật khẩu. Chỉ ADMIN được đọc; USER/MANAGER bị từ chối.
+* Nhật ký append-only, không có API cập nhật/xóa; không ghi token/mật khẩu. Chỉ ADMIN được đọc; USER/STAFF bị từ chối.
 
 ---
 

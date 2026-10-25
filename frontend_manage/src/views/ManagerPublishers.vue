@@ -224,11 +224,16 @@ export default {
     async saveNXB() {
       this.saving = true;
       try {
+        const payload = {
+          TENNXB: String(this.form.TENNXB || "").trim(),
+          DiaChi: String(this.form.DiaChi || "").trim(),
+        };
+
         if (this.isEditing) {
-          await nxbService.update(this.form._id || this.form.MaNXB, this.form);
+          await nxbService.update(this.form._id || this.form.MaNXB, payload);
           this.$refs.toast.show("Cập nhật NXB thành công!");
         } else {
-          await nxbService.create(this.form);
+          await nxbService.create(payload);
           this.$refs.toast.show("Thêm NXB mới thành công!");
         }
         this.showModal = false;

@@ -593,7 +593,7 @@ textarea:focus-visible {
 }
 
 /* =========================================================
-   MANAGER LAYOUT (sidebar + content)
+   STAFF WORKSPACE LAYOUT (sidebar + content)
    ========================================================= */
 .vg-manager-layout {
   display: grid;

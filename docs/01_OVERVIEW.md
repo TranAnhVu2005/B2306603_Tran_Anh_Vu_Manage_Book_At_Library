@@ -17,7 +17,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Bảo mật và an toàn dữ liệu**: Bảo vệ mật khẩu bằng Bcrypt; kiểm soát quyền theo chức năng ở backend; xác thực và quản lý phiên; kiểm tra dữ liệu chống NoSQL injection; giảm thiểu XSS, CSRF/XSRF, XXE và SSRF phù hợp với kiến trúc MongoDB/JSON hiện tại. Các biện pháp này là yêu cầu cần triển khai và xác minh, không được xem là hoàn tất chỉ từ mô tả tài liệu.
 - **Truy cứu hoạt động**: Lưu log append-only cho thao tác sách và vòng đời mượn-trả; Admin được lọc theo sách, độc giả, nhân viên và thời gian. Xóa sách dùng soft delete để giữ lịch sử và dữ liệu gốc.
 - **Tích hợp**: Đăng nhập Google OAuth 2.0 đã có trong mã nguồn. Thanh toán MoMo là yêu cầu tài liệu/định hướng còn chờ triển khai; hiện chưa có payment route/service trong backend.
-- **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (MANAGER)**, và **Quản trị viên hệ thống (ADMIN)**.
+- **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (STAFF)**, và **Quản trị viên hệ thống (ADMIN)**.
 
 ---
 
@@ -28,10 +28,10 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Quyền hạn**:
   - Tìm kiếm, lọc và xem thông tin chi tiết từng đầu sách, nhà xuất bản.
   - Đăng ký mượn sách trực tuyến (giới hạn tối đa **3 quyển** đang lưu thông).
-  - Xem lịch sử mượn trả cá nhân và trạng thái các đơn đăng ký (`ChoDuyet`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`).
+  - Xem lịch sử mượn trả cá nhân; hủy yêu cầu `ChoDuyet` trước khi thủ thư xử lý. Trạng thái phiếu gồm `ChoDuyet`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`, `DaHuy`.
   - Xem trạng thái thẻ thư viện và thanh toán tiền phạt / bồi thường bồi hoàn.
 
-### 2.2. Nhân viên Quản lý / Thủ thư (Staff / MANAGER)
+### 2.2. Nhân viên Quản lý / Thủ thư (Staff / STAFF)
 - **Tài khoản**: Ứng viên gửi hồ sơ tại cổng nhân viên; Admin duyệt mới được tạo hồ sơ `nhanvien` và đăng nhập bằng số điện thoại (`SoDienThoai`). `MSNV` là mã hồ sơ, không dùng đăng nhập.
 - **Quyền hạn**:
   - Quản lý kho sách (Thêm, Sửa, Xóa sách; kiểm kê số lượng tồn kho `SoQuyen`).
@@ -59,8 +59,8 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Backend**: Node.js v22+, Express.js (v5), MongoDB Native Driver v6+, BcryptJS, Dotenv.
 - **Frontend**: Hai ứng dụng Vue 3/Vite riêng, cùng gọi Backend API:
   - `frontend_user/`: cổng Độc giả (`USER`), là thư mục đổi tên từ frontend cũ; chỉ chứa luồng và giao diện dành cho độc giả.
-  - `frontend_manage/`: cổng Thủ thư (`MANAGER`) và Quản trị viên (`ADMIN`), gồm tra cứu danh mục/chi tiết sách, màn hình nghiệp vụ và quản trị.
-- MANAGER có toàn bộ chức năng nghiệp vụ thủ thư; ADMIN có toàn bộ chức năng MANAGER cộng các chức năng quản trị. Tra cứu sách được triển khai trực tiếp trên cả hai cổng; nghiệp vụ mượn cá nhân chỉ ở cổng độc giả, quản lý kho ở cổng quản lý.
+  - `frontend_manage/`: cổng Thủ thư (`STAFF`) và Quản trị viên (`ADMIN`), gồm tra cứu danh mục/chi tiết sách, màn hình nghiệp vụ và quản trị.
+- STAFF có toàn bộ chức năng nghiệp vụ thủ thư; ADMIN có toàn bộ chức năng STAFF cộng các chức năng quản trị. Tra cứu sách được triển khai trực tiếp trên cả hai cổng; nghiệp vụ mượn cá nhân chỉ ở cổng độc giả, quản lý kho ở cổng quản lý.
 - Hồ sơ nhân viên và hồ sơ độc giả hiện đăng nhập độc lập, lưu phiên riêng theo domain. Các chức năng cá nhân của độc giả (mượn, lịch sử, hồ sơ thẻ) cần đăng nhập phiên USER; header và menu tài khoản cổng độc giả có mục **Hồ sơ cá nhân** dẫn tới `/profile`. Chưa hỗ trợ liên kết nhân viên với hồ sơ độc giả.
   - Môi trường phát triển: Backend API `http://localhost:3000`, `frontend_user` tại `http://localhost:3001`, `frontend_manage` tại `http://localhost:3002`; mỗi app proxy `/api` đến Backend.
   - Mỗi ứng dụng có cấu hình/build/deploy riêng và một domain/origin riêng trong production. Tên domain thực tế lấy từ cấu hình triển khai; backend chỉ cho phép hai origin được khai báo trong CORS allowlist.
@@ -72,6 +72,6 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 | Ứng dụng | Vai trò | Phạm vi chính | Cổng phát triển |
 |:---|:---|:---|:---:|
 | `frontend_user/` | `USER` | Trang chủ/tra cứu, chi tiết sách, đăng ký mượn, hồ sơ độc giả, lịch sử mượn | `3001` |
-| `frontend_manage/` | `MANAGER`, `ADMIN` | Tra cứu sách, kho sách, NXB, duyệt mượn-trả, quản lý tài khoản và quyền Admin | `3002` |
+| `frontend_manage/` | `STAFF`, `ADMIN` | Tra cứu sách, kho sách, NXB, duyệt mượn-trả, quản lý tài khoản và quyền Admin | `3002` |
 
 Backend API dùng chung ở cổng `3000`. Các trang đăng nhập/điều hướng phải dẫn tới đúng domain ứng dụng theo vai trò; không dùng route guard làm cơ chế bảo mật. Việc tách domain không thay thế RBAC backend.

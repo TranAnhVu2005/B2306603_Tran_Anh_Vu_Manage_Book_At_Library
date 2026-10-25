@@ -7,7 +7,7 @@ Tài liệu này dùng để AI Agent và Lập trình viên đối chiếu, ch�
 ## 1. Dữ Liệu Kiểm Thử Khởi Tạo (Test Fixtures / Seed Data)
 
 ### 1.1. Tài khoản kiểm thử mẫu
-* **Nhân viên kiểm thử**: Được tạo tạm trong `test_api.js` với chức vụ `THUTHU` và mật khẩu kiểm thử.
+* **Nhân viên kiểm thử**: Được tạo tạm trong `test_api.js` với chức vụ `STAFF` và mật khẩu kiểm thử.
 * **Độc giả kiểm thử**: Được tạo tạm trong `test_api.js`; dùng lại cho kiểm tra đăng nhập, Danh sách đen và phân quyền, sau đó được xóa.
 
 ### 1.2. Sách kiểm thử mẫu
@@ -23,7 +23,7 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 
 | Mã TC | Chức Năng Kiểm Thử | Dữ Liệu Đầu Vào (Input) | Kết Quả Mong Đợi (Expected) | Trạng Thái |
 |:---:|:---|:---|:---|:---:|
-| **TC-AUTH-01** | Đăng nhập nhân viên thành công | Nhân viên kiểm thử, đúng mật khẩu | HTTP 200, trường dữ liệu theo lược đồ `nhanvien` | ✅ PASSED |
+| **TC-AUTH-01** | Đăng nhập nhân viên và migration vai trò | Số điện thoại/mật khẩu hợp lệ; fixture legacy `ChucVu: THUTHU` | HTTP 200; `ChucVu` và JWT `role` là `STAFF`; migration đổi dữ liệu cũ sang `STAFF` | ✅ PASSED |
 | **TC-AUTH-02** | Đăng nhập sai mật khẩu | Nhân viên kiểm thử, mật khẩu sai | HTTP 401: Báo sai mật khẩu | ✅ PASSED |
 | **TC-AUTH-03** | Độc giả đăng nhập bằng SĐT | Độc giả kiểm thử, đúng mật khẩu | HTTP 200, trả hồ sơ tiếng Việt | ✅ PASSED |
 | **TC-AUTH-04** | Từ chối Google ID Token không hợp lệ | `idToken: "sample_mock_google_id_token"` | HTTP 401, không tạo/đăng nhập tài khoản | ✅ PASSED |
@@ -32,33 +32,35 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | **TC-PROFILE-02** | Nhân viên/Admin tự cập nhật hồ sơ | PUT hồ sơ nhân viên có JWT; thử thiếu token và cập nhật hồ sơ người khác | HTTP 200 cho đúng chủ; HTTP 401/403 khi thiếu quyền; chỉ `HoTenNV`, `SoDienThoai`, `DiaChi` thay đổi, không lộ/sửa `MSNV`, `ChucVu` hoặc mật khẩu | ✅ PASSED |
 | **TC-BOOK-01** | Thêm sách mới hợp lệ | Đầy đủ thông tin, `SoQuyen: 10 >= 0` | HTTP 201, sách lưu vào DB | ✅ PASSED |
 | **TC-BOOK-02** | Thêm sách trùng `MaSach` | `MaSach: "TEST_SACH_99"` đã tồn tại | HTTP 400: Báo trùng mã sách | ✅ PASSED |
-| TC-BOOK-SOFT-DELETE-01 | Xóa mềm sách và khôi phục | MANAGER xóa sách không có phiếu mở; Admin xem `includeDeleted=true` và khôi phục; MANAGER thử xem bản đã xóa | Document vẫn tồn tại với `deleted=true`; GET công khai/chi tiết và đăng ký mượn không tìm thấy; Admin khôi phục được; MANAGER không được xem dữ liệu đã xóa | 🟡 Chưa chạy |
+| TC-BOOK-SOFT-DELETE-01 | Xóa mềm sách và khôi phục | STAFF xóa sách không có phiếu mở; Admin xem `includeDeleted=true` và khôi phục; STAFF thử xem bản đã xóa | Document vẫn tồn tại với `deleted=true`; GET công khai/chi tiết và đăng ký mượn không tìm thấy; Admin khôi phục được; STAFF không được xem dữ liệu đã xóa | 🟡 Chưa chạy |
 | TC-AUDIT-01 | Collection/schema và phân quyền nhật ký | Tạo sách; Admin và nhân viên gọi `GET /api/nhatkykiemtoan?MaSach=...` | Collection `nhatkykiemtoan`, trường tiếng Việt (`HanhDong`, `LoaiDoiTuong`, `ThoiGian`); Admin đọc được, nhân viên bị từ chối | ✅ PASSED |
 | **TC-BORROW-01**| Độc giả gửi phiếu yêu cầu mượn | Độc giả kiểm thử tạm thời, `TEST_SACH_99` | HTTP 201, trạng thái `ChoDuyet`, response chỉ có trường CDM của phiếu | ✅ PASSED |
+| **TC-CANCEL-01** | Độc giả hủy phiếu chờ duyệt | Hai cuốn đang mượn + một phiếu chờ; độc giả khác thử hủy; chủ phiếu hủy rồi đăng ký sách khác | Chỉ chủ phiếu hủy được; hủy chuyển `DaHuy`, không trừ kho, giải phóng hạn mức; không hủy phiếu đã xử lý; audit có actor và trạng thái trước/sau | ✅ PASSED |
 | **TC-BORROW-02**| Mượn sách khi đã hết kho | Độc giả kiểm thử tạm thời, `SACH-000003` (`SoQuyen: 0`) | HTTP 400: Báo hết sách trong kho | ✅ PASSED |
 | **TC-BORROW-03**| Mượn sách vượt hạn mức 3 cuốn | Độc giả đã có 3 cuốn chưa trả | HTTP 400: Chặn vượt hạn mức | ✅ PASSED |
 | **TC-BORROW-04**| Độc giả trong danh sách đen mượn sách | Tạo độc giả kiểm thử với `TrangThaiThe: DanhSachDen` | HTTP 403: Bị từ chối mượn | ✅ PASSED |
 | **TC-BORROW-05**| Thủ thư/Admin duyệt đơn mượn | Thử thiếu JWT, JWT độc giả, rồi JWT thủ thư/Admin | Thiếu JWT: HTTP 401; độc giả: HTTP 403; thủ thư/Admin: HTTP 200, `DangMuon`, kho giảm 10 -> 9, gán `MSNV` theo JWT | ✅ PASSED |
+| **TC-BORROW-06** | Hủy và duyệt đồng thời | Độc giả hủy phiếu đúng lúc thủ thư duyệt | Một chuyển trạng thái thắng; phiếu đã hủy không được duyệt; nếu thao tác duyệt đã trừ kho thì kho được hoàn lại | 🟡 Chờ regression API |
 | **TC-RETURN-01**| Xác nhận trả sách đúng hạn | `id` đơn mượn, nhấn Trả sách | HTTP 200, `DaTra`, kho hoàn lại 9 -> 10 | ✅ PASSED |
 | **TC-RETURN-02**| Trả sách trễ hạn | Đơn mượn có `NgayTra > NgayHenTra` | HTTP 200, `SoLanViPham` tăng +1 | ✅ PASSED |
 | **TC-RETURN-03**| Tự động đưa vào danh sách đen sau 3 lần trễ | Vi phạm lần thứ 3 | `TrangThaiThe` tự động đổi sang `DanhSachDen` | ✅ PASSED |
 | **TC-LOSS-01**  | Báo mất sách | `id` đơn mượn, nhấn Báo mất | Trạng thái `MatSach`, kho giữ nguyên, phạt `GiaTriBoiThuong = DonGia` | ✅ PASSED |
 | **TC-PAY-01**   | Khởi tạo thanh toán MoMo (đặc tả tương lai) | `borrowId` của đơn báo mất sách | Khi triển khai: HTTP 200, tạo `payUrl` MoMo | ⚪ Chưa triển khai; chưa thuộc bộ test API hiện hành |
-| **TC-STAFF-APPLICATION-01** | Đăng ký nhân viên, chặn đăng nhập chờ duyệt, Admin duyệt | Hồ sơ hợp lệ, Admin token | Hồ sơ chờ không nhận JWT; Admin duyệt tạo `THUTHU`; đăng nhập thành công sau duyệt; độc giả không bị thay đổi; audit có sự kiện đăng ký/duyệt | ✅ PASSED |
+| **TC-STAFF-APPLICATION-01** | Đăng ký nhân viên, chặn đăng nhập chờ duyệt, Admin duyệt | Hồ sơ hợp lệ, Admin token | Hồ sơ chờ không nhận JWT; Admin duyệt tạo `STAFF`; đăng nhập thành công sau duyệt; độc giả không bị thay đổi; audit có sự kiện đăng ký/duyệt | ✅ PASSED |
 | **TC-STAFF-APPLICATION-02** | Admin từ chối hồ sơ và ứng viên gửi lại | Hồ sơ chờ và lý do từ chối | Hồ sơ thành `TuChoi`, lý do chỉ trả cho ứng viên xác thực; không có JWT; gửi lại tạo trạng thái chờ và audit append-only | ✅ PASSED |
 | **TC-STAFF-APPLICATION-03** | Gỡ endpoint thăng cấp cũ | Admin gọi `PUT /api/docgia/:id/role` | HTTP 404; không còn chức năng/hàm nâng cấp độc giả | ✅ PASSED |
-| **SEC-STAFF-APPLICATION-01** | Chặn truy cập hồ sơ đăng ký | Gọi danh sách khi thiếu token hoặc token MANAGER | HTTP 401/403; không lộ hồ sơ | ✅ PASSED |
+| **SEC-STAFF-APPLICATION-01** | Chặn truy cập hồ sơ đăng ký | Gọi danh sách khi thiếu token hoặc token STAFF | HTTP 401/403; không lộ hồ sơ | ✅ PASSED |
 | **TC-ADMIN-02** | Admin xét gỡ khỏi danh sách đen | Độc giả kiểm thử `DanhSachDen`; thử mở khóa khẩn cấp rồi xét gỡ riêng; kiểm tra audit; dùng chính JWT độc giả đã đăng nhập để gửi yêu cầu mượn | Mở khóa khẩn cấp bị từ chối; xét gỡ chuyển sang `HoatDong`, đặt `SoLanViPham = 0`, audit lưu trước/sau; phiên cũ không cần đăng nhập lại và mượn được | ✅ PASSED |
 | **TC-ADMIN-03** | Admin khóa/mở khóa khẩn cấp | Thẻ hoạt động có 2 vi phạm; khóa/mở khóa rồi thử ở ngưỡng 3 lần | Thao tác giữ nguyên vi phạm; mở khóa ở ngưỡng 3 chuyển trạng thái về `DanhSachDen` | ✅ PASSED |
-| **TC-STAFF-LOCK-01** | Admin khóa/mở khóa thủ thư và chống tự khóa qua API | Admin/Manager gọi lock; Admin thử khóa chính mình bằng ObjectId/MSNV; dùng JWT cũ trong/sau khóa; đăng nhập bằng đúng và sai mật khẩu khi tài khoản khóa | Chỉ Admin khóa thủ thư; self-lock và khóa Admin bị 403; `TrangThaiThe` cập nhật; JWT cũ bị 401; mật khẩu đúng nhận 403 với hướng dẫn tài khoản đang khóa, mật khẩu sai vẫn nhận lỗi chung 401; token mới chỉ dùng được sau mở khóa; có audit log và thông báo | ✅ PASSED |
-| TC-ADMIN-04 | Admin xem danh sách nhân viên | ADMIN gọi `GET /api/nhanvien`; MANAGER/USER thử gọi cùng endpoint | ADMIN nhận danh sách `nhanvien` không có `MatKhau`; MANAGER/USER bị từ chối; không trộn hồ sơ nhân viên với `docgia.VaiTro` | 🟡 Chưa chạy riêng |
-| TC-AUDIT-02 | Kiểm toán vòng đời mượn-trả | Độc giả đăng ký; nhân viên duyệt, từ chối, xác nhận trả/báo mất; Admin đọc log | Mỗi sự kiện ghi actor đúng, mã/tên độc giả+sách, nhân viên thao tác, trạng thái và thời gian; USER/MANAGER không đọc được log | 🟡 Chưa chạy |
+| **TC-STAFF-LOCK-01** | Admin khóa/mở khóa thủ thư và chống tự khóa qua API | Admin/STAFF gọi lock; Admin thử khóa chính mình bằng ObjectId/MSNV; dùng JWT cũ trong/sau khóa; đăng nhập bằng đúng và sai mật khẩu khi tài khoản khóa | Chỉ Admin khóa thủ thư; self-lock và khóa Admin bị 403; `TrangThaiThe` cập nhật; JWT cũ bị 401; mật khẩu đúng nhận 403 với hướng dẫn tài khoản đang khóa, mật khẩu sai vẫn nhận lỗi chung 401; token mới chỉ dùng được sau mở khóa; có audit log và thông báo | ✅ PASSED |
+| TC-ADMIN-04 | Admin xem danh sách nhân viên | ADMIN gọi `GET /api/nhanvien`; STAFF/USER thử gọi cùng endpoint | ADMIN nhận danh sách `nhanvien` không có `MatKhau`; STAFF/USER bị từ chối; không trộn hồ sơ nhân viên với `docgia.VaiTro` | 🟡 Chưa chạy riêng |
+| TC-AUDIT-02 | Kiểm toán vòng đời mượn-trả | Độc giả đăng ký; nhân viên duyệt, từ chối, xác nhận trả/báo mất; Admin đọc log | Mỗi sự kiện ghi actor đúng, mã/tên độc giả+sách, nhân viên thao tác, trạng thái và thời gian; USER/STAFF không đọc được log | 🟡 Chưa chạy |
 
 ### Bổ sung ma trận kiểm thử bảo mật (chưa chạy — yêu cầu cho đợt triển khai bảo mật)
 
 | Mã TC | Kiểm thử | Kết quả mong đợi |
 |:---:|:---|:---|
-| SEC-RBAC-01 | Gọi từng endpoint đặc quyền khi thiếu JWT, dùng JWT USER/MANAGER không đủ quyền, hoặc sửa ID tài nguyên sang người khác | HTTP 401/403; dữ liệu không đổi; quyền được kiểm tra ở backend |
+| SEC-RBAC-01 | Gọi từng endpoint đặc quyền khi thiếu JWT, dùng JWT USER/STAFF không đủ quyền, hoặc sửa ID tài nguyên sang người khác | HTTP 401/403; dữ liệu không đổi; quyền được kiểm tra ở backend |
 | SEC-IN-01 | Gửi `$ne`, `$gt`, object/array thay cho scalar trong body/query/path | HTTP 400; không mở rộng truy vấn, không truy cập/sửa ngoài phạm vi |
 | SEC-IN-02 | Gửi trường đặc quyền không thuộc whitelist trong POST/PUT/PATCH | Từ chối hoặc bỏ qua theo quy ước API; không thay đổi role, trạng thái, mã, tiền hay chủ sở hữu |
 | SEC-XSS-01 | Lưu và đọc chuỗi HTML/script/event handler trong tên, mô tả, ghi chú | API/UI không thực thi script; nội dung được render an toàn; CSP có hiệu lực |
@@ -76,7 +78,7 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 ### Kết quả lần chạy gần nhất
 
 - `frontend_user` và `frontend_manage`: build thành công ngày 2026-10-25.
-- `backend`: lần chạy gần nhất ngày 2026-10-25 đạt 25/25; `TC-STAFF-LOCK-01` xác nhận thông báo khóa chỉ hiện khi mật khẩu đúng, mật khẩu sai vẫn nhận lỗi chung. Harness dọn fixture khi hoàn tất.
+- `backend`: lần chạy ngày 2026-10-25 đạt 26/26; bao gồm JWT dùng role `STAFF`, migration `THUTHU` sang `STAFF` và chuẩn hóa `VaiTro` độc giả cũ về `USER`. `TC-STAFF-LOCK-01` xác nhận thông báo khóa chỉ hiện khi mật khẩu đúng, mật khẩu sai vẫn nhận lỗi chung. Harness dọn fixture khi hoàn tất.
 - MoMo vẫn là đặc tả tương lai, chưa có UI/API trong bản hiện hành. Bộ API test cần MongoDB local.
 - Các ca `SEC-*` và kiểm thử trình duyệt `UI-12`–`UI-17` chưa được chạy; bảng ma trận là kế hoạch xác minh, không phải kết quả nghiệm thu.
 
@@ -97,8 +99,12 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 | UI-29 | Admin xem danh sách tài khoản và duyệt ứng tuyển | `/admin/users` liệt kê độc giả/nhân viên, không hiển thị thao tác thăng cấp; `/admin/staff-applications` chỉ Admin xem, duyệt hoặc từ chối hồ sơ | 🟡 Cần rà giao diện trình duyệt; API cưỡng chế Admin-only |
 | UI-30 | Màu sắc và khả năng đọc của thông báo toast | Kiểm tra toast thành công/lỗi ở cả hai cổng, nội dung dài và viewport 320/375/768/1024/1440px; kiểm tra tương phản chữ/nền, nút đóng bằng bàn phím và giảm chuyển động | Thành công xanh đậm, lỗi đỏ đậm, chữ trắng dễ đọc; không tràn ngang; focus rõ; animation tắt khi `prefers-reduced-motion`; hai cổng đồng nhất | 🟡 Build verified; cần rà trực quan |
 | **UI-09** | Độc giả chỉnh sửa hồ sơ `/profile` | Từ mục Hồ sơ cá nhân mở form, sửa thông tin cho phép; lưu thành công cập nhật thẻ hồ sơ và phiên; lỗi API được thông báo | 🟡 Build verified; chưa chạy trình duyệt |
-| **UI-10** | Nhân viên/Admin chỉnh sửa hồ sơ `/profile` | Hiển thị hồ sơ nhân viên; tự cập nhật họ tên, số điện thoại, địa chỉ và đồng bộ phiên; không cho sửa chức vụ/mã nhân viên | 🟡 Build verified; chưa chạy trình duyệt |
+| **UI-10** | Nhân viên/Admin chỉnh sửa hồ sơ `/profile` | Hiển thị hồ sơ nhân viên; tự cập nhật họ tên, số điện thoại, địa chỉ và đồng bộ phiên; không cho sửa chức vụ/mã nhân viên; kiểm tra header trang không có CTA “Tìm thêm sách” | Hồ sơ gọn, không có CTA không liên quan; 🟡 Build verified; chưa chạy trình duyệt |
 | **UI-11** | Kiểm tra bố cục responsive toàn hệ thống | Ở chiều rộng 320–768px không tràn ngang trang; bảng cuộn trong wrapper riêng; form, bộ lọc, modal và nút hành động không chồng lấn | 🟡 Build verified; cần kiểm thử trình duyệt trên đủ breakpoint |
+| **UI-BORROW-CANCEL-01** | Hủy phiếu mượn trong tab Chờ duyệt | Mở hồ sơ độc giả, chọn Chờ duyệt, hủy một phiếu ở 320/375/768/1024/1440px | Chỉ có thao tác ở phiếu đang chờ; dialog giấy–mực có hierarchy gọn, tựa sách dễ nhận biết, giải thích rõ, CTA vàng và ghi chú tồn kho; mobile không tràn và nút xếp dọc; thành công chuyển phiếu vào Lịch sử với nhãn Đã hủy; toast lỗi khi thủ thư đã xử lý trước | 🟡 Chờ rà trực quan trên trình duyệt |
+| **UI-MANAGE-BOOKS-01** | Bảng kho: nhóm thông tin và thao tác sửa/xóa | Rà trang `/manager/books` ở 320/375/768/1024/1440px; kiểm tra cột NXB/thể loại, năm XB/đơn giá, thao tác hàng | Desktop hiển thị đủ cột thao tác trong khung; màn hẹp chỉ cuộn wrapper bảng và cột thao tác bám mép phải; không tràn trang | 🟡 Chờ rà trực quan trên trình duyệt |
+| **UI-MANAGE-PUBLISHER-EDIT-01** | Chỉnh sửa nhà xuất bản | Mở sửa NXB có sẵn mã/tên/địa chỉ, cập nhật tên và địa chỉ; lưu lại | Request chỉ gửi `TENNXB`, `DiaChi`; API trả thành công, dữ liệu mới hiển thị trong bảng, `MaNXB` không thay đổi |
+| **UI-STAFF-BORROW-SEARCH-01** | Kích thước ô tìm kiếm trên `/manager/borrows` | Rà hàng tab và tìm kiếm tại 320/375/768/1024/1440px; thử cả tab Đang mượn có lọc quá hạn | Desktop ô tìm kiếm giãn vào khoảng trống còn lại; lọc quá hạn không làm ô co bất thường; mobile xếp gọn và không tràn ngang |
 
 ### Kiểm thử kiến trúc hai frontend/domain (cần chạy sau khi tách ứng dụng)
 
@@ -106,12 +112,12 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 |:---:|:---|:---|
 | UI-12 | Khởi động `frontend_user/` và `frontend_manage/` đồng thời | User bind `localhost:3001`, Manage bind `localhost:3002`, không xung đột cổng; cả hai proxy API tới `localhost:3000` |
 | UI-13 | Mở `frontend_user/` và kiểm tra menu/router | Chỉ có giao diện/route độc giả; không hiển thị màn hình/quyền quản lý hoặc Admin |
-| UI-14 | Mở `frontend_manage/` bằng tài khoản USER/MANAGER/ADMIN | USER bị từ chối; MANAGER có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư và chức năng Admin; API cũng trả 401/403 tương ứng |
+| UI-14 | Mở `frontend_manage/` bằng tài khoản USER/STAFF/ADMIN | USER bị từ chối; STAFF có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư và chức năng Admin; API cũng trả 401/403 tương ứng |
 | UI-15 | Điều hướng qua lại giữa hai ứng dụng | Dùng domain gốc theo cấu hình; không giả định localStorage dùng chung; cổng quản lý có liên kết cổng độc giả; app đích yêu cầu đăng nhập nếu không có phiên riêng |
 | UI-16 | Gọi API từ hai origin local và hai origin production đã cấu hình | CORS cho phép origin đã allowlist và chặn origin không khai báo; RBAC backend giữ nguyên dù đổi origin |
 | UI-17 | Build/deploy từng frontend độc lập | Mỗi app build từ thư mục/package riêng và nhận API URL/domain từ env phù hợp; không cần build chung một artifact |
 | UI-18 | Kiểm tra header sau đăng nhập nhân viên và tải lại `/manager/borrows` | Header hiển thị tên + nhãn Thủ thư/Quản trị viên, menu đúng quyền, nút Đăng xuất; không còn CTA “Đăng nhập nhân viên” khi phiên hợp lệ; nếu `/me` thất bại thì không làm sai lệch quyền backend |
-| UI-19 | Dùng ADMIN mở từng route nghiệp vụ và route Admin | ADMIN truy cập được `/manager/*` và `/admin/users`; MANAGER không vào `/admin/users`; menu phản ánh cùng ma trận |
+| UI-19 | Dùng ADMIN mở từng route nghiệp vụ và route Admin | ADMIN truy cập được `/manager/*` và `/admin/users`; STAFF không vào `/admin/users`; menu phản ánh cùng ma trận |
 | UI-20 | Tra cứu danh mục và chi tiết sách từ cổng quản lý | `/catalog` và `/catalog/books/:id` chạy cùng origin `frontend_manage`; tìm theo tên/tác giả/mã không dấu, lọc NXB/tồn kho, xem chi tiết, refresh; không có nút đăng ký mượn |
 | UI-29 | Chi tiết sách hai cổng | Mở `/books/:id` ở `frontend_user` và `/catalog/books/:id` ở `frontend_manage`; kiểm tra ảnh bìa, mã, thể loại, NXB, năm, đơn giá, tóm tắt và trạng thái tồn kho | Bố cục dùng nền giấy, viền mực/bóng cứng, Be Vietnam Pro và cùng thứ bậc thông tin; thể loại khớp `MaTheLoai`; ảnh bìa được giữ; chỉ cổng độc giả có CTA/ Borrow Modal, cổng quản lý chỉ có thông tin tồn kho |
 | UI-30 | Responsive trang chi tiết sách | Rà hai route chi tiết ở 320/375/768/1024/1440px, thử tên sách/mô tả dài và trạng thái hết sách | Không tràn ngang; mobile xếp ảnh và nội dung dọc, thông số về một cột ở màn hẹp; CTA vừa chiều rộng; ảnh bìa giữ tỷ lệ; badge/status đọc được |
@@ -120,13 +126,13 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 | UI-23 | Kiểm tra responsive hai cổng tại 320, 375, 768, 1024, 1440px | Không tràn ngang toàn trang; header dùng menu mobile, footer xếp cột; form/nút xuống dòng; bảng chỉ cuộn trong wrapper; dialog vừa viewport |
 | UI-24 | Admin lọc nhật ký và tải thêm | `/admin/audit-logs` lọc theo hành động, mã sách/độc giả/nhân viên, loại đối tượng, ngày; tải các trang tiếp theo | Dữ liệu đúng bộ lọc, actor và chi tiết dễ đọc; bảng cuộn riêng trên mobile; không có nút sửa/xóa | 🟡 Chưa chạy |
 | UI-36 | Cách trình bày sự kiện và chi tiết nhật ký | Mở `/admin/audit-logs`, đối chiếu thao tác đăng ký/duyệt/từ chối/khóa/mở khóa nhân viên và các trạng thái trong cột chi tiết; rà ở desktop/mobile | Sự kiện là nhãn tiếng Việt có dấu kèm mô tả ngắn; các tên trường/trạng thái kỹ thuật được dịch; chi tiết chia dòng, có khoảng cách, chữ không bị dính và nội dung dài tự ngắt trong wrapper bảng | 🟡 Chờ rà trực quan |
-| UI-25 | Quản lý sách xóa mềm | MANAGER xóa sách; Admin xem danh sách đã xóa và phục hồi | Sách giữ lại trong DB, bị ẩn khỏi tra cứu/mượn; Admin xem marker/thời điểm xóa và khôi phục; hành động xuất hiện trong audit log | 🟡 Chưa chạy |
+| UI-25 | Quản lý sách xóa mềm | STAFF xóa sách; Admin xem danh sách đã xóa và phục hồi | Sách giữ lại trong DB, bị ẩn khỏi tra cứu/mượn; Admin xem marker/thời điểm xóa và khôi phục; hành động xuất hiện trong audit log | 🟡 Chưa chạy |
 | UI-26 | Neo-brutalist UI và ảnh nền | Mở trang chủ/catalog, đăng nhập/đăng ký, hồ sơ, quản lý và Admin tại 320/375/768/1024/1440px | Vàng/violet, viền đen, bóng cứng và trạng thái tương tác nhất quán; không tràn trang; bảng cuộn trong wrapper; checkbox/upload/modal không biến dạng; ảnh header/login/register/catalog vẫn còn, overlay hợp palette và chữ đủ tương phản | 🟡 Đã xử lý lỗi theo ảnh; build và spot-check cây giao diện; chưa xác nhận đủ breakpoint/routes |
 | UI-27 | Kiểm tra phối màu và bố cục Header hai cổng | So sánh header user/manage ở desktop và mobile; mở menu, kiểm tra focus/active, tài khoản và CTA | Ảnh kệ sách còn nhận biết, không bị nhuộm magenta; banner tối vừa đủ cho chữ sáng; thanh điều hướng nền giấy ngà, mục active vàng; logo/trung tâm menu/tài khoản cân hàng trên desktop và không tràn ở 320–375px | 🟡 Chờ rà trình duyệt theo đủ breakpoint |
 | UI-32 | Khoảng cách giữa menu Admin và chuông thông báo | Đăng nhập Admin, rà header cổng quản lý tại 1200/1280/1366/1440px và mobile; tương tác từng nút | Menu Quản trị người dùng và chuông không chạm/chồng nhau; chuông tách biệt khỏi nhóm nav nhưng vẫn gần cụm tài khoản; mobile giữ khoảng cách thao tác và không tràn ngang |
 | UI-28 | Kiểm tra thẻ KPI mượn–trả | Mở `/manager/borrows` tại desktop và mobile; quét nhãn, số liệu, mô tả; bấm từng thẻ và dùng bàn phím | Thẻ có chiều cao gọn theo nội dung, số liệu dễ thấy; nhãn dài không tràn; màu trạng thái và thao tác lọc còn đúng; lưới co về hai cột/đơn cột phù hợp viewport | 🟡 Build verified; chờ rà trình duyệt |
 | UI-31 | Trang mặc định cổng nhân viên | Mở origin gốc của `frontend_manage` và mở trực tiếp `/catalog` | `/` chuyển tới `/login`; `/catalog` vẫn truy cập công khai khi được mở trực tiếp; route nghiệp vụ sau đăng nhập vẫn giữ redirect an toàn |
-| UI-33 | Điều hướng đích sau đăng nhập theo vai trò | Đăng nhập ADMIN/MANAGER không có redirect; kiểm tra thêm `/login` khi mỗi vai trò đã có phiên và redirect hợp lệ từ route nghiệp vụ | ADMIN mặc định vào `/admin/users`; MANAGER mặc định vào `/manager/borrows`; phiên hiện hữu ở `/login` cũng được phân tuyến tương ứng; redirect nội bộ hợp lệ vẫn được giữ và redirect ngoài app bị loại |
+| UI-33 | Điều hướng đích sau đăng nhập theo vai trò | Đăng nhập ADMIN/STAFF không có redirect; kiểm tra thêm `/login` khi mỗi vai trò đã có phiên và redirect hợp lệ từ route nghiệp vụ | ADMIN mặc định vào `/admin/users`; STAFF mặc định vào `/manager/borrows`; phiên hiện hữu ở `/login` cũng được phân tuyến tương ứng; redirect nội bộ hợp lệ vẫn được giữ và redirect ngoài app bị loại |
 | UI-34 | Admin quản lý khóa tài khoản thủ thư | Mở danh sách tài khoản, lọc tài khoản/thẻ bị khóa, khóa/mở thủ thư; xem hàng Admin | Trạng thái thủ thư rõ ràng, yêu cầu lý do, cập nhật sau thao tác; không hiện nút khóa Admin; toast thành công/lỗi; bộ lọc đếm độc giả và nhân viên bị khóa |
 | UI-35 | Dialog lý do khóa/mở khóa thủ thư | Mở dialog từ cả hai thao tác; thử lý do rỗng, giới hạn ký tự, Hủy, Escape, Tab/Shift+Tab, xác nhận và trạng thái đang gửi; rà 320/375/768/1024/1440px | Không xuất hiện prompt/confirm mặc định; lý do bắt buộc và tối đa 500 ký tự; dialog giữ focus, khóa cuộn nền, vừa viewport, thao tác rõ theo màu Neo-brutalism và gọi API đúng lý do | 🟡 Chờ rà trực quan |
 | UI-37 | Đồng bộ trạng thái thẻ sau khi Admin xét gỡ khỏi danh sách đen | Giữ phiên độc giả đang hoạt động; Admin gỡ thẻ; nhận thông báo hoặc bấm mượn ngay từ catalog/chi tiết sách | Phiên hiện tại đồng bộ trạng thái qua `/me`; không hiện cảnh báo Danh sách đen cũ; Borrow Modal mở khi backend xác nhận thẻ hoạt động; trạng thái vẫn bị khóa thì hiển thị cảnh báo tương ứng | 🟡 Chờ rà trực quan |
@@ -155,6 +161,7 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 | UI-GENRE-01 | Catalog hai cổng kết hợp lọc thể loại với từ khóa/NXB/tồn kho | Kết quả đúng; xóa lọc đặt lại “Tất cả thể loại” |
 | UI-GENRE-02 | Form tạo/sửa sách và lọc kho ở 320/375/768/1024/1440px | Chọn thể loại bắt buộc, bố cục không tràn ngang |
 | UI-CATALOG-PRICE-01 | Kết hợp lọc thể loại và bốn khoảng giá ở cả hai catalog | Sách trong đúng ngưỡng giá xuất hiện; các ngưỡng không chồng lấn; xóa lọc trả toàn bộ bộ lọc về mặc định |
+| UI-CATALOG-PAGINATION-01 | Mở catalog hai cổng khi có hơn 10 kết quả; thử Trước/Sau, số trang, tìm kiếm, bộ lọc và tải lại | Mỗi trang hiển thị tối đa 10 đầu sách; kết quả được phân trang sau lọc; bộ đếm khoảng hiển thị chính xác; đổi điều kiện/tải lại trở về trang 1; nút biên bị vô hiệu hóa; không có phân trang khi chỉ có một trang |
 | UI-CATALOG-LAYOUT-01 | Trang catalog ở 320/375/768/1024/1440px | Search rộng phía trên; sidebar trái ở desktop; mobile mở/đóng bằng nút “Bộ lọc”; không tràn ngang, kết quả vẫn đọc được |
 | UI-CATALOG-FILTER-STYLE-01 | Sidebar lọc ở hai cổng | Khoảng đệm cân đối; nhãn và tiêu đề dễ phân biệt; nút đặt lại không cạnh tranh màu; select không quá cao/nặng; focus bàn phím rõ; không tràn ngang ở 320/375/768px |
 | UI-CATALOG-FILTER-COLOR-01 | Màu sidebar ở hai cổng | Nền giấy ấm, chữ mực, nhấn vàng `#FDC800`; tím chỉ dùng cho hover/focus; checkbox/nhãn đồng bộ design token và đạt tương phản |

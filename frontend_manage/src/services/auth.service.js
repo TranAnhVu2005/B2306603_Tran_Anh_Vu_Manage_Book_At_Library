@@ -107,8 +107,10 @@ class AuthService {
 
     getRole(user = this.getUser()) {
         if (!user) return null;
-        if (user.ChucVu) return user.ChucVu === "ADMIN" ? "ADMIN" : "MANAGER";
-        return user.VaiTro || "USER";
+        if (user.ChucVu === "ADMIN") return "ADMIN";
+        if (["STAFF", "THUTHU", "MANAGER"].includes(user.ChucVu)) return "STAFF";
+        if (user.ChucVu) return null;
+        return "USER";
     }
 
     getPhone(user = this.getUser()) {
@@ -144,7 +146,7 @@ class AuthService {
      */
     isStaffOrAdmin(user = this.getUser()) {
         const role = this.getRole(user);
-        return Boolean(user?.ChucVu) && (role === "MANAGER" || role === "ADMIN");
+        return Boolean(user?.ChucVu) && (role === "STAFF" || role === "ADMIN");
     }
 
     /**

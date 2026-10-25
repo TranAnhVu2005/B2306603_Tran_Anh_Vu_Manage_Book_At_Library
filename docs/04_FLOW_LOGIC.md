@@ -11,11 +11,13 @@ stateDiagram-v2
     [*] --> ChoDuyet: Độc giả đăng ký mượn trực tuyến
     ChoDuyet --> TuChoi: Thủ thư từ chối (Không đủ điều kiện)
     ChoDuyet --> DangMuon: Thủ thư duyệt cấp sách (Kho SoQuyen - 1, Gán MSNV & Hạn 14 ngày)
+    ChoDuyet --> DaHuy: Độc giả hủy trước khi thủ thư xử lý
     DangMuon --> DaTra: Thủ thư xác nhận trả (Kho SoQuyen + 1, Kiểm tra trễ hạn)
     DangMuon --> MatSach: Ghi nhận mất sách (GiaTriBoiThuong = DonGia, Kho giữ nguyên, Tăng vi phạm +1)
     MatSach --> DaThanhToan: Thanh toán bồi hoàn qua MoMo / Quầy
     DaTra --> [*]
     TuChoi --> [*]
+    DaHuy --> [*]
     DaThanhToan --> [*]
 ```
 
@@ -30,6 +32,8 @@ stateDiagram-v2
    - Cả `Khoa` và `DanhSachDen` đều bị từ chối mượn với HTTP 403, nhưng được quản lý bằng các thao tác riêng.
 2. **Hạn mức mượn tối đa 3 cuốn**:
    - Mỗi độc giả chỉ được phép giữ tối đa 3 cuốn sách ở trạng thái đang lưu thông (`ChoDuyet` + `DangMuon`). Nếu đã đủ 3 cuốn, hệ thống từ chối yêu cầu mượn mới cho đến khi hoàn trả sách cũ.
+   - Độc giả được hủy phiếu của mình khi còn `ChoDuyet`. Phiếu chuyển thành `DaHuy`, không xóa lịch sử, không làm thay đổi tồn kho và không còn tính vào hạn mức; sau đó độc giả có thể đăng ký sách khác.
+   - Hủy, duyệt và từ chối dùng cập nhật có điều kiện trên trạng thái hiện tại. Nếu thủ thư duyệt đúng lúc độc giả hủy, chỉ một thao tác chuyển trạng thái thành công; không thể duyệt phiếu đã hủy hoặc hủy phiếu đã duyệt.
 3. **Kiểm tra tồn kho thời gian thực**:
    - Chỉ cho phép đăng ký mượn khi sách có `SoQuyen > 0`.
    - Trạng thái `ChoDuyet`: Chưa trừ kho.
@@ -70,8 +74,9 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 1. **Độc giả (`USER`)**:
    - Tra cứu, tìm kiếm, lọc sách và nhà xuất bản.
    - Đăng ký mượn sách trực tuyến (tối đa 3 quyển).
+   - Hủy yêu cầu mượn của chính mình khi phiếu chưa được thủ thư duyệt.
    - Theo dõi lịch sử mượn trả, hạn trả và tình trạng vi phạm cá nhân.
-2. **Thủ thư (`MANAGER`)**:
+2. **Thủ thư (`STAFF`)**:
    - Có thể truy cập các chức năng công khai của cổng Độc giả (tra cứu sách/NXB); cổng quản lý có liên kết mở cổng Độc giả.
    - Có toàn bộ chức năng nghiệp vụ thủ thư. Tài khoản nhân viên và tài khoản độc giả là hai hồ sơ/phiên độc lập; các thao tác gắn với thẻ độc giả (đăng ký mượn, hồ sơ, lịch sử cá nhân) chỉ khả dụng khi đăng nhập bằng tài khoản độc giả tương ứng. Chưa có cơ chế liên kết hai hồ sơ.
    - Quản lý kho sách (Thêm, Sửa, Xóa, kiểm kê số lượng).
@@ -81,7 +86,7 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Kế thừa toàn bộ chức năng nghiệp vụ của Thủ thư và có thể truy cập các chức năng công khai của cổng Độc giả.
    - Tài khoản quản trị vẫn tách khỏi tài khoản độc giả; thao tác hồ sơ/mượn cá nhân cần đăng nhập phiên độc giả riêng nếu có.
    - Quản lý danh sách toàn bộ tài khoản người dùng và nhân viên.
-   - Xét duyệt/từ chối hồ sơ ứng tuyển nhân viên. Chỉ khi được duyệt mới sinh hồ sơ nhân viên `THUTHU`; hồ sơ độc giả không được chuyển đổi.
+   - Xét duyệt/từ chối hồ sơ ứng tuyển nhân viên. Chỉ khi được duyệt mới sinh hồ sơ nhân viên `STAFF`; hồ sơ độc giả không được chuyển đổi.
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
    - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); đặt `SoLanViPham = 0` để bắt đầu chu kỳ theo dõi mới theo quyết định có chủ đích của Admin. Nhật ký kiểm toán vẫn lưu các sự kiện vi phạm và quyết định xét gỡ trước đó.
    - Sau khi gỡ, JWT độc giả hiện tại vẫn hợp lệ; frontend đồng bộ hồ sơ qua `/api/auth/me` khi nhận thông báo thay đổi trạng thái và kiểm tra trạng thái mới nhất ngay trước khi mở luồng mượn. API mượn luôn đối chiếu MongoDB, không dùng trạng thái cache trong JWT/localStorage làm quyền quyết định.
@@ -92,7 +97,7 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 
 ### Ma trận quyền theo chức năng (thực thi bắt buộc tại Backend)
 
-| Chức năng | Khách | USER | MANAGER | ADMIN |
+| Chức năng | Khách | USER | STAFF | ADMIN |
 |:---|:---:|:---:|:---:|:---:|
 | Tra cứu sách/NXB công khai | ✓ | ✓ | ✓ | ✓ |
 | Tìm kiếm sách/NXB trên cổng quản lý | — | — | ✓ | ✓ |
@@ -109,7 +114,7 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 
 Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở server; vai trò hoặc mã nhân viên gửi từ trình duyệt không được dùng làm nguồn thẩm quyền. Các route guard frontend chỉ hỗ trợ điều hướng.
 
-`—*` áp dụng cho phiên nhân viên: MANAGER/ADMIN hiện đăng nhập bằng hồ sơ `nhanvien`, không có `MaDocGia` và không dùng phiên `docgia`. Muốn thực hiện nghiệp vụ cá nhân của độc giả phải đăng nhập tài khoản độc giả riêng trên domain cổng độc giả. Không cấp quyền giả lập hồ sơ độc giả từ quyền nhân viên.
+`—*` áp dụng cho phiên nhân viên: STAFF/ADMIN hiện đăng nhập bằng hồ sơ `nhanvien`, không có `MaDocGia` và không dùng phiên `docgia`. Muốn thực hiện nghiệp vụ cá nhân của độc giả phải đăng nhập tài khoản độc giả riêng trên domain cổng độc giả. Không cấp quyền giả lập hồ sơ độc giả từ quyền nhân viên.
 
 ## 6. Nguyên tắc bảo mật ứng dụng
 
@@ -123,7 +128,7 @@ Mọi thao tác cần kiểm tra thêm quyền sở hữu hồ sơ/phiếu ở s
 ## 7. Luồng truy cập hai frontend/domain
 
 - Độc giả truy cập `frontend_user/` (local `http://localhost:3001`, production domain riêng) để tra cứu sách, đăng ký mượn và quản lý hồ sơ cá nhân.
-- Thủ thư/Admin truy cập `frontend_manage/` (local `http://localhost:3002`, production domain riêng) để thực hiện nghiệp vụ quản lý. MANAGER có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư cộng quản trị. Cổng quản lý cung cấp liên kết sang cổng độc giả để dùng chức năng công khai hoặc đăng nhập phiên độc giả riêng.
+- Thủ thư/Admin truy cập `frontend_manage/` (local `http://localhost:3002`, production domain riêng) để thực hiện nghiệp vụ quản lý. STAFF có toàn bộ chức năng thủ thư; ADMIN có toàn bộ chức năng thủ thư cộng quản trị. Cổng quản lý cung cấp liên kết sang cổng độc giả để dùng chức năng công khai hoặc đăng nhập phiên độc giả riêng.
 - Cả hai ứng dụng gọi chung Backend API tại cổng `3000` khi phát triển; CORS production chỉ cho phép hai origin được cấu hình. Khi đăng nhập, frontend điều hướng tới đúng cổng/domain theo vai trò.
 - Mỗi domain có browser storage riêng; không phụ thuộc vào chia sẻ localStorage/cookie giữa hai app. Nếu token không tồn tại ở app đích, yêu cầu đăng nhập lại tại app đó. Backend luôn xác thực token và quyền, bất kể request đến từ domain nào.
 

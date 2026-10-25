@@ -2,6 +2,7 @@
 
 * **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
 * **Tên Database**: `quanlymuonsach`
+* **Vai trò chuẩn**: `USER` (độc giả), `STAFF` (thủ thư/nhân viên), `ADMIN` (quản trị viên). `nhanvien.ChucVu` chỉ nhận `STAFF` hoặc `ADMIN`; `docgia.VaiTro` chỉ nhận `USER`.
 * **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25), mở rộng thêm collection tham chiếu `theloai`; `yeucaunhanvien`, `nhatkykiemtoan` và `thongbao` là collection kỹ thuật.
 
 Các trường nghiệp vụ là lược đồ CDM, bổ sung thể loại tham chiếu riêng `theloai`. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `nhatkykiemtoan` có schema riêng, dùng tên trường tiếng Việt và không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
@@ -51,7 +52,7 @@ Bảng `docgia` lưu thông tin cá nhân người mượn sách, tài khoản �
 ---
 
 ### 2.2. Hồ sơ đăng ký nhân viên (`yeucaunhanvien`)
-Hồ sơ đăng ký được lưu tách khỏi `docgia` và `nhanvien`. Người đăng ký chưa có tài khoản nghiệp vụ và không nhận JWT cho đến khi Admin duyệt. Mật khẩu chỉ được lưu dạng Bcrypt hash và không được đưa vào API response. Khi duyệt, hệ thống tạo hồ sơ `nhanvien` với chức vụ `THUTHU`; khi từ chối, trạng thái và lý do được lưu để tra cứu/kiểm toán.
+Hồ sơ đăng ký được lưu tách khỏi `docgia` và `nhanvien`. Người đăng ký chưa có tài khoản nghiệp vụ và không nhận JWT cho đến khi Admin duyệt. Mật khẩu chỉ được lưu dạng Bcrypt hash và không được đưa vào API response. Khi duyệt, hệ thống tạo hồ sơ `nhanvien` với chức vụ `STAFF`; khi từ chối, trạng thái và lý do được lưu để tra cứu/kiểm toán.
 
 ```json
 {
@@ -80,7 +81,7 @@ Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và q
   "MSNV": "NV-0001",                  // [Duy nhất] Mã số nhân viên (Tự sinh chuẩn NV-0001)
   "HoTenNV": "Nguyễn Quản Trị Viên", // [Bắt buộc] Họ và tên đầy đủ của nhân viên
   "MatKhau": "$2a$10$k9...",          // [Bắt buộc] Mật khẩu đăng nhập hệ thống (Đã mã hóa Bcrypt)
-  "ChucVu": "ADMIN",                  // ["THUTHU" | "ADMIN"] Chức danh công tác
+  "ChucVu": "ADMIN",                  // ["STAFF" | "ADMIN"] Chức danh công tác
   "SoDienThoai": "0901234567",        // [Bắt buộc, duy nhất trong nhanvien] Dùng đăng nhập; MSNV chỉ là mã hồ sơ
   "DiaChi": "Ninh Kiều, Cần Thơ",    // Địa chỉ liên hệ của nhân viên
   "TrangThaiThe": "HoatDong",         // ["HoatDong" | "Khoa"] Trạng thái tài khoản nhân viên
@@ -89,7 +90,9 @@ Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và q
 }
 ```
 
-`TrangThaiThe` của `nhanvien` là trạng thái tài khoản, không áp dụng quy tắc vi phạm của độc giả. Chỉ Admin được khóa/mở khóa nhân viên `THUTHU`; không được tự khóa hoặc tác động lên tài khoản Admin. `PhienBanToken` không xuất API; middleware so sánh phiên bản trong JWT để thu hồi token cũ kể cả sau khi tài khoản được mở khóa.
+`TrangThaiThe` của `nhanvien` là trạng thái tài khoản, không áp dụng quy tắc vi phạm của độc giả. Chỉ Admin được khóa/mở khóa nhân viên `STAFF`; không được tự khóa hoặc tác động lên tài khoản Admin. `PhienBanToken` không xuất API; middleware so sánh phiên bản trong JWT để thu hồi token cũ kể cả sau khi tài khoản được mở khóa.
+
+Khi backend khởi động, migration idempotent chuyển `nhanvien.ChucVu` cũ `THUTHU`/`MANAGER` thành `STAFF` và `docgia.VaiTro` cũ `THUTHU`/`MANAGER`/`STAFF` thành `USER`. Migration chỉ cập nhật trường vai trò và `UpdatedAt`, không thay đổi thông tin cá nhân, mật khẩu, trạng thái thẻ hoặc phiếu mượn. Nhật ký kiểm toán cũ được giữ nguyên như lịch sử.
 
 ---
 
@@ -164,7 +167,7 @@ Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữ
   "MSNV": "NV-0002",                  // [Khóa ngoại FK] Mã số nhân viên phụ trách duyệt (nhanvien.MSNV)
   "NgayHenTra": "2026-10-28",         // Hạn trả sách dự kiến (Mặc định 14 ngày kể từ ngày duyệt)
   "NgayTra": null,                    // Ngày thực tế mang trả sách tại quầy (null nếu chưa trả)
-  "TrangThai": "DangMuon",            // ["ChoDuyet" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi"]
+  "TrangThai": "DangMuon",            // ["ChoDuyet" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi" | "DaHuy"]
   "GiaTriBoiThuong": 0,               // [Double >= 0] Tiền bồi hoàn theo đơn giá nếu làm mất sách
   "GhiChu": "Sách bìa cứng, mới"      // Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
 }
@@ -248,7 +251,7 @@ erDiagram
         string MSNV UK
         string HoTenNV
         string MatKhau "Bcrypt"
-        string ChucVu "THUTHU/ADMIN"
+        string ChucVu "STAFF/ADMIN"
         string SoDienThoai
         string DiaChi
     }

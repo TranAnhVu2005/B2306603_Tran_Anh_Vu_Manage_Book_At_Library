@@ -15,8 +15,8 @@ router.route("/")
     .post(authenticate, authorizeAdmin, upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoTenNV", "ChucVu", "MatKhau", "SoDienThoai", "DiaChi"), controller.create);
 
 router.route("/:id")
-    .get(authenticate, authorizeStaff("MANAGER", "ADMIN"), controller.findOne)
-    .put(authenticate, authorizeStaff("MANAGER", "ADMIN"), upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoTenNV", "SoDienThoai", "DiaChi"), controller.update)
+    .get(authenticate, authorizeStaff("STAFF", "ADMIN"), controller.findOne)
+    .put(authenticate, authorizeStaff("STAFF", "ADMIN"), upload.single("AnhDaiDien"), validateImageUpload, allowFields("HoTenNV", "SoDienThoai", "DiaChi"), controller.update)
     .delete(authenticate, authorizeAdmin, controller.delete);
 
 router.route("/:id/lock")

@@ -182,7 +182,7 @@ async function seedData() {
                 HoTenNV: "Lê Thị Thu Thư",
                 MatKhau: hashedStaffPass,
                 Password: hashedStaffPass,
-                ChucVu: "THUTHU",
+                ChucVu: "STAFF",
                 DiaChi: "Phường An Khánh, Q. Ninh Kiều, Cần Thơ",
                 SoDienThoai: "0907654321",
                 CreatedAt: new Date(),

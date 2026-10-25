@@ -1,0 +1,492 @@
+P0 [Normal] ĐẠI HỌC CẦN THƠ
+P1 [Normal] TRƯỜNG CÔNG NGHỆ THÔNG TIN VÀ TRUYỀN THÔNG
+P2 [Normal] ----------
+P6 [Normal] BÁO CÁO PHÁT TRIỂN ỨNG DỤNG WEB
+P7 [Normal] Mã học phần: CT449 – 01
+P9 [Normal] Đề tài:
+P10 [Normal] Xây dựng website quản lý mượn sách ở thư viện
+
+TABLE 13:
+Giáo viên hướng dẫn: | Sinh viên thực hiện
+Ths.Nguyễn Minh Trung | Họ và tên: Trần Anh Vũ
+ | MSSV: B2306603
+P19 [Normal] Cần Thơ, ngày 20/10/2026
+P20 [Heading 1] LỜI CẢM ƠN
+P21 [Normal] Để hoàn thành được báo cáo học phần Phát triển ứng dụng Web với đề tài "Xây dựng website quản lý sách ở thư viện", đầu tiên em xin gửi lời cảm ơn chân thành nhất đến quý thầy cô của Trường Công nghệ Thông tin và Truyền thông - Đại học Cần Thơ đã tận tình giảng dạy, chỉ bảo để em có được nền tảng kiến thức cơ bản và những kỹ năng lập trình vững chắc. Đặc biệt, em xin gửi lời cảm ơn sâu sắc đến thầy Ths. Nguyễn Minh Trung vì đã tận tình hướng dẫn, hỗ trợ và giúp đỡ em trong suốt quá trình thực hiện đề tài. Những lời góp ý, định hướng cũng như nhắc nhở của thầy đã giúp em có thêm nhiều ý tưởng và kịp thời điều chỉnh những sai sót của bản thân để hoàn thiện đồ án này. Một lần nữa, em xin cảm ơn gia đình, bạn bè đã luôn tận tình động viên, giúp đỡ và cho em những lời góp ý hữu ích trong suốt thời gian học tập và thực hiện đề tài. Dù đã cố gắng hoàn thành tốt báo cáo nhưng do kiến thức và kinh nghiệm thực tế còn hạn chế nên chắc chắn sẽ khó tránh khỏi những sai sót. Em rất mong nhận được sự thông cảm cũng như những lời nhận xét, góp ý chân thành từ thầy để em rút kinh nghiệm và hoàn thiện bản thân hơn. Em xin chân thành cảm ơn.
+P22 [Normal] Cần Thơ, ngày 20 tháng 10 năm 2026
+P23 [Normal] Sinh viên thực hiện
+P25 [Normal] Trần Anh Vũ
+P27 [Normal] MỤC LỤC
+P28 [toc 1] LỜI CẢM ƠN	2
+P29 [toc 1] DANH MỤC HÌNH	4
+P30 [toc 1] DANH MỤC BẢNG	4
+P31 [toc 1] CHƯƠNG I: GIỚI THIỆU	5
+P32 [toc 2] 1.	Đặt vấn đề	5
+P33 [toc 2] 2. Mục tiêu đề tài	5
+P34 [toc 2] 3. Đối tượng và phạm vi nghiên cứu	5
+P35 [toc 2] 4. Phương pháp nghiên cứu	5
+P36 [toc 2] 5. Các chức năng chính	5
+P37 [toc 1] CHƯƠNG II: ĐẶC TẢ YÊU CẦU	7
+P38 [toc 2] 1. Mô tả bài toán	7
+P39 [toc 2] 2. Yêu cầu bài toán	7
+P40 [toc 2] 3. Ngôn ngữ lập trình và các công cụ liên quan	7
+P41 [toc 3] 3.1. Node và Express.js	7
+P42 [toc 3] 3.2. MongoDB	8
+P43 [toc 3] 3.3. Vuejs	8
+P44 [toc 3] 3.4. Bootstrap	8
+P45 [toc 3] 3.3. VS Code	8
+P46 [toc 1] CHƯƠNG III: CÁC SƠ ĐỒ CỦA WEBSITE	9
+P47 [toc 2] 1. Phân tích và thiết kế	9
+P48 [toc 3] 1.1. Sơ đồ use case tổng quát	9
+P49 [toc 4] 1.1.1. Đặc tả chức năng sơ đồ use case tổng quát	9
+P50 [toc 3] 1.2. Sơ đồ use case đăng ký và đăng nhập	9
+P51 [toc 4] 1.2.1. Đặc tả use case đăng ký	9
+P52 [toc 4] 1.2.2. Đặc tả use case đăng nhập	9
+P53 [toc 3] 1.3. Sơ đồ use case mượn - trả sách	9
+P54 [toc 4] 1.3.1. Đặc tả chức năng tra cứu/tìm kiếm sách	9
+P55 [toc 4] 1.3.2. Đặc tả chức năng đăng ký mượn sách trực tuyến	9
+P56 [toc 4] 1.3.3. Đặc tả chức năng duyệt mượn, xác nhận trả và báo mất sách	9
+P57 [toc 3] 1.4. Sơ đồ use case quản lý sách và nhà xuất bản	9
+P58 [toc 4] 1.4.1. Đặc tả sơ đồ quản lý sách và nhà xuất bản	9
+P59 [toc 3] 1.5. Sơ đồ use case quản lý người dùng (Độc giả, Nhân viên, Blacklist)	9
+P60 [toc 4] 1.5.1. Đặc tả use case quản lý người dùng và phân quyền	9
+P61 [toc 2] 2. Sơ đồ cơ sở dữ liệu CDM	9
+P62 [toc 3] 2.1. Mô tả các lớp (Bảng tổng hợp các collection)	9
+P63 [toc 3] 2.2. Mô tả bảng Độc giả (Docgia)	9
+P64 [toc 3] 2.3. Mô tả bảng Nhân viên (Nhanvien)	9
+P65 [toc 3] 2.4. Mô tả bảng Sách và Nhà xuất bản (Sach, NhaXuatBan)	9
+P66 [toc 3] 2.5. Mô tả bảng Theo dõi mượn sách (TheoDoiMuonSach	9
+P67 [toc 1] CHƯƠNG IV: THIẾT KẾ GIAO DIỆN	10
+P68 [toc 1] CHƯƠNG V: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN	11
+P69 [toc 2] 1. Kết quả đạt được	11
+P70 [toc 2] 2. Hạn chế	11
+P71 [toc 2] 3. Hướng phát triển	11
+P72 [toc 1] TÀI  LIỆU THAM KHẢO	12
+P74 [Heading 1] DANH MỤC HÌNH
+P75 [Heading 1] DANH MỤC BẢNG
+P77 [Heading 1] CHƯƠNG I: GIỚI THIỆU
+P78 [Heading 2] 1. Đặt vấn đề
+P79 [Normal] Trong bối cảnh thời đại số hóa và sự phát triển mạnh mẽ của công nghệ thông tin, việc ứng dụng công nghệ vào công tác quản lý tại các cơ quan, trường học và thư viện đã trở thành một xu thế tất yếu. Thư viện không chỉ đơn thuần là nơi lưu trữ sách mà còn là trung tâm phân phối tri thức. Tuy nhiên, nếu chỉ áp dụng các phương pháp quản lý thủ công, ghi chép trên giấy tờ hoặc sử dụng các phần mềm rời rạc, ban quản lý thư viện sẽ phải đối mặt với nhiều khó khăn như: dữ liệu thiếu tính đồng bộ, khó khăn trong việc tra cứu số lượng sách tồn kho theo thời gian thực, và đặc biệt là rủi ro cao trong việc thất thoát tài nguyên sách do không kiểm soát chặt chẽ được quá trình mượn – trả.
+P80 [Normal] Thực tế cho thấy, một quy trình quản lý mượn - trả sách chuẩn mực đòi hỏi sự minh bạch và khép kín. Hệ thống cần phải có cơ chế kiểm duyệt đơn mượn rõ ràng, giới hạn số lượng sách được phép mượn đối với mỗi độc giả để đảm bảo nguồn tài nguyên được phân bổ đồng đều. Bên cạnh đó, việc quản lý thời hạn trả sách và xử lý các sự cố phát sinh như trả sách trễ hạn hay báo mất sách cần phải đi kèm với các chế tài xử lý vi phạm nghiêm ngặt, tự động hóa tính toán tiền phạt nhằm nâng cao ý thức của người mượn và bảo vệ tài sản của thư viện.
+P81 [Normal] Hơn nữa, một hệ thống thư viện hiện đại yêu cầu tính bảo mật và sự phân cấp rạch ròi về quyền hạn thao tác. Việc không tách biệt rõ ràng giữa quyền của độc giả thông thường, quyền quản lý nghiệp vụ của nhân viên (thủ thư) và quyền quản trị tối cao của người quản trị hệ thống có thể dẫn đến việc rò rỉ hoặc sai lệch dữ liệu nội bộ.
+P82 [Normal] Xuất phát từ những hạn chế và yêu cầu cấp thiết nêu trên, đề tài "Xây dựng Hệ Thống Quản Lý Mượn Sách Thư Viện" đã được lựa chọn và thực hiện với mong muốn tự động quá quy trình quản lý mượn và trả sách, quản lý các nghiệp vụ cơ bản về các vai trò người dùng trong thư viện.
+P83 [Heading 2] 2. Mục tiêu đề tài
+P84 [Normal] *Mục tiêu tổng quát: Đề tài hướng tới việc nghiên cứu, phân tích và xây dựng hoàn chỉnh một hệ thống phần mềm quản lý mượn trả sách thư viện trực tuyến. Hệ thống nhằm mục đích số hóa các quy trình quản lý thủ công, nâng cao hiệu suất làm việc cho nhân viên thư viện và tối ưu hóa trải nghiệm tra cứu, mượn sách cho độc giả.
+P85 [Normal] *Mục tiêu cụ thể của đề tài hướng tới việc xây dựng hoàn chỉnh một ứng dụng web quản lý mượn sách thư viện đáp ứng các mục tiêu trọng tâm sau:
+P86 [Normal] - Về phía giao diện: xây dựng hệ thống theo phong cách thư viện học thuật cổ điển, tinh tế, chuyên nghiệp.
+P87 [Normal] - Về phía xử lý của hệ thống:
+P88 [Normal] + Xây dựng cơ chế phân quyền với 3 vai trò: độc giả, nhân viên thủ thư và quản trị viên hệ thống.
+P89 [Normal] + Xây dựng chức năng quản lý mượn sách dễ dùng, dễ thao tác.
+P90 [Normal] + Xây dựng hệ thống vận hành mượt mà, độ trễ thấp.
+P91 [Heading 2] 3. Đối tượng và phạm vi nghiên cứu
+P92 [Heading 3] 3.1. Đối tượng nghiên cứu
+P93 [Normal] - Về mặt nghiệp vụ: Nghiên cứu mô hình vận hành và các quy trình nghiệp vụ cốt lõi tại một thư viện thực tế. Cụ thể bao gồm: quy trình nhập và quản lý kho sách, phương pháp phân loại nhà xuất bản, quy trình cấp phát thẻ và quản lý hồ sơ độc giả. Đặc biệt, đề tài tập trung phân tích sâu vào chu trình lưu thông tài liệu khép kín (duyệt mượn sách, xác nhận trả sách) và các quy tắc xử lý rủi ro (báo mất sách, phạt trễ hạn).
+P94 [Normal] - Về mặt công nghệ: Nghiên cứu phương pháp phân tích, thiết kế và triển khai ứng dụng web theo kiến trúc Single Page Application (SPA). Tìm hiểu và ứng dụng thực tiễn ngăn xếp công nghệ MEVN (Node.js, Express.js, MongoDB, Vue 3). Bên cạnh đó, đề tài cũng nghiên cứu các nguyên lý thiết kế giao diện UI/UX chuyên nghiệp, tập trung vào phong cách học thuật cổ điển nhằm tối ưu hóa trải nghiệm người dùng.
+P95 [Heading 3] 3.2. Phạm vi nghiên cứu
+P96 [Normal] - Phạm vi về đối tượng sử dụng: Đề tài giới hạn phục vụ và phân quyền cho 3 nhóm tác nhân chính trong hệ thống: Độc giả (tra cứu, đăng ký mượn), thủ thư (quản lý kho sách, duyệt đơn mượn/trả) và quản trị viên(phân quyền nhân sự, xử lý tài khoản vi phạm).
+P97 [Normal] - Giới hạn của đề tài: Hệ thống hiện tại chỉ ghi nhận các khoản tiền phạt/đền bù trên cơ sở dữ liệu để quản lý nội bộ, chưa tích hợp cổng thanh toán trực tuyến và chưa bao gồm hệ thống gửi tin nhắn/email nhắc nhở tự động.
+P99 [Heading 2] 4. Phương pháp nghiên cứu
+P100 [Normal] -  Phương pháp phân tích và thiết kế: nghiên cứu việc xây dựng cơ sở dữ liệu linh hoạt trên nền tảng MongoDB với các trường dữ liệu mở rộng cho nghiệp vụ. Thiết kế đặc tả API theo chuẩn RESTful và sử dụng biểu đồ trạng thái để mô hình hóa luồng logic mượn trả.
+P101 [Normal] -  Phương pháp lập trình: Sử dụng kiến trúc phần mềm phân lớp (routes, controllers, services) cho backend để dễ bảo trì; frontend tổ chức theo cấu trúc components tái sử dụng.
+P102 [Normal] -  Phương pháp thiết kế giao diện: tổng hợp, xem xét các trang giao diện có nghiệp vụ tương tự để có nguồn tham khảo uy tín, giúp tạo ra một giao diện đẹp mắt và nâng cao trải nghiệm người dùng.
+P103 [Normal] -  Phương pháp kiểm thử: kiểm thử các api đảm bảo hoạt động một cách chính xác đồng thời có xem xét khi tương tác với api trên trình duyệt.
+P104 [Heading 2] 5. Các chức năng chính
+P105 [Normal] Website quản lý mượn sách thư viện được thiết kế cung cấp cáo nhóm chức năng cho biệt cho những vai trò người dùng tương ứng:
+P106 [Normal] - Đối với độc giả:
+P107 [Normal] + Cho phép đăng ký thẻ thư viện trực tuyến
+P108 [Normal] + Tìm kiếm và lọc sách
+P109 [Normal] + Đăng ký mượn sách trực tuyến, theo dõi lịch sử mượn trả cá nhân và trạng thái thẻ của bản thân
+P110 [Normal] - Đối với thủ thư:
+P111 [Normal] + Quản lý toàn diện danh mục sách và nhà xuất bản
+P112 [Normal] + Xử lý quy trình mượn trả bao gồm duyệt phiếu mượn, trừ tồn kho, xác nhận trả sách và xử lý báo mất sác
+P113 [Normal] - Đối với quản trị viên, ngoài các quyền của thủ thư, quản trị viên còn có thể:
+P114 [Normal] + Quản lý toàn bộ tài khoản trong hệ thống, thực hiện nâng cấp hoặc hạ cấp quyền hạn nhân sự
+P115 [Normal] +  Quản lý có thể khóa hoặc mở tài khoản người dùng
+P117 [Heading 1] CHƯƠNG II: ĐẶC TẢ YÊU CẦU
+P118 [Heading 2] 1. Mô tả bài toán
+P119 [Normal] Hoạt động quản lý thư viện truyền thống thường phụ thuộc nhiều vào sổ sách ghi chép thủ công hoặc các phần mềm quản lý rời rạc, cục bộ. Điều này dẫn đến hàng loạt bất cập như: tốn nhiều thời gian trong việc tra cứu, khó kiểm soát số lượng tồn kho thực tế, dễ xảy ra sai sót trong quá trình mượn – trả, và gây khó khăn cho độc giả trong việc tiếp cận nguồn tài nguyên. Để giải quyết triệt để những hạn chế này, bài toán đặt ra là cần thiết kế và phát triển một "Hệ thống quản lý mượn sách thư viện" toàn diện, vận hành thông qua một nền tảng ứng dụng web tập trung. Ứng dụng này có nhiệm vụ số hóa toàn bộ quy trình vận hành, tạo ra một môi trường tương tác liền mạch, nhanh chóng giữa độc giả và ban quản lý thư viện.
+P120 [Normal] Đối với phân hệ người dùng (độc giả), bài toán yêu cầu xây dựng một giao diện tra cứu trực quan và tiện lợi. Thay vì phải đến tận thư viện để tìm sách mà không rõ tình trạng còn hay hết, độc giả giờ đây có thể ngồi tại nhà để xem toàn bộ danh mục tài liệu, tìm kiếm thông minh và xem thông tin chi tiết của từng đầu sách. Hệ thống phải hiển thị chính xác trạng thái tồn kho theo thời gian thực, cho phép độc giả chủ động gửi yêu cầu đăng ký mượn sách trực tuyến, đồng thời tự theo dõi lịch sử mượn trả và hạn trả sách ngay trên hồ sơ cá nhân của mình.
+P121 [Normal] Về phía ban quản lý, bài toán đòi hỏi một công cụ đắc lực dành cho nhân viên thư viện (thủ thư) để số hóa và kiểm soát kho tài nguyên. Thủ thư cần một hệ thống quản trị chuyên biệt để đưa các thông tin sách mới lên cơ sở dữ liệu, phân loại nhà xuất bản, và chỉnh sửa hoặc xóa các đầu sách đã cũ. Quan trọng hơn, hệ thống phải cung cấp một không gian làm việc để thủ thư quản lý chặt chẽ luồng phê duyệt đơn mượn: từ khâu tiếp nhận yêu cầu, kiểm tra điều kiện độc giả, duyệt giao sách, cho đến khi xác nhận độc giả đã trả sách hoặc ghi nhận các báo cáo sự cố mất sách.
+P122 [Normal] Điểm cốt lõi và phức tạp nhất của bài toán là hệ thống phải thiết lập và tự động thực thi các quy tắc ràng buộc logic nghiệp vụ nghiêm ngặt nhằm bảo vệ vòng đời lưu thông của tài liệu. Hệ thống phải có khả năng kiểm soát số lượng mượn tối đa (không cho phép mượn vượt quá giới hạn quy định), tính toán tồn kho theo thời gian thực (trừ kho ngay khi duyệt mượn và cộng hoàn kho ngay khi trả). Đặc biệt, bài toán đặt ra yêu cầu phải có một cơ chế kiểm soát rủi ro và kỷ luật tự động: hệ thống sẽ theo dõi và đếm số lần vi phạm khi độc giả trả sách trễ hạn hoặc làm mất sách. Nếu chạm ngưỡng vi phạm nhiều lần, hệ thống sẽ tự động kích hoạt hình phạt, đưa tài khoản đó vào danh sách đen và tước quyền mượn sách nhằm răn đe và tránh thất thoát tài sản.
+P123 [Heading 2] 2. Yêu cầu bài toán
+P124 [Normal] - Đối với độc giả:
+P125 [Normal] + Được quyền xem và tra cứu thông tin chi tiết của tất cả các đầu sách, các nhà xuất bản, cũng như nắm bắt các nội quy của thư viện.
+P126 [Normal] + Tìm kiếm và lọc các loại sách theo nhu cầu dựa trên các tiêu chí cụ thể.
+P127 [Normal] + Phải đăng ký và đăng nhập tài khoản để có quyền gửi yêu cầu mượn sách trực tuyến.
+P128 [Normal] + Bị giới hạn mượn tối đa 3 quyển sách cùng lúc (ở trạng thái đang chờ duyệt hoặc đang mượn).
+P129 [Normal] + Được phép xem lịch sử mượn trả cá nhân, trạng thái của các đơn đăng ký (chờ duyệt, đang mượn, đã trả, báo mất) và trạng thái thẻ thư viện hiện tại của bản thân (hoạt động, bị khóa).
+P130 [Normal] - Đối với nhân viên quản lý (thủ thư):
+P131 [Normal] + Có quyền quản lý kho sách và nhà xuất bản: thêm mới, chỉnh sửa, xóa các đầu sách/nhà xuất bản và kiểm kê số lượng tồn kho.
+P132 [Normal] + Xử lý quy trình mượn - trả sách: duyệt phiếu mượn (trừ tồn kho), xác nhận trả sách (cộng hoàn lại tồn kho) và xử lý sự cố mất sách (tính tiền bồi thường, không cộng hoàn kho).
+P133 [Normal] - Đối với Quản trị viên tối cao (Super Admin):
+P134 [Normal] + Kế thừa nghiệp vụ: sở hữu toàn bộ các quyền hạn thao tác nghiệp vụ của một thủ thư.
+P135 [Normal] + Quản lý toàn bộ danh sách tài khoản người dùng và nhân viên trong hệ thống.
+P136 [Normal] + Có đặc quyền phân quyền: nâng cấp độc giả lên làm thủ thư, hoặc hạ cấp thủ thư về lại quyền độc giả bình thường.
+P137 [Normal] + Theo dõi danh sách các độc giả đang bị khóa thẻ do vi phạm nội quy, có thể mở khóa cho người dùng đã bị khóa thẻ, có quyền xóa vĩnh viễn các tài khoản vi phạm nghiêm trọng hoặc không còn nhu cầu sử dụng khỏi hệ thống.
+P138 [Heading 2] 3. Ngôn ngữ lập trình và các công cụ liên quan
+P139 [Caption] Hình 1
+P140 [Normal] Toàn bộ hệ thống được xây dựng dựa trên kiến trúc MEVN Stack (MongoDB – Express.js – Vue.js – Node.js), một trong những giải pháp công nghệ hiện đại và phổ biến nhất hiện nay cho việc phát triển các ứng dụng web. Dưới đây là chi tiết về từng thành phần công nghệ và công cụ được sử dụng trong đề tài:
+P141 [Heading 3] 3.1. Môi trường thực thi Node.js (Node Runtime Environment)
+P143 [Caption] Hình 2
+P144 [Normal] - Khái niệm và Lịch sử phát triển: Node.js là một môi trường thực thi mã nguồn JavaScript đa nền tảng (cross-platform), mã nguồn mở, được xây dựng dựa trên nền tảng V8 JavaScript Engine – bộ thông dịch JavaScript hiệu năng cao do Google phát triển cho trình duyệt Chrome. Được giới thiệu lần đầu tiên vào năm 2009 bởi Ryan Dahl, Node.js đã tạo nên một bước ngoặt mang tính cách mạng trong ngành công nghệ phần mềm: đưa JavaScript thoát khỏi giới hạn của trình duyệt (phía client) để trở thành một ngôn ngữ lập trình mạnh mẽ có khả năng thực thi độc lập phía máy chủ (server-side).
+P145 [Normal] - Đặc tính kỹ thuật then chốt:
+P146 [Normal] + Mô hình Hướng sự kiện và Bất đồng bộ (Event-driven & Asynchronous): Khác biệt hoàn toàn với các máy chủ truyền thống (như Apache hay Tomcat) vốn sử dụng mô hình đa luồng (Multi-threaded) tốn nhiều tài nguyên bộ nhớ cho mỗi luồng kết nối, Node.js vận hành dựa trên kiến trúc đơn luồng (Single-threaded) kết hợp với vòng lặp sự kiện (Event Loop).
+P147 [Normal] + Cơ chế Vào/Ra không chặn (Non-blocking I/O): Mọi thao tác tiêu tốn thời gian như truy vấn cơ sở dữ liệu MongoDB, đọc ghi tệp tin hay gửi nhận dữ liệu qua mạng đều được đẩy xuống tầng xử lý nền của hệ điều hành. Luồng chính của máy chủ không bao giờ bị khóa (blocked), giúp hệ thống tiếp nhận và phục vụ hàng nghìn kết nối đồng thời với mức tiêu hao bộ nhớ RAM cực kỳ khiêm tốn.
+P148 [Normal] - Vai trò trong hệ thống quản lý thư viện: Node.js đóng vai trò là nền tảng máy chủ cốt lõi, chịu trách nhiệm lưu trữ ứng dụng backend, lắng nghe các kết nối từ client thông qua cổng mạng 3000, xử lý luồng logic nghiệp vụ và điều phối kết nối với cơ sở dữ liệu MongoDB.
+P149 [Heading 3] 3.2. Web Framework Express.js (Phiên bản Express 5)
+P151 [Caption] Hình 3
+P152 [Normal] - Khái niệm: Express.js là một framework ứng dụng web tối giản, không áp đặt cấu trúc cứng nhắc nhưng sở hữu hệ sinh thái tính năng vô cùng mạnh mẽ, được thiết kế chuyên biệt cho môi trường Node.js. Express được coi là tiêu chuẩn thực tế để xây dựng các cổng giao tiếp lập trình ứng dụng (RESTful API) trong hệ sinh thái JavaScript.
+P153 [Normal] - Đặc tính kỹ thuật then chốt:
+P154 [Normal] + Hệ thống Middleware đa tầng: Express.js quản lý luồng xử lý yêu cầu (request lifecycle) thông qua chuỗi các hàm middleware. Các middleware này cho phép tiền xử lý dữ liệu (parse JSON body), phân tích tiêu đề (headers), xử lý chia sẻ tài nguyên nguồn gốc chéo (CORS) và phân quyền truy cập trước khi dữ liệu được chuyển đến hàm xử lý chính.
+P155 [Normal] + Cơ chế Định tuyến (Routing Engine) mạch lạc: Cung cấp cú pháp định tuyến trực quan theo chuẩn HTTP Methods (GET, POST, PUT, DELETE), cho phép phân nhóm các tài nguyên theo mô hình module hóa rõ ràng.
+P156 [Normal] + Bắt và xử lý lỗi tập trung (Error Handling): Phiên bản Express 5 mới nhất có khả năng tự động bắt các ngoại lệ bất đồng bộ (Async/Await errors) mà không cần dùng đến khối try-catch lồng ghép phức tạp, kết hợp với middleware xử lý lỗi tùy biến (ApiError) giúp chuẩn hóa các thông điệp phản hồi lỗi về phía client.
+P157 [Normal] - Vai trò trong hệ thống quản lý thư viện: Express.js đóng vai trò tiếp nhận các yêu cầu HTTP từ giao diện Vue 3, thực hiện tiền kiểm tra tính hợp lệ của dữ liệu, gọi tầng nghiệp vụ (service layer) để kiểm tra các ràng buộc và trả dữ liệu về dạng chuẩn JSON.
+P158 [Heading 3] 3.3. Hệ quản trị cơ sở dữ liệu MongoDB và thư viện MongoDB Native Driver
+P159 [Heading 3] MongoDB
+P161 [Caption] Hình 4
+P162 [Normal] - Khái niệm: MongoDB là một hệ quản trị cơ sở dữ liệu NoSQL hướng tài liệu (Document-oriented Database) mã nguồn mở hàng đầu thế giới. Thay vì lưu trữ dữ liệu dưới dạng các bảng với dòng và cột cố định như các hệ quản trị cơ sở dữ liệu quan hệ truyền thống (MySQL, SQL Server, Oracle), MongoDB lưu trữ các thực thể dưới dạng tài liệu (Document) theo định dạng BSON (Binary JSON).
+P163 [Normal] - Đặc tính kỹ thuật then chốt:
+P164 [Normal] + Lược đồ dữ liệu linh hoạt (Dynamic Schema): Các tài liệu trong cùng một tập hợp (Collection) không bắt buộc phải có cấu trúc trường giống hệt nhau. Điều này cho phép cơ sở dữ liệu dễ dàng thích ứng với các yêu cầu nghiệp vụ thay đổi theo thời gian mà không cần phải thực hiện các thao tác di chuyển dữ liệu phức tạp.
+P165 [Normal] + Khả năng nhúng và tham chiếu: MongoDB hỗ trợ lưu trữ các mảng đối tượng lồng nhau, cho phép truy xuất toàn bộ thông tin chi tiết của một đối tượng phức tạp trong một lần truy vấn duy nhất.
+P166 [Normal] + Hiệu năng truy vấn vượt trội: Dữ liệu được đọc/ghi trực tiếp vào bộ nhớ theo cấu trúc phân cấp, loại bỏ hoàn toàn chi phí tính toán đắt đỏ của các phép kết nối nhiều bảng phức tạp.
+P167 [Normal] - Vai trò trong hệ thống quản lý thư viện: Cơ sở dữ liệu của đề tài bao gồm 5 tập hợp (Collections) cốt lõi: Sach, Docgia, NhaXuatBan, TheoDoiMuonSach, và NhanVien.
+P168 [Normal] Dự án sử dụng trực tiếp MongoDB Node.js Driver chính thức (Native Driver v6+) thay vì qua tầng trừu tượng Mongoose, giúp mã nguồn nhẹ hơn, tối ưu tối đa tốc độ xử lý truy vấn và tuân thủ chặt chẽ kiến trúc lập trình trong học phần CT449.
+P169 [Heading 3] 3.4. Framework Giao diện Người dùng Vue.js (Phiên bản Vue 3)
+P170 [Heading 3] Vuejs
+P172 [Caption] Hình 5
+P173 [Normal] - Khái niệm: Vue.js (gọi tắt là Vue) là một framework lũy tiến (Progressive JavaScript Framework) được sáng lập bởi Evan You vào năm 2014, chuyên phục vụ việc xây dựng giao diện người dùng và các ứng dụng một trang (Single-Page Applications - SPA). Tính lũy tiến của Vue thể hiện ở việc nó cho phép nhà phát triển tích hợp từng phần nhỏ vào dự án có sẵn hoặc nâng cấp toàn diện để xây dựng những hệ thống web quy mô lớn.
+P174 [Normal] - Đặc tính kỹ thuật then chốt:
+P175 [Normal] + Mô hình thành phần tệp đơn (Single File Components - SFC): Mỗi thành phần giao diện được đóng gói hoàn chỉnh trong một tệp tin duy nhất có đuôi mở rộng .vue, bao gồm 3 phần tách bạch nhưng gắn kết chặt chẽ: <template> (cấu trúc HTML), <script> (logic JavaScript) và <style> (định dạng CSS).
+P176 [Normal] + Hệ thống phản ứng (Reactivity System) tiên tiến: Vue 3 sử dụng cơ chế JavaScript Proxy hiện đại để theo dõi sự thay đổi của trạng thái dữ liệu (state). Khi dữ liệu trong ứng dụng thay đổi, giao diện sẽ tự động cập nhật lại các thành phần tương ứng một cách tức thì mà không cần can thiệp thủ công vào DOM thật.
+P177 [Normal] + Virtual DOM và trình biên dịch tối ưu: Thuật toán bắt sự khác biệt của Vue 3 giúp giảm thiểu tối đa số lần thao tác với DOM của trình duyệt, mang lại trải nghiệm tương tác với độ mượt mà cao.
+P178 [Normal] - Vai trò trong hệ thống quản lý thư viện:
+P179 [Normal] Vue 3 chịu trách nhiệm toàn bộ tầng hiển thị giao diện người dùng: từ trang tra cứu mục lục sách, chi tiết sách, biểu mẫu đăng ký mượn cho đến toàn bộ bảng điều khiển duyệt đơn của thủ thư và phân quyền của quản trị viên.
+P180 [Heading 3] 3.5. Công cụ Điều hướng Vue Router (Phiên bản Vue Router 4)
+P181 [Normal] - Khái niệm và nguyên lý hoạt động: Vue Router là thư viện định tuyến chính thức và chuyên sâu dành riêng cho Vue.js, đóng vai trò là trái tim trong việc hiện thực hóa kiến trúc ứng dụng một trang (SPA). Trong mô hình web truyền thống, mỗi khi người dùng nhấp vào một liên kết, trình duyệt phải gửi yêu cầu lên máy chủ để tải về một trang HTML hoàn toàn mới kèm toàn bộ tài nguyên CSS/JS, gây ra hiện tượng giật màn hình trắng.
+P182 [Normal] - Ưu điểm áp dụng trong đề tài:
+P183 [Normal] + Vue Router chặn các sự kiện thay đổi URL trên thanh địa chỉ của trình duyệt thông qua cơ chế HTML5 History API (createWebHistory), sau đó hoán đổi động các thành phần giao diện (<router-view>) tương ứng mà không hề tải lại trang.
+P184 [Normal] + Hỗ trợ cơ chế bảo vệ điều hướng (Navigation Guards): Tự động kiểm tra trạng thái đăng nhập và quyền hạn (role) của người dùng trước khi cho phép truy cập vào các tuyến đường quản trị nhạy cảm (/manager/* hay /admin/*). Nếu người dùng chưa đăng nhập hoặc không đủ quyền, router sẽ tự động chuyển hướng về trang đăng nhập kèm thông báo cảnh báo.
+P185 [Heading 3] 3.6. Công cụ đóng gói và xây dựng mã nguồn Vite (Build Tool)
+P187 [Caption] Hình 6
+P188 [Normal] - Khái niệm: Vite (phát âm là "veet", tiếng Pháp có nghĩa là "nhanh") là công cụ xây dựng giao diện người dùng thế hệ mới do chính Evan You phát triển nhằm giải quyết các hạn chế về mặt tốc độ của các công cụ đóng gói truyền thống như Webpack hay Rollup.
+P189 [Normal] - Đặc tính kỹ thuật then chốt:
+P190 [Normal] + Khởi động môi trường phát triển tức thì: Trong quá trình lập trình, Vite không đóng gói toàn bộ mã nguồn trước như Webpack mà tận dụng trực tiếp tính năng Native ES Modules (ESM) có sẵn của các trình duyệt hiện đại. Mã nguồn chỉ được biên dịch theo yêu cầu (on-demand) khi trình duyệt thực sự cần đến.
+P191 [Normal] + Cơ chế cập nhật module cực nhanh: Khi lập trình viên chỉnh sửa mã nguồn trong một component .vue, Vite chỉ cập nhật đúng module vừa thay đổi mà không làm mới lại toàn bộ trạng thái của ứng dụng, giúp thời gian phản hồi chỉ tính bằng mili-giây.
+P192 [Normal] + Tối ưu hóa sản phẩm đóng gói (production bundle): Khi build mã nguồn để xuất bản (npm run build), Vite sử dụng bộ công cụ Rollup với kỹ thuật loại bỏ mã thừa và chia nhỏ gói mã, tạo ra các tệp tĩnh cực kỳ nhẹ, tối ưu hóa tốc độ tải trang lần đầu cho người dùng.
+P193 [Heading 3] 3.7. Thư viện Giao tiếp Dữ liệu HTTP Axios
+P195 [Caption] Hình 7
+P196 [Normal] - Khái niệm: Axios là một thư viện HTTP Client dựa trên Promise (Promise-based HTTP Client) hoạt động mượt mà trên cả trình duyệt và môi trường Node.js. Axios cung cấp một giao diện lập trình đơn giản, thanh lịch để thực hiện các cuộc gọi giao thức mạng HTTP.
+P197 [Normal] - Ưu điểm so với Fetch API mặc định của trình duyệt:
+P198 [Normal] + Tự động chuyển đổi dữ liệu (Automatic JSON Transformation): Axios tự động tuần tự hóa (serialize) các đối tượng javaScript thành chuỗi json khi gửi đi và tự động phân tích cú pháp dữ liệu json nhận về từ máy chủ.
+P199 [Normal] + Cơ chế đánh chặn (Interceptors): Cho phép can thiệp vào quá trình gửi yêu cầu hoặc nhận phản hồi để tự động gắn thẻ Authorization Header (chứa thông tin xác thực) hoặc xử lý tập trung các mã trạng thái lỗi HTTP (như 401 Unauthorized, 403 Forbidden, 500 Internal Server Error).
+P200 [Normal] + Quản lý thời gian chờ và hủy yêu cầu (Timeout & Cancellation): Cho phép đặt giới hạn thời gian chờ phản hồi để tránh tình trạng ứng dụng bị treo vô thời hạn khi đường truyền mạng gặp sự cố.
+P201 [Heading 3] 3.8. Framework giao diện Responsive Bootstrap và bộ Icon FontAwesome
+P202 [Normal] - Bootstrap (Phiên bản Bootstrap 4.6.2):
+P203 [Normal] + Là framework CSS/HTML mã nguồn mở phổ biến hàng đầu thế giới, cung cấp hệ thống lưới 12 cột linh hoạt giúp phân chia bố cục giao diện khoa học.
+P204 [Normal] + Cung cấp sẵn kho thành phần giao diện chuẩn hóa: hệ thống nút bấm (btn), bảng biểu dữ liệu (table), khung nhập liệu form (form-control), thẻ hiển thị (card), thanh điều hướng (navbar) và cửa sổ bật lên (modal).
+P205 [Normal] + Đảm bảo tính đáp ứng (Responsive Web Design), giúp toàn bộ giao diện quản lý sách và mượn trả tự động co giãn, tương thích hoàn hảo trên mọi kích thước màn hình từ máy tính để bàn (desktop), máy tính bảng (tablet) cho đến điện thoại di động (smartphone).
+P207 [Caption] Hình 8
+P209 [Normal] - FontAwesome (Phiên bản FontAwesome 5/6 Free): Bộ biểu tượng chuyên nghiệp giúp trực quan hóa các chức năng của hệ, tăng cường tính thẩm mỹ và định hướng thao tác trực quan cho người sử dụng.
+P211 [Caption] Hình 9
+P212 [Heading 3] 3.9. Môi trường Phát triển Tích hợp Visual Studio Code (VS Code)
+P214 [Caption] Hình 10
+P215 [Normal] - Khái niệm: Visual Studio Code là một trình soạn thảo mã nguồn chuyên nghiệp, miễn phí và mã nguồn mở được phát triển bởi Microsoft. Đây là môi trường lập trình được cộng đồng công nghệ ưa chuộng hàng đầu hiện nay nhờ tốc độ khởi động nhanh, chiếm dụng ít tài nguyên phần cứng và sở hữu khả năng tùy biến sâu rộng.
+P216 [Normal] - Các tiện ích mở rộng (Extensions) hỗ trợ trong đồ án:
+P217 [Normal] + Vue - Official (Volar): Cung cấp khả năng tô màu cú pháp, tự động hoàn thành mã và kiểm tra lỗi kiểu dữ liệu cho các tệp.
+P218 [Normal] + ESLint & Prettier: Tự động phát hiện các lỗi cú pháp tiềm ẩn và tự động căn chỉnh, định dạng mã nguồn theo tiêu chuẩn quốc tế một cách đồng bộ.
+P219 [Heading 3] 3.10. Công cụ Kiểm thử RESTful API Postman
+P221 [Caption] Hình 11
+P222 [Normal] - Khái niệm và Ứng dụng: Postman là một nền tảng chuyên nghiệp hàng đầu thế giới phục vụ việc thiết kế, xây dựng và kiểm thử các dịch vụ web API.
+P223 [Normal] - Vai trò trong quá trình phát triển đồ án:
+P224 [Normal] + Cho phép lập trình viên độc lập kiểm thử toàn bộ các kịch bản của tầng trước khi tiến hành xây dựng giao diện Frontend.
+P225 [Normal] + Dễ dàng cấu hình các phương thức HTTP (GET, POST, PUT, DELETE), tùy biến dữ liệu gửi đi (Headers, Params, Request Body) và kiểm tra cấu trúc dữ liệu trả về kèm các mã trạng thái (200 OK, 201 Created, 400 Bad Request, 404 Not Found).
+P226 [Normal] + Giúp phát hiện và khắc phục sớm các lỗi logic then chốt của bài toán như: kiểm tra điều kiện trừ tồn kho khi duyệt sách, tính tiền phạt khi báo mất sách và tự động chuyển trạng thái độc giả sang danh sách đen khi vượt quá 3 lần vi phạm.
+P229 [Heading 1] CHƯƠNG III: CÁC SƠ ĐỒ CỦA WEBSITE
+P230 [Heading 2] 1. Phân tích và thiết kế
+P231 [Heading 3] 1.1. Sơ đồ use case tổng quát
+P233 [Caption] Hình 12
+P234 [Heading 4] 1.1.1. Đặc tả chức năng sơ đồ use case tổng quát
+
+TABLE 235:
+STT | Tên use case | Diễn giải
+1 | Đăng ký | Cho phép người chưa có tài khoản đăng ký vào hệ thống
+2 | Đăng nhập | Xác thực danh tính độc giả hoặc cán bộ nhân viên hay quản trị viên để truy cập các chức năng tương ứng.
+3 | Đăng xuất | Kết thúc phiên làm việc hiện tại.
+4 | Tra cứu và tìm kiếm sách | Cho phép mọi người dùng tìm kiếm, lọc sách theo tên, tác giả, nhà xuất bản.
+5 | Đăng ký mượn sách | Độc giả gửi yêu cầu mượn trực tuyến tại chi tiết sách (giới hạn tối đa 3 quyển cùng lúc).
+6 | Xem lịch sử mượn trả | Độc giả theo dõi tiến trình phiếu mượn (chờ duyệt, đang mượn, đã trả, báo mất) và hạn trả 14 ngày.
+7 | Duyệt và xử lý mượn trả | Thủ thư duyệt mượn (trừ kho), xác nhận trả sách (cộng kho) hoặc ghi nhận mất sách (tính tiền bồi hoàn).
+8 | Quản lý kho sách và nhà xuất bản | Thủ thư/quản trị viên thực hiện thêm, sửa, xóa thông tin sách, cập nhật số lượng tồn kho và danh mục NXB.
+9 | Quản lý người dùng | Quản trị viên xem danh sách tài khoản, thăng/hạ cấp vai trò người dùng, khóa, mở khóa, hoặc gỡ bỏ người dùng khỏi danh sách đen.
+P237 [Heading 3] 1.2. Sơ đồ use case đăng ký và đăng nhập
+P239 [Caption] Hình 13
+P240 [Heading 4] 1.2.1. Đặc tả use case đăng ký
+
+TABLE 241:
+Tác nhân | Người dùng chưa có tài khoản
+Mô tả | Cho phép người dùng đăng ký tài khoản hệ thống.
+Điều kiện tiên quyết | Người dùng đã truy cập vào website và có kết nối Internet.
+Các dòng sự kiện chính | 1. Người dùng nhấp chọn nút "Đăng ký" trên thanh điều hướng.
+2. Hệ thống hiển thị biểu mẫu đăng ký tài khoản hệ thống.
+3. Người dùng nhập các thông tin: Họ lót, tên, số điện thoại, địa chỉ, ngày sinh, giới tính và mật khẩu.
+4. Người dùng nhấn nút "Đăng ký".
+5. Hệ thống kiểm tra tính hợp lệ của dữ liệu, kiểm tra tính duy nhất của Số điện thoại.
+6. Hệ thống tự động sinh mã độc giả, lưu tài khoản mới vào CSDL với trạng thái HoatDong, vai trò USER và hiển thị thông báo thành công.
+7. Hệ thống tự động chuyển hướng người dùng sang trang đăng nhập.
+Dòng sự kiện rẽ nhánh | 2b. Người dùng đăng ký bằng tài khoản google. ; 5a. Nếu người dùng để trống các trường bắt buộc hoặc số điện thoại không đúng định dạng: Hệ thống báo lỗi và yêu cầu nhập lại.
+5b. Nếu Số điện thoại đã tồn tại trong CSDL: Hệ thống hiển thị thông báo lỗi trùng lặp và dừng tiến trình.
+Kết quả | Tài khoản độc giả mới được tạo thành công trong hệ thống.
+P243 [Heading 4] 1.2.2. Đặc tả use case đăng nhập
+
+TABLE 244:
+Tác nhân | Độc giả, Thủ thư, Quản trị viên
+Mô tả | Cho phép người dùng đăng nhập vào hệ thống để truy cập đúng các chức năng theo phân quyền.
+Điều kiện tiên quyết | Người dùng đã có tài khoản hợp lệ trong hệ thống và kết nối Internet.
+Các dòng sự kiện chính | 1. Người dùng chọn nút "Đăng nhập" trên thanh điều hướng.
+2. Hệ thống hiển thị form đăng nhập.
+3. Người dùng nhập số điện thoại và mật khẩu. ; 4. Người dùng nhấn nút "Đăng nhập".
+5. Hệ thống tìm kiếm và đối soát thông tin tài khoản cùng mật khẩu mã hóa.
+6. Nếu chính xác, hệ thống cho phép đăng nhập và phân luồng theo vai trò.
+7. Hệ thống hiển thị thông báo đăng nhập thành công.
+Dòng sự kiện rẽ nhánh | 3b. Người dùng đăng nhập thông qua tài khoản Google ; 3b1. Hệ thống tìm kiếm và đối soát thông tin tài khoản ; 3b2. Nếu chính xác hệ thống cho phép đăng nhập và phân luồng theo vai trò. ; 5a. Nếu số điện thoại hoặc mật khẩu không chính xác: Hệ thống thông báo lỗi xác thực và yêu cầu nhập lại.
+5b. Nếu tài khoản độc giả đang bị khóa (TrangThaiThe: "Khoa"): Hệ thống cảnh báo thẻ bị khóa và từ chối một số tác vụ.
+Kết quả | Người dùng đăng nhập thành công và được cấp quyền truy cập tương ứng với vai trò.
+P246 [Heading 3] 1.3. Sơ đồ use case tra cứu, mượn và trả sách
+P248 [Caption] Hình 14
+P249 [Heading 4] 1.3.1. Đặc tả chức năng tra cứu/tìm kiếm sách
+
+TABLE 250:
+Tác nhân | Khách vãng lai, độc giả, thủ thư, admin
+Mô tả | Hỗ trợ người dùng tra cứu, tìm kiếm và lọc danh mục học liệu nhanh chóng và chính xác.
+Điều kiện tiên quyết | Người dùng truy cập vào trang chủ hoặc trang tra cứu sách.
+Các dòng sự kiện chính | 1. Người dùng nhập từ khóa tìm kiếm (tên sách, tác giả) vào ô tìm kiếm.
+2. Người dùng có thể chọn thêm tiêu chí lọc theo nhà xuất bản, thể loại, chuyên ngành, hoặc tích chọn "Chỉ sách còn trong kho".
+3. Hệ thống tiếp nhận tiêu chí, lọc dữ liệu tức thì và hiển thị danh sách sách phù hợp (kèm theo phân trang nếu số lượng sách trả về lớn).
+4. Người dùng nhấp vào từng thẻ sách để chuyển đến trang xem chi tiết thông tin và tóm tắt nội dung.
+Dòng sự kiện rẽ nhánh | 3a. Nếu không tìm thấy sách phù hợp với từ khóa: Hệ thống hiển thị thông báo "Không tìm thấy ấn phẩm nào phù hợp".
+Kết quả | Danh sách sách kết quả tìm kiếm được hiển thị trực quan trên giao diện.
+P252 [Heading 4] 1.3.2. Đặc tả chức năng đăng ký mượn sách trực tuyến
+
+TABLE 253:
+Tác nhân | Độc giả
+Mô tả | Độc giả gửi phiếu yêu cầu mượn sách trực tuyến trước khi đến nhận sách tại thư viện.
+Điều kiện tiên quyết | Độc giả đã đăng nhập tài khoản và thẻ thư viện không bị khóa hay nằm trong danh sách đen.
+Các dòng sự kiện chính | 1. Độc giả xem chi tiết cuốn sách mong muốn và nhấn nút "Đăng ký mượn".
+2. Hệ thống kiểm tra điều kiện mượn của độc giả:
+    - Trạng thái thẻ thư viện (TrangThaiThe phải là HoatDong).
+    - Số lượng sách đang mượn/chờ duyệt hiện tại (< 3 cuốn).
+    - Số lượng sách tồn kho (SoQuyen > 0).
+3. Nếu thỏa điều kiện, hệ thống hiển thị xác nhận mượn kèm quy định thời hạn 14 ngày.
+4. Độc giả xác nhận đăng ký.
+5. Hệ thống tạo phiếu mới trong bảng theodoimuonsach với trạng thái ChoDuyet.
+6. Hệ thống hiển thị thông báo đăng ký thành công và cập nhật vào lịch sử của độc giả.
+Dòng sự kiện rẽ nhánh | 2a. Nếu độc giả thuộc danh sách đen: Hệ thống chặn và báo lỗi "Tài khoản bị cấm mượn do vi phạm nội quy và đang nằm trong danh sách đen".
+2b. Nếu độc giả đã mượn đủ 3 cuốn: Hệ thống từ chối và báo "Đã đạt giới hạn mượn tối đa là 3 quyển, vui lòng trả ít nhất một quyển để có thể tiếp tục mượn sách".
+2c. Nếu sách đã hết trong kho (SoQuyen = 0): Nút mượn bị vô hiệu hóa kèm nhãn "Tạm hết sách".
+Kết quả | Phiếu đăng ký mượn sách được khởi tạo ở trạng thái ChoDuyet chờ thủ thư xử lý.
+P255 [Heading 4] 1.3.3. Đặc tả chức năng duyệt mượn, xác nhận trả và báo mất sách
+
+TABLE 256:
+Tác nhân | Thủ thư, Admin
+Mô tả | Xử lý toàn bộ vòng đời của phiếu mượn: giao sách xuất kho, thu hồi nhập kho hoặc đền bù mất sách.
+Điều kiện tiên quyết | Thủ thư đã đăng nhập vào hệ thống và truy cập trang quản lý mượn trả.
+Các dòng sự kiện chính | Trường hợp 1: Duyệt mượn sách
+1. Thủ thư kiểm tra đơn ở danh sách "Chờ duyệt" và nhấn nút "Duyệt cấp sách".
+2. Hệ thống trừ tồn kho (SoQuyen = SoQuyen - 1), đổi trạng thái thành DangMuon, gán ngày mượn và hạn trả (NgayHenTra = NgayMuon + 14 ngày).
+Trường hợp 2: Xác nhận trả sách
+1. Độc giả mang sách đến quầy hoàn trả; Thủ thư nhấn nút "Xác nhận trả".
+2. Hệ thống cộng lại tồn kho (SoQuyen = SoQuyen + 1), cập nhật NgayTra và chuyển trạng thái sang DaTra.
+3. Nếu NgayTra > NgayHenTra: Hệ thống tự động tăng SoLanViPham lên 1. Nếu vi phạm đạt 3 lần, hệ thống tự động khóa thẻ chuyển sang Blacklist.
+Trường hợp 3: Xử lý mất sách
+1. Độc giả báo mất sách; Thủ thư nhấn nút "Báo mất sách".
+2. Hệ thống chuyển trạng thái phiếu sang MatSach, tự động tính TienPhat = Sach.DonGia và không cộng lại tồn kho.
+3. Hệ thống tăng SoLanViPham lên 1. Nếu vi phạm đạt 3 lần, hệ thống tự động chuyển độc giả vào danh sách đen.
+Dòng sự kiện rẽ nhánh | 1a. Nếu khi duyệt mà sách trong kho đã hết (SoQuyen = 0): Hệ thống báo lỗi và không cho duyệt.
+1b. Nếu thủ thư từ chối mượn: Nhấn "Từ chối", nhập lý do và hệ thống cập nhật trạng thái TuChoi.
+Kết quả | Trạng thái phiếu mượn và số lượng sách trong kho được cập nhật chính xác theo từng nghiệp vụ.
+P258 [Heading 3] 1.4. Sơ đồ use case quản lý sách và nhà xuất bản
+P260 [Caption] Hình 15
+P261 [Heading 4] 1.4.1. Đặc tả sơ đồ quản lý sách và nhà xuất bản
+
+TABLE 262:
+Tác nhân | Thủ thư, Quản trị viên
+Mô tả | Cung cấp các thao tác quản trị danh mục Sách và Nhà xuất bản phục vụ công tác kiểm kê và lưu trữ.
+Điều kiện tiên quyết | Người dùng đăng nhập với quyền MANAGER hoặc ADMIN.
+Các dòng sự kiện chính | Quản lý Sách:
+1. Thêm sách mới: Người dùng nhấn "Thêm sách", nhập thông tin Tên sách, Đơn giá, Số quyển tồn kho, Năm XB, Chọn NXB, Tác giả, Ảnh bìa, Mô tả). Hệ thống lưu vào CSDL.
+2. Chỉnh sửa sách: Chọn nút "Sửa", cập nhật các trường thông tin/số lượng. Hệ thống lưu thay đổi.
+3. Xóa sách: Chọn "Xóa". Hệ thống kiểm tra nếu sách không có phiếu đang mượn thì thực hiện xóa.
+Quản lý Nhà xuất bản:
+1. Thêm NXB: Nhập Tên NXB, Địa chỉ. Hệ thống thêm NXB mới.
+2. Sửa/Xóa NXB: Cập nhật thông tin hoặc xóa NXB khỏi danh mục.
+Dòng sự kiện rẽ nhánh | 3a. Nếu sách đang có người mượn dở dang (DangMuon): Hệ thống ngăn chặn việc xóa để đảm bảo toàn vẹn dữ liệu.
+Kết quả | Danh mục Sách và NXB được cập nhật đồng bộ trong cơ sở dữ liệu.
+P264 [Heading 3] 1.5. Sơ đồ use case quản lý người dùng
+P266 [Caption] Hình 16
+P267 [Heading 4] 1.5.1. Đặc tả use case quản lý người dùng và phân quyền
+
+TABLE 268:
+Tác nhân | Quản trị viên
+Mô tả | Cho phép quản trị viên kiểm soát toàn bộ tài khoản, điều phối phân quyền và xử lý mở khóa độc giả vi phạm.
+Điều kiện tiên quyết | Người dùng đăng nhập với tài khoản có quyền ADMIN và truy cập trang /admin/users.
+Các dòng sự kiện chính | 1. Admin xem danh sách toàn bộ tài khoản người dùng, có thể lọc theo: Tất cả, độc giả, thủ thư, hoặc các tài khoản người dùng nằm trong danh sách đen.
+2. Thăng cấp vai trò: Admin nhấn "Thăng cấp thủ thư" đối với độc giả. Hệ thống đổi Role từ USER thành MANAGER, cấp quyền quản lý kho sách và duyệt mượn.
+3. Hạ cấp vai trò: Admin nhấn "Hạ cấp" đối với thủ thư. Hệ thống thu hồi quyền quản trị, chuyển vai trò về lại USER.
+4. Mở khóa danh sách đen: Admin nhấn "Mở khóa thẻ" cho độc giả trong danh sách đen. Hệ thống chuyển TrangThaiThe về HoatDong, reset số lần vi phạm SoLanViPham = 0, khôi phục quyền mượn sách.
+5. Xóa tài khoản: Admin có thể xóa các tài khoản vi phạm vĩnh viễn khỏi CSDL.
+Dòng sự kiện rẽ nhánh | 2a. Admin không thể tự hạ cấp chính tài khoản của mình để tránh mất quyền quản trị tối cao.
+Kết quả | Phân quyền và trạng thái thẻ của các tài khoản được cập nhật tức thì trong hệ thống.
+P270 [Heading 2] 2. Sơ đồ cơ sở dữ liệu CDM
+P272 [Caption] Hình 17
+P273 [Heading 3] 2.1. Mô tả các lớp (Bảng tổng hợp các collection)
+P274 [Normal] - Hệ thống sử dụng cơ sở dữ liệu MongoDB mang tên quanlymuonsach, bao gồm 5 tập hợp (Collections) chính phục vụ lưu trữ thông tin độc giả, sách, nhà xuất bản, phiếu mượn/trả và nhân viên quản trị.
+
+TABLE 275:
+STT | Tên bảng (Collection) | Diễn giải
+1 | docgia | Danh sách thông tin tài khoản độc giả và trạng thái thẻ
+2 | nhanvien | Danh sách tài khoản nhân viên thư viện và quản trị viên
+3 | nhaxuatban | Danh mục thông tin các nhà xuất bản
+4 | sach | Danh mục thông tin các đầu sách và số lượng tồn kho
+5 | theodoimuonsach | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố
+P277 [Heading 3] 2.2. Mô tả bảng Độc giả (Docgia)
+P278 [Normal] Bảng docgia dùng để lưu trữ thông tin cá nhân của người mượn sách, thông tin tài khoản đăng nhập, cấp bậc phân quyền và các chỉ số theo dõi vi phạm nội quy để xử lý đưa vào danh sách đen.
+
+TABLE 279:
+Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả
+_id | ObjectId | x |  | Định danh duy nhất tự sinh bởi MongoDB
+MaDocGia | String |  |  | Mã số định danh độc giả
+HoLot | String |  |  | Họ và tên đệm của độc giả
+Ten | String |  |  | Tên của độc giả
+NgaySinh | Date |  |  | Ngày tháng năm sinh
+Phai | Integer |  |  | Giới tính (Nam / Nữ)
+DiaChi | String |  |  | Địa chỉ cư trú của độc giả
+DienThoai | String |  |  | Số điện thoại liên hệ (Dùng để đăng nhập)
+MatKhau | String |  |  | Mật khẩu tài khoản (Đã mã hóa an toàn)
+VaiTro | String |  |  | Vai trò người dùng (USER, MANAGER, ADMIN)
+SoLanViPham | Number |  |  | Số lần vi phạm nội quy (trả trễ hạn, làm mất sách)
+TrangThaiThe | String |  |  | Trạng thái thẻ thư viện (HoatDong, Khoa, DanhSachDen)
+AnhDaiDien | String |  |  | Đường dẫn biểu diễn ảnh đại diện
+P281 [Heading 3] 2.3. Mô tả bảng Nhân viên (Nhanvien)
+P282 [Normal] Bảng nhanvien lưu trữ danh sách cán bộ, nhân viên thư viện và quản trị viên hệ thống có quyền đăng nhập vào các phân hệ nghiệp vụ quản lý.
+
+TABLE 284:
+Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả
+_id | ObjectId | x |  | Định danh duy nhất tự sinh bởi MongoDB
+MSNV | String |  |  | Mã số nhân viên
+HoTenNV | String |  |  | Họ và tên đầy đủ của nhân viên
+MatKhau | String |  |  | Mật khẩu đăng nhập hệ thống
+ChucVu | String |  |  | Chức danh công tác
+SoDienThoai | String |  |  | Số điện thoại nhân viên
+DiaChi | String |  |  | Địa chỉ liên hệ của nhân viên
+AnhDaiDien | String |  |  | Đường dẫn biểu diễn ảnh đại diện
+P286 [Heading 3] 2.4. Mô tả bảng Sách (Sách)
+P287 [Normal] - Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồm đơn giá bồi thường và số lượng tồn kho thực tế.
+
+TABLE 288:
+Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả
+_id | ObjectId | x |  | Định danh duy nhất tự sinh bởi MongoDB
+MaSach | String |  |  | Mã định danh đầu sách
+TenSach | String |  |  | Tên tựa sách
+DonGia | Double |  |  | Đơn giá sách (Dùng để tính tiền phạt nếu làm mất)
+SoQuyen | Integer |  |  | Số lượng sách thực tế còn trong kho
+NamXuatBan | Integer |  |  | Năm xuất bản sách
+MaNXB | String |  | x | Mã NXB (Tham chiếu đến nhaxuatban.MaNXB)
+TacGia | String |  |  | Tên tác giả hoặc cơ quan biên soạn
+HinhAnh | String |  |  | Đường dẫn ảnh bìa sách
+MoTa | String |  |  | Tóm tắt nội dung sách
+P290 [Heading 3] 2.5. Mô tả bảng Nhà xuất bản (NhaXuatBan)
+P291 [Normal] - Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho thư viện.
+
+TABLE 292:
+Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả
+_id | ObjectId | x |  | Định danh duy nhất tự sinh bởi MongoDB
+MaNXB | String |  |  | Mã định danh nhà xuất bản
+TENNXB | String |  |  | Tên nhà xuất bản
+DiaChi | String |  |  | Địa chỉ trụ sở nhà xuất bản
+P294 [Heading 3] 2.5. Mô tả bảng Theo dõi mượn sách (TheoDoiMuonSach)
+P295 [Normal] - Bảng theodoimuonsach đóng vai trò là bảng giao dịch trung gian giữa docgia và sach, ghi nhận toàn bộ vòng đời của một phiếu mượn từ lúc gửi yêu cầu, duyệt giao sách, hẹn ngày trả, cho đến khi hoàn trả hoặc xử lý bồi thường mất sách.
+
+TABLE 297:
+Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả
+_id | ObjectId | x |  | Định danh duy nhất tự sinh bởi MongoDB
+MaDocGia | String |  | x | Mã độc giả mượn sách (Tham chiếu docgia.MaDocGia)
+MaSach | String |  | x | Mã sách được mượn (Tham chiếu sach.MaSach)
+NgayMuon | Date |  |  | Ngày độc giả gửi yêu cầu hoặc bắt đầu nhận sách
+MSNV | String |  | x | Mã số nhân viên phụ trách cho mượn quyển sách này (Tham chiếu đến nhanvien.MSNV)
+NgayHenTra | Date |  |  | Hạn trả sách dự kiến (Mặc định 14 ngày kể từ ngày duyệt)
+NgayTra | Date |  |  | Ngày thực tế độc giả mang sách trả tại quầy (null nếu chưa trả)
+TrangThai | String |  |  | Trạng thái phiếu (ChoDuyet, DangMuon, DaTra, MatSach, TuChoi)
+GiaTriBoiThuong | Double |  |  | Tiền bồi hoàn theo đơn giá nếu làm mất sách
+GhiChu | String |  |  | Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
+P301 [Heading 1] CHƯƠNG IV: THIẾT KẾ GIAO DIỆN
+P302 [Heading 2] 1. Giao diện dành cho cổng nhân viên (quản trị viên)
+P303 [Heading 3] 1.1. Giao diện khi vừa vào cổng của nhân viên – giao diện đăng nhập dành cho nhân viên (quản trị viên hoặc thủ thư)
+P305 [Caption] Hình 18
+P309 [Caption] Hình 19
+P311 [Heading 3] 1.2. Giao diện đăng ký tài khoản nhân viên
+P313 [Caption] Hình 20
+P316 [Caption] Hình 21
+P318 [Heading 3] 1.3. Giao diện sau khi đăng nhập tài khoản nhân viên thành công (đối với quản trị viên) – vào trang quản trị người dùng
+P320 [Caption] Hình 22
+P323 [Caption] Hình 23
+P325 [Heading 3] 1.4. Giao diện xem danh sách đen
+P327 [Caption] Hình 24
+P329 [Heading 3] 1.5. Giao diện xem các tài khoản đang bị khóa
+P331 [Caption] Hình 25
+P332 [Heading 3] 1.6. Giao diện duyệt hồ sơ nhân viên
+P334 [Caption] Hình 26
+P335 [Heading 3] 1.7. Giao diện trang hồ sơ cá nhân của nhân viên (quản trị viên)
+P337 [Caption] Hình 27
+P358 [Heading 3] 1.8. Giao diện nhật ký hoạt động của hệ thống
+P360 [Caption] Hình 28
+P362 [Caption] Hình 29
+P365 [Heading 2] 2. Giao diện dành cho cổng nhân viên (thủ thư)
+P366 [Heading 3] 2.1. Giao diện duyệt mượn và trả sách
+P368 [Caption] Hình 30
+P370 [Heading 3] 2.2. Giao diện từ chối yêu cầu mượn sách
+P372 [Caption] Hình 31
+P374 [Heading 3] 2.3. Giao diện quản lý kho sách
+P376 [Caption] Hình 32
+P379 [Caption] Hình 33
+P381 [Heading 3] 2.4. Giao diện thêm đầu sách mới
+P383 [Caption] Hình 34
+P385 [Heading 3] 2.5. Giao diện sửa thông tin đầu sách đã có
+P387 [Caption] Hình 35
+P390 [Heading 3] 2.6. Giao diện quản lý nhà xuất bản
+P392 [Caption] Hình 36
+P395 [Caption] Hình 37
+P397 [Heading 3] 2.7. Giao diện thêm nhà xuất bản mới
+P399 [Caption] Hình 38
+P401 [Heading 3] 2.8. Giao diện chỉnh sửa thông tin nhà xuất bản đã có
+P403 [Caption] Hình 39
+P405 [Heading 3] 2.9. Giao diện trang hồ sơ của nhân viên (thủ thư)
+P407 [Caption] Hình 40
+P415 [Heading 2] 3. Giao diện dành cho cổng độc giả
+P416 [Heading 3] 3.1. Giao diện khi vừa vào cổng của độc giả - mặc định vào giao diện trang chủ có phần tra cứu sách
+P418 [Caption] Hình 41
+P421 [Caption] Hình 42
+P424 [Caption] Hình 43
+P426 [Caption] Hình 44
+P428 [Heading 3] 3.2. Giao diện phần thông báo
+P430 [Caption] Hình 45
+P432 [Heading 3] 3.3. Giao diện khi mượn sách của độc giả
+P434 [Caption] Hình 46
+P436 [Heading 3] 3.4. Giao diện trang hồ sơ cá nhân của độc giả, có phần quản lý sách đang mượn và lịch sử
+P438 [Caption] Hình 47
+P440 [Heading 3] 3.5. Giao diện sách đang chờ duyệt của độc giả
+P442 [Caption] Hình 48
+P444 [Heading 3] 3.6. Giao diện lịch sử mượn sách của độc giả
+P446 [Caption] Hình 49
+P448 [Normal] CHƯƠNG V: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
+P449 [Heading 2] 1. Kết quả đạt được
+P450 [Heading 2] 2. Hạn chế
+P451 [Heading 2] 3. Hướng phát triển
+P452 [Heading 1] TÀI  LIỆU THAM KHẢO
+P453 [Normal] [1] Tài liệu hướng dẫn chính thức của Vue.js (Vue 3) và hệ sinh thái (Vue Router, Vite). Có sẵn tại: https://vuejs.org/.
+P454 [Normal] [2] Tài liệu nền tảng Node.js. Có sẵn tại: https://nodejs.org/.
+P455 [Normal] [3] Tài liệu framework Express.js (Phiên bản 5). Có sẵn tại: https://expressjs.com/.
+P456 [Normal] [4] Tài liệu hệ quản trị cơ sở dữ liệu MongoDB và MongoDB Native Driver. Có sẵn tại: https://www.mongodb.com/docs/.
+P457 [Normal] [5] Thư viện thiết kế giao diện đáp ứng Bootstrap 4. Có sẵn tại: https://getbootstrap.com/docs/4.0/.
+P458 [Normal] [6] Thư viện biểu tượng FontAwesome. Có sẵn tại: https://fontawesome.com/.
+P459 [Normal] [7] HTTP client Axios phục vụ gọi API. Có sẵn tại: https://axios-http.com/docs/intro.
+P460 [Normal] [8] Nguồn tham khảo các tài liệu liên quan đến cơ sở lập trình Web (HTML, CSS, JavaScript). Có sẵn tại: https://www.w3schools.com/

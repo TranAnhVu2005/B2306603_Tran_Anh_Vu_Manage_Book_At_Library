@@ -224,6 +224,9 @@
                   </button>
                 </div>
               </div>
+              <p v-if="activeTab === 'pending' && pendingBorrows.length" class="pending-borrow-hint">
+                Bạn có thể hủy yêu cầu khi thủ thư chưa duyệt.
+              </p>
 
               <!-- Loading -->
               <div v-if="loading" class="borrows-state">
@@ -253,6 +256,7 @@
                       <th>Hạn trả</th>
                       <th>Trạng thái</th>
                       <th class="pe-4">Ghi chú / Bồi thường</th>
+                      <th v-if="activeTab === 'pending'" class="pe-4 borrow-actions-heading">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -282,6 +286,7 @@
                         <span v-else-if="item.TrangThai === 'MatSach'" class="ath-badge ath-badge-out">Mất sách</span>
                         <span v-else-if="item.TrangThai === 'TuChoi'" class="ath-badge ath-badge-rejected">Từ
                           chối</span>
+                        <span v-else-if="item.TrangThai === 'DaHuy'" class="ath-badge ath-badge-neutral">Đã hủy</span>
                       </td>
                       <td class="pe-4" style="font-size: 0.82rem; color: var(--ink-muted);">
                         <span>{{ item.GhiChu || '—' }}</span>
@@ -290,6 +295,11 @@
                             {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
                           </div>
                         </template>
+                      </td>
+                      <td v-if="activeTab === 'pending'" class="pe-4 borrow-actions-cell">
+                        <button type="button" class="borrow-cancel-button" @click="openCancelBorrowModal(item)">
+                          Hủy yêu cầu
+                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -321,6 +331,59 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cancel pending borrow confirmation -->
+    <div v-if="showCancelBorrowModal" class="ath-modal-overlay" @click.self="closeCancelBorrowModal">
+      <div class="ath-modal-content borrow-cancel-modal" role="dialog" aria-modal="true"
+        aria-labelledby="cancel-borrow-title">
+        <div class="ath-modal-inner">
+          <div class="modal-head borrow-cancel-head">
+            <div class="borrow-cancel-heading">
+              <span class="borrow-cancel-symbol" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3 2.8 19a1.3 1.3 0 0 0 1.1 2h16.2a1.3 1.3 0 0 0 1.1-2L12 3Z" />
+                  <path d="M12 9v5m0 3h.01" />
+                </svg>
+              </span>
+              <div>
+              <span class="vg-section-label">YÊU CẦU MƯỢN SÁCH</span>
+              <h2 id="cancel-borrow-title" class="modal-title">Hủy yêu cầu đang chờ?</h2>
+              </div>
+            </div>
+            <button type="button" class="modal-close" @click="closeCancelBorrowModal" :disabled="cancellingBorrow"
+              aria-label="Đóng">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div class="borrow-cancel-body">
+            <div class="borrow-cancel-book-card">
+              <span class="borrow-cancel-book-label">SÁCH ĐĂNG KÝ</span>
+              <p class="borrow-cancel-book">{{ cancelTarget ? bookName(cancelTarget.MaSach) : '' }}</p>
+            </div>
+            <p class="borrow-cancel-description">
+              Yêu cầu chỉ hủy được trước khi thủ thư duyệt. Sau khi hủy, bạn có thể đăng ký mượn sách khác.
+            </p>
+            <p class="borrow-cancel-note">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" />
+              </svg>
+              <span>Không thay đổi số lượng sách trong kho.</span>
+            </p>
+          </div>
+          <div class="profile-editor-actions borrow-cancel-actions">
+            <button class="ath-btn-outline" type="button" :disabled="cancellingBorrow"
+              @click="closeCancelBorrowModal">Giữ yêu cầu</button>
+            <button class="borrow-cancel-confirm" type="button" :disabled="cancellingBorrow"
+              @click="confirmCancelBorrow">
+              {{ cancellingBorrow ? 'Đang hủy...' : 'Xác nhận hủy' }}
+            </button>
           </div>
         </div>
       </div>
@@ -458,6 +521,9 @@ export default {
       books: [],
       loading: false,
       activeTab: "active",
+      showCancelBorrowModal: false,
+      cancelTarget: null,
+      cancellingBorrow: false,
       showEditProfileModal: false,
       savingProfile: false,
       selectedAvatarFile: null,
@@ -513,7 +579,7 @@ export default {
     },
     activeBorrows() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
     pendingBorrows() { return this.borrows.filter(b => b.TrangThai === "ChoDuyet"); },
-    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi"].includes(b.TrangThai)); },
+    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy"].includes(b.TrangThai)); },
     currentTabList() {
       if (this.activeTab === "active") return this.activeBorrows;
       if (this.activeTab === "pending") return this.pendingBorrows;
@@ -536,6 +602,16 @@ export default {
         document.removeEventListener("keydown", this.handleProfileEditorKeydown);
       }
     },
+    showCancelBorrowModal(isOpen) {
+      if (isOpen) {
+        this.previousBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.addEventListener("keydown", this.handleCancelBorrowKeydown);
+      } else {
+        document.body.style.overflow = this.previousBodyOverflow;
+        document.removeEventListener("keydown", this.handleCancelBorrowKeydown);
+      }
+    },
   },
   created() {
     this.currentUser = authService.getUser();
@@ -547,6 +623,10 @@ export default {
     if (this.showEditProfileModal) {
       document.body.style.overflow = this.previousBodyOverflow;
       document.removeEventListener("keydown", this.handleProfileEditorKeydown);
+    }
+    if (this.showCancelBorrowModal) {
+      document.body.style.overflow = this.previousBodyOverflow;
+      document.removeEventListener("keydown", this.handleCancelBorrowKeydown);
     }
   },
   methods: {
@@ -627,6 +707,36 @@ export default {
     closeProfileEditor() {
       if (!this.savingProfile) this.showEditProfileModal = false;
     },
+    openCancelBorrowModal(item) {
+      if (item?.TrangThai !== "ChoDuyet") return;
+      this.cancelTarget = item;
+      this.showCancelBorrowModal = true;
+    },
+    closeCancelBorrowModal() {
+      if (this.cancellingBorrow) return;
+      this.showCancelBorrowModal = false;
+      this.cancelTarget = null;
+    },
+    handleCancelBorrowKeydown(event) {
+      if (event.key === "Escape") this.closeCancelBorrowModal();
+    },
+    async confirmCancelBorrow() {
+      if (!this.cancelTarget || this.cancellingBorrow) return;
+      const borrowId = this.cancelTarget._id;
+      this.cancellingBorrow = true;
+      try {
+        const result = await theoDoiService.huy(borrowId);
+        this.borrows = this.borrows.map((borrow) => borrow._id === borrowId ? result.data : borrow);
+        this.activeTab = "history";
+        this.showCancelBorrowModal = false;
+        this.cancelTarget = null;
+        this.$refs.toast?.show(result.message || "Đã hủy yêu cầu mượn.");
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || err.message || "Không thể hủy yêu cầu mượn.", "error");
+      } finally {
+        this.cancellingBorrow = false;
+      }
+    },
     handleProfileEditorKeydown(event) {
       if (event.key === "Escape") this.closeProfileEditor();
     },
@@ -680,7 +790,7 @@ export default {
     },
     bookName(maSach) {
       return this.books.find((book) => book.MaSach === maSach)?.TenSach || maSach;
-    }
+    },
   }
 };
 </script>
@@ -717,6 +827,214 @@ export default {
   margin: .45rem 0 0;
   color: var(--ink-secondary);
   max-width: 58ch;
+}
+
+.pending-borrow-hint {
+  margin: 0 1rem 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-left: 3px solid var(--brand-yellow, #fdc800);
+  background: var(--paper, #fffdf2);
+  color: var(--ink-secondary);
+  font-size: 0.84rem;
+}
+
+.borrow-actions-heading,
+.borrow-actions-cell {
+  min-width: 132px;
+  text-align: right;
+}
+
+.borrow-cancel-button,
+.borrow-cancel-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid var(--ink-primary);
+  border-radius: 0.55rem;
+  box-shadow: 3px 3px 0 var(--ink-primary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.borrow-cancel-button {
+  background: var(--paper, #fffdf2);
+  color: #a32118;
+}
+
+.borrow-cancel-confirm {
+  background: var(--brand-yellow, #fdc800);
+  color: var(--ink-primary, #111);
+}
+
+.borrow-cancel-button:hover:not(:disabled),
+.borrow-cancel-confirm:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+}
+
+.borrow-cancel-button:focus-visible,
+.borrow-cancel-confirm:focus-visible {
+  outline: 3px solid var(--neo-violet, #432dd7);
+  outline-offset: 3px;
+}
+
+.borrow-cancel-button:disabled,
+.borrow-cancel-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.borrow-cancel-modal {
+  max-width: 520px;
+  border-radius: 1rem;
+}
+
+.borrow-cancel-modal .ath-modal-inner {
+  border-radius: calc(1rem - 6px);
+  background: var(--paper, #fffdf2);
+}
+
+.borrow-cancel-head {
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--paper, #fffdf2);
+}
+
+.borrow-cancel-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.borrow-cancel-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 0.65rem;
+  background: #fff3d6;
+  color: #9a3b13;
+  box-shadow: 2px 2px 0 var(--ink-primary, #111);
+}
+
+.borrow-cancel-head .vg-section-label {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+}
+
+.borrow-cancel-head .modal-title {
+  font-family: var(--font-sans, "Be Vietnam Pro", sans-serif);
+  font-size: clamp(1rem, 3vw, 1.18rem);
+  line-height: 1.35;
+}
+
+.borrow-cancel-head .modal-close {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 0.55rem;
+  box-shadow: 2px 2px 0 var(--ink-primary, #111);
+}
+
+.borrow-cancel-head .modal-close:hover:not(:disabled) {
+  background: var(--brand-yellow, #fdc800);
+  transform: translate(-1px, -1px);
+}
+
+.borrow-cancel-body {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.15rem 1.25rem;
+  color: var(--ink-secondary);
+}
+
+.borrow-cancel-book-card {
+  padding: 0.8rem 0.9rem;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 0.7rem;
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--ink-primary, #111);
+}
+
+.borrow-cancel-book-label {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.borrow-cancel-book {
+  margin: 0;
+  color: var(--ink-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.borrow-cancel-description {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.borrow-cancel-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 3px solid var(--brand-yellow, #fdc800);
+  background: #fff8df;
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.borrow-cancel-note svg {
+  flex: 0 0 16px;
+  margin-top: 1px;
+}
+
+.borrow-cancel-actions {
+  gap: 0.65rem;
+  margin-top: 0;
+  padding: 0.9rem 1.25rem 1.1rem;
+  border-top: 1px solid var(--paper-border);
+}
+
+.borrow-cancel-actions button {
+  min-height: 42px;
+  padding: 0.55rem 1rem;
+  border-radius: 0.55rem !important;
+  box-shadow: 3px 3px 0 var(--ink-primary, #111);
+  font-size: 0.86rem;
+}
+
+.borrow-cancel-actions .ath-btn-outline {
+  border: 2px solid var(--ink-primary, #111);
+  background: var(--paper, #fffdf2);
+  color: var(--ink-primary, #111);
+}
+
+.borrow-cancel-confirm:hover:not(:disabled) {
+  background: #f2bd00;
+}
+
+.borrow-cancel-actions button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink-primary, #111);
 }
 
 .profile-section-heading {
@@ -1214,6 +1532,23 @@ export default {
   }
 
   .profile-editor-actions button {
+    width: 100%;
+  }
+
+  .borrow-cancel-head {
+    padding: 1rem;
+  }
+
+  .borrow-cancel-body {
+    padding: 1rem;
+  }
+
+  .borrow-cancel-actions {
+    flex-direction: column-reverse;
+    padding: 0.85rem 1rem 1rem;
+  }
+
+  .borrow-cancel-actions button {
     width: 100%;
   }
 }

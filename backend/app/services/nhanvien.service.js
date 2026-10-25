@@ -67,7 +67,10 @@ class NhanVienService {
         }
 
         if (isCreating) {
-            if (!data.ChucVu) data.ChucVu = "THUTHU";
+            if (!data.ChucVu) data.ChucVu = "STAFF";
+            if (!["STAFF", "ADMIN"].includes(data.ChucVu)) {
+                throw new Error("Chức vụ nhân viên không hợp lệ. Chỉ chấp nhận STAFF hoặc ADMIN.");
+            }
             if (data.DiaChi === undefined) data.DiaChi = "";
             data.TrangThaiThe = "HoatDong";
             data.PhienBanToken = 0;
@@ -82,6 +85,9 @@ class NhanVienService {
 
         if (!data.HoTenNV || !data.MatKhau || !data.SoDienThoai) {
             throw new Error("Vui lòng điền đầy đủ Họ tên, số điện thoại và mật khẩu nhân viên.");
+        }
+        if (!["STAFF", "ADMIN"].includes(data.ChucVu)) {
+            throw new Error("Chức vụ nhân viên không hợp lệ. Chỉ chấp nhận STAFF hoặc ADMIN.");
         }
         if (!/^\+?[0-9]{9,15}$/.test(data.SoDienThoai)) {
             throw new Error("Số điện thoại nhân viên phải có từ 9 đến 15 chữ số.");
@@ -110,7 +116,7 @@ class NhanVienService {
             SoDienThoai: String(request.SoDienThoai).trim(),
             DiaChi: String(request.DiaChi || "").trim(),
             MatKhau: request.MatKhau,
-            ChucVu: "THUTHU",
+            ChucVu: "STAFF",
             TrangThaiThe: "HoatDong",
             PhienBanToken: 0,
             CreatedAt: new Date(),
@@ -165,7 +171,7 @@ class NhanVienService {
         if (!/^\+?[0-9]{9,15}$/.test(accountIdentifier)) return { staff: null, status: "invalid" };
         const staff = await this.NhanVien.findOne({ SoDienThoai: accountIdentifier });
 
-        if (!staff) return { staff: null, status: "invalid" };
+        if (!staff || !["STAFF", "ADMIN"].includes(staff.ChucVu)) return { staff: null, status: "invalid" };
 
         const passwordHash = staff.MatKhau;
         const isValid = await PasswordUtil.compare(password, passwordHash);
@@ -191,7 +197,7 @@ class NhanVienService {
             error.statusCode = 403;
             throw error;
         }
-        if (target.ChucVu !== "THUTHU") {
+        if (target.ChucVu !== "STAFF") {
             const error = new Error("Chỉ có thể khóa hoặc mở khóa tài khoản thủ thư.");
             error.statusCode = 403;
             throw error;
@@ -213,7 +219,7 @@ class NhanVienService {
             ? { $or: [{ TrangThaiThe: "HoatDong" }, { TrangThaiThe: { $exists: false } }] }
             : { TrangThaiThe: currentStatus };
         const result = await this.NhanVien.updateOne(
-            { _id: target._id, ChucVu: "THUTHU", ...expectedStatus },
+            { _id: target._id, ChucVu: "STAFF", ...expectedStatus },
             {
                 $set: { TrangThaiThe: status, UpdatedAt: new Date() },
                 ...(status === "Khoa" ? { $inc: { PhienBanToken: 1 } } : {}),
