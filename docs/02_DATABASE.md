@@ -1,322 +1,224 @@
-# 02. THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE SCHEMA)
+# 02. SƠ ĐỒ CƠ SỞ DỮ LIỆU CDM
 
-* **Hệ Quản Trị CSDL**: MongoDB (Native Driver v6+)
-* **Tên Database**: `quanlymuonsach`
-* **Vai trò chuẩn**: `USER` (độc giả), `STAFF` (thủ thư/nhân viên), `ADMIN` (quản trị viên). `nhanvien.ChucVu` chỉ nhận `STAFF` hoặc `ADMIN`; `docgia.VaiTro` chỉ nhận `USER`.
-* **Quy chuẩn**: 5 collections nghiệp vụ cốt lõi bám sát Sơ đồ CDM trong Báo cáo thực tập CT449 (Chương III, Mục 2, Trang 23-25), mở rộng thêm collection tham chiếu `theloai`; `yeucaunhanvien`, `nhatkykiemtoan` và `thongbao` là collection kỹ thuật.
+## 2.1. Tổng quan
 
-Các trường nghiệp vụ là lược đồ CDM, bổ sung thể loại tham chiếu riêng `theloai`. Backend có thể lưu metadata kỹ thuật (`CreatedAt`, `UpdatedAt`, `deleted`, `DeletedAt`, `DeletedBy`); metadata xóa không xuất hiện trong response sách đang hoạt động. Riêng Admin có endpoint xem sách đã xóa mềm để khôi phục, endpoint này trả metadata xóa. `nhatkykiemtoan` có schema riêng, dùng tên trường tiếng Việt và không phải response tài nguyên CDM. Mọi response loại trừ `MatKhau`.
+Hệ thống dùng MongoDB Native Driver với cơ sở dữ liệu `quanlymuonsach`. Theo code hiện tại, có **10 collection**: **6 collection nghiệp vụ** (`docgia`, `nhanvien`, `nhaxuatban`, `sach`, `theloai`, `theodoimuonsach`) và **4 collection hỗ trợ** (`yeucaunhanvien`, `nhatkykiemtoan`, `thongbao`, `jwt_revocations`).
 
----
+Trong các bảng mô tả dưới đây, `_id` là khóa chính nội bộ MongoDB. Các mã nghiệp vụ duy nhất như `MaDocGia`, `MaSach`, `MaNXB`, `MaTheLoai`, `MSNV` là khóa định danh thay thế/khóa duy nhất, không phải khóa chính MongoDB. Cột Khóa ngoại ghi các tham chiếu logic do backend quản lý; MongoDB không tự cưỡng chế foreign key như hệ quản trị quan hệ. Trường thời gian nghiệp vụ như `NgayMuon` hiện được lưu dạng chuỗi ngày `YYYY-MM-DD`; trường thời điểm tạo/cập nhật thường dùng BSON Date.
 
-## 1. Danh Sách Tập Hợp (Collections)
+## 2.2. Danh sách collection
 
-| STT | Tên Collection | Diễn Giải Nghiệp Vụ |
-|:---:|:---|:---|
-| 1 | `docgia` | Danh sách thông tin tài khoản độc giả và trạng thái thẻ |
-| 2 | `nhanvien` | Danh sách tài khoản nhân viên thư viện và quản trị viên |
-| 3 | `nhaxuatban` | Danh mục thông tin các nhà xuất bản |
-| 4 | `sach` | Danh mục thông tin các đầu sách và số lượng tồn kho |
-| 5 | `theloai` | Danh mục thể loại sách; sách tham chiếu bằng `MaTheLoai` |
-| 6 | `theodoimuonsach` | Nhật ký theo dõi giao dịch mượn, trả sách và xử lý sự cố |
-| 7 | `nhatkykiemtoan` | Nhật ký kiểm toán append-only, lưu tác nhân, đối tượng, sự kiện và thời điểm; chỉ Admin được đọc qua API |
-| 8 | `thongbao` | Hộp thư thông báo nghiệp vụ theo từng độc giả/nhân viên; chỉ người nhận được đọc và đánh dấu đã đọc |
-| 9 | `yeucaunhanvien` | Hồ sơ đăng ký nhân viên riêng, được Admin duyệt trước khi tạo tài khoản nhân viên |
+| STT | Tên bảng (Collection) | Phân loại | Diễn giải |
+|---:|---|---|---|
+| 1 | `docgia` | Nghiệp vụ | Hồ sơ, tài khoản, trạng thái thẻ và số lần vi phạm của độc giả. |
+| 2 | `nhanvien` | Nghiệp vụ | Hồ sơ và tài khoản nhân viên thư viện (`STAFF`) và quản trị viên (`ADMIN`). |
+| 3 | `nhaxuatban` | Nghiệp vụ | Danh mục nhà xuất bản được sách tham chiếu bằng `MaNXB`. |
+| 4 | `sach` | Nghiệp vụ | Danh mục đầu sách, thông tin xuất bản, thể loại và tồn kho. |
+| 5 | `theloai` | Nghiệp vụ | Danh mục thể loại được sách tham chiếu bằng `MaTheLoai`. |
+| 6 | `theodoimuonsach` | Nghiệp vụ | Phiếu mượn và vòng đời đăng ký, duyệt, nhận, trả, gia hạn hoặc báo mất sách. |
+| 7 | `yeucaunhanvien` | Hỗ trợ quy trình | Hồ sơ đăng ký làm nhân viên trước khi Admin duyệt và tạo tài khoản. |
+| 8 | `nhatkykiemtoan` | Hỗ trợ vận hành | Nhật ký append-only về sự kiện nghiệp vụ và thao tác quản trị. |
+| 9 | `thongbao` | Hỗ trợ vận hành | Thông báo nghiệp vụ gửi đến độc giả/nhân viên và trạng thái đã đọc. |
+| 10 | `jwt_revocations` | Hỗ trợ bảo mật | Hash của JWT bị thu hồi, dùng để vô hiệu hóa phiên đăng nhập. |
 
----
+## 2.3. Mô tả các lớp dữ liệu nghiệp vụ
 
-## 2. Chi Tiết Lược Đồ Dữ Liệu Từng Bảng (Schema Specification)
+### 2.3.1. Độc giả (`docgia`)
 
-### 2.1. Bảng Độc Giả (`docgia`)
-Bảng `docgia` lưu thông tin cá nhân người mượn sách, tài khoản độc giả (`VaiTro: USER`) và các chỉ số vi phạm nội quy.
+Lưu thông tin cá nhân, thông tin đăng nhập và tình trạng thẻ thư viện của độc giả.
 
-```json
-{
-  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
-  "MaDocGia": "DG-000001",            // [Duy nhất] Mã số định danh độc giả (Tự sinh hệ thống)
-  "HoLot": "Trần Minh",               // [Bắt buộc] Họ và tên đệm của độc giả
-  "Ten": "Triết",                     // [Bắt buộc] Tên của độc giả
-  "NgaySinh": "2003-09-15",           // [Bắt buộc] Ngày tháng năm sinh (Định dạng YYYY-MM-DD)
-  "Phai": 1,                          // [Bắt buộc, Integer] Giới tính: 1: Nam, 0: Nữ, 2: Khác
-  "DiaChi": "Xuân Khánh, Cần Thơ",   // Địa chỉ cư trú của độc giả
-  "DienThoai": "0912345678",          // [Bắt buộc, Duy nhất] Số điện thoại liên hệ (Dùng để đăng nhập)
-  "MatKhau": "$2a$10$e7...",          // [Bắt buộc, String] Mật khẩu tài khoản (Đã mã hóa Bcrypt an toàn)
-  "VaiTro": "USER",                   // Vai trò tài khoản độc giả
-  "SoLanViPham": 0,                   // [Number >= 0] Số lần vi phạm nội quy (trả trễ hạn, làm mất sách)
-  "TrangThaiThe": "HoatDong"          // ["HoatDong" | "Khoa" | "DanhSachDen"] Trạng thái thẻ thư viện
-}
-```
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo cho document. |
+| `MaDocGia` | String | Không; duy nhất | Không | Mã nghiệp vụ độc giả, ví dụ `DG-000001`; được phiếu mượn dùng để tham chiếu. |
+| `HoLot` | String | Không | Không | Họ và tên đệm của độc giả. |
+| `Ten` | String | Không | Không | Tên độc giả. |
+| `NgaySinh` | String | Không | Không | Ngày sinh theo định dạng ngày ứng dụng sử dụng, thông thường `YYYY-MM-DD`. |
+| `Phai` | Number | Không | Không | Giới tính: `1` Nam, `0` Nữ, `2` Khác. |
+| `DiaChi` | String | Không | Không | Địa chỉ độc giả. |
+| `DienThoai` | String | Không; duy nhất theo quy tắc tài khoản | Không | Số điện thoại đăng nhập/liên hệ. Tài khoản Google có thể dùng giá trị hệ thống thay thế. |
+| `MatKhau` | String | Không | Không | Mật khẩu được băm bằng Bcrypt; không trả về API. Có thể vắng mặt với tài khoản đăng nhập Google. |
+| `VaiTro` | String | Không | Không | Vai trò của hồ sơ độc giả; giá trị chuẩn là `USER`. |
+| `SoLanViPham` | Number | Không | Không | Bộ đếm vi phạm hiện tại; được đặt lại khi Admin gỡ khỏi danh sách đen. |
+| `TrangThaiThe` | String | Không | Không | Trạng thái `HoatDong`, `Khoa` hoặc `DanhSachDen`. |
+| `AnhDaiDien` | String | Không | Không | Đường dẫn ảnh đại diện, nếu có. |
+| `Email` | String | Không | Không | Email tài khoản Google, nếu có. |
+| `GoogleId` | String | Không | Không | Định danh Google, nếu tài khoản được tạo/liên kết qua Google. |
+| `CreatedAt` | Date | Không | Không | Thời điểm tạo hồ sơ, nếu được ghi nhận. |
+| `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật hồ sơ, nếu được ghi nhận. |
 
-* **Quy tắc Danh sách đen tự động**: Khi số lần vi phạm tăng đến ngưỡng 3, hệ thống tự động chuyển `TrangThaiThe = "DanhSachDen"` và từ chối yêu cầu mượn mới. Trạng thái khóa khẩn cấp (`Khoa`) là nghiệp vụ riêng, không làm thay đổi số lần vi phạm; mở khóa khẩn cấp ở ngưỡng 3 sẽ chuyển về `DanhSachDen`. Khi Admin xét gỡ khỏi Danh sách đen, hệ thống chuyển thẻ về `HoatDong` và đặt `SoLanViPham = 0` cho chu kỳ tiếp theo. Các sự kiện vi phạm và quyết định xét gỡ vẫn được lưu trong nhật ký kiểm toán.
+### 2.3.2. Nhân viên (`nhanvien`)
 
----
+Lưu tài khoản nhân viên thư viện và quản trị viên.
 
-### 2.2. Hồ sơ đăng ký nhân viên (`yeucaunhanvien`)
-Hồ sơ đăng ký được lưu tách khỏi `docgia` và `nhanvien`. Người đăng ký chưa có tài khoản nghiệp vụ và không nhận JWT cho đến khi Admin duyệt. Mật khẩu chỉ được lưu dạng Bcrypt hash và không được đưa vào API response. Khi duyệt, hệ thống tạo hồ sơ `nhanvien` với chức vụ `STAFF`; khi từ chối, trạng thái và lý do được lưu để tra cứu/kiểm toán.
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo. |
+| `MSNV` | String | Không; duy nhất | Không | Mã nghiệp vụ nhân viên, ví dụ `NV-0001`; dùng trong hồ sơ và tham chiếu phiếu mượn. |
+| `HoTenNV` | String | Không | Không | Họ tên nhân viên. |
+| `MatKhau` | String | Không | Không | Mật khẩu đăng nhập đã băm bằng Bcrypt; không trả về API. |
+| `ChucVu` | String | Không | Không | Chức vụ `STAFF` hoặc `ADMIN`. |
+| `SoDienThoai` | String | Không; duy nhất | Không | Số điện thoại đăng nhập của nhân viên. |
+| `DiaChi` | String | Không | Không | Địa chỉ liên hệ. |
+| `AnhDaiDien` | String | Không | Không | Đường dẫn ảnh đại diện, nếu có. |
+| `TrangThaiThe` | String | Không | Không | Trạng thái tài khoản nhân viên: `HoatDong` hoặc `Khoa`. Đây không phải trạng thái thẻ độc giả. |
+| `PhienBanToken` | Number | Không | Không | Phiên bản phiên xác thực; được dùng để làm mất hiệu lực JWT cũ. |
+| `MaYeuCauDangKy` | String | Không | Tham chiếu logic `yeucaunhanvien._id` (dạng chuỗi), nếu có | Mã hồ sơ đăng ký đã sinh tài khoản; hỗ trợ liên kết và xử lý duyệt idempotent. |
+| `CreatedAt` | Date | Không | Không | Thời điểm tạo hồ sơ, nếu được ghi nhận. |
+| `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật hồ sơ, nếu được ghi nhận. |
 
-```json
-{
-  "_id": "ObjectId",
-  "HoTenNV": "Nguyễn Văn A",
-  "SoDienThoai": "0912345678",
-  "DiaChi": "Ninh Kiều, Cần Thơ",
-  "MatKhau": "$2b$...",
-  "TrangThai": "ChoDuyet | DangDuyet | DaDuyet | TuChoi",
-  "ThoiGianGui": "Date",
-  "ThoiGianXuLy": "Date",
-  "NguoiDuyet": "MSNV",
-  "MSNV": "NV-0001",
-  "LyDoTuChoi": "String"
-}
-```
+### 2.3.3. Nhà xuất bản (`nhaxuatban`)
 
-Unique index `{ SoDienThoai, TrangThai }` ngăn nhiều hồ sơ cùng số điện thoại ở cùng trạng thái. Hồ sơ `DaDuyet` được xóa hash mật khẩu sau khi tạo tài khoản.
+Lưu danh mục nhà xuất bản liên kết với các đầu sách.
 
-### 2.3. Bảng Nhân Viên (`nhanvien`)
-Bảng `nhanvien` lưu trữ danh sách cán bộ, nhân viên thư viện và quản trị viên hệ thống có quyền đăng nhập vào các phân hệ nghiệp vụ quản lý.
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo. |
+| `MaNXB` | String | Không; duy nhất | Không | Mã nghiệp vụ nhà xuất bản, ví dụ `NXB-0001`. |
+| `TENNXB` | String | Không | Không | Tên nhà xuất bản. |
+| `DiaChi` | String | Không | Không | Địa chỉ trụ sở nhà xuất bản. |
+| `CreatedAt` | Date | Không | Không | Thời điểm tạo dữ liệu, nếu được ghi nhận. |
+| `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật dữ liệu, nếu được ghi nhận. |
 
-```json
-{
-  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
-  "MSNV": "NV-0001",                  // [Duy nhất] Mã số nhân viên (Tự sinh chuẩn NV-0001)
-  "HoTenNV": "Nguyễn Quản Trị Viên", // [Bắt buộc] Họ và tên đầy đủ của nhân viên
-  "MatKhau": "$2a$10$k9...",          // [Bắt buộc] Mật khẩu đăng nhập hệ thống (Đã mã hóa Bcrypt)
-  "ChucVu": "ADMIN",                  // ["STAFF" | "ADMIN"] Chức danh công tác
-  "SoDienThoai": "0901234567",        // [Bắt buộc, duy nhất trong nhanvien] Dùng đăng nhập; MSNV chỉ là mã hồ sơ
-  "DiaChi": "Ninh Kiều, Cần Thơ",    // Địa chỉ liên hệ của nhân viên
-  "TrangThaiThe": "HoatDong",         // ["HoatDong" | "Khoa"] Trạng thái tài khoản nhân viên
-  "PhienBanToken": 0,                  // Trường nội bộ tăng khi khóa, làm mất hiệu lực JWT cũ
-  "MaYeuCauDangKy": "ObjectId string" // Metadata nội bộ để bảo đảm thao tác duyệt idempotent; không xuất hiện trong API
-}
-```
+### 2.3.4. Sách (`sach`)
 
-`TrangThaiThe` của `nhanvien` là trạng thái tài khoản, không áp dụng quy tắc vi phạm của độc giả. Chỉ Admin được khóa/mở khóa nhân viên `STAFF`; không được tự khóa hoặc tác động lên tài khoản Admin. `PhienBanToken` không xuất API; middleware so sánh phiên bản trong JWT để thu hồi token cũ kể cả sau khi tài khoản được mở khóa.
+Lưu thông tin đầu sách, dữ liệu xuất bản, thể loại và tồn kho. Trường xóa mềm là metadata vận hành, không phải thuộc tính CDM cốt lõi.
 
-Khi backend khởi động, migration idempotent chuyển `nhanvien.ChucVu` cũ `THUTHU`/`MANAGER` thành `STAFF` và `docgia.VaiTro` cũ `THUTHU`/`MANAGER`/`STAFF` thành `USER`. Migration chỉ cập nhật trường vai trò và `UpdatedAt`, không thay đổi thông tin cá nhân, mật khẩu, trạng thái thẻ hoặc phiếu mượn. Nhật ký kiểm toán cũ được giữ nguyên như lịch sử.
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo. |
+| `MaSach` | String | Không; duy nhất | Không | Mã đầu sách, ví dụ `SACH-000001`. |
+| `TenSach` | String | Không | Không | Tên sách. |
+| `DonGia` | Number | Không | Không | Đơn giá sách; dùng tính giá trị bồi thường khi báo mất. |
+| `SoQuyen` | Number | Không | Không | Số lượng sách hiện có trong kho. |
+| `NamXuatBan` | Number hoặc String | Không | Không | Năm xuất bản; dữ liệu chưa xác định có thể lưu “Không rõ”. |
+| `MaNXB` | String | Không | Tham chiếu `nhaxuatban.MaNXB` | Mã nhà xuất bản của sách. |
+| `MaTheLoai` | String | Không | Tham chiếu `theloai.MaTheLoai` | Mã thể loại chính của sách. |
+| `TacGia` | String | Không | Không | Tác giả hoặc cơ quan biên soạn. |
+| `HinhAnh` | String | Không | Không | Đường dẫn ảnh bìa. |
+| `MoTa` | String | Không | Không | Tóm tắt nội dung sách. |
+| `NguonGoc` | String | Không | Không | Thông tin nguồn gốc, nếu có. |
+| `CreatedAt` | Date | Không | Không | Thời điểm tạo sách, nếu được ghi nhận. |
+| `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật sách, nếu được ghi nhận. |
+| `deleted` | Boolean | Không | Không | Cờ xóa mềm; bản ghi thiếu trường này được xem là đang hoạt động. |
+| `DeletedAt` | Date | Không | Không | Thời điểm xóa mềm, nếu đã xóa. |
+| `DeletedBy` | String | Không | Không | Mã người thực hiện xóa mềm, nếu đã xóa. |
 
----
+### 2.3.5. Thể loại (`theloai`)
 
-### 2.4. Bảng Sách (`sach`)
-Lưu trữ thông tin chi tiết từng đầu sách trong thư viện, bao gồm đơn giá bồi thường và số lượng tồn kho thực tế.
+Lưu danh mục thể loại dùng chung để phân loại và lọc sách.
 
-```json
-{
-  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
-  "MaSach": "SACH-000001",            // [Duy nhất] Mã định danh đầu sách (Tự sinh SACH-000001)
-  "TenSach": "Lập trình Web Vue.js",  // [Bắt buộc] Tên tựa sách
-  "DonGia": 85000,                    // [Bắt buộc, Double >= 0] Đơn giá sách (Dùng tính tiền phạt nếu làm mất)
-  "SoQuyen": 5,                       // [Bắt buộc, Integer >= 0] Số lượng sách thực tế còn trong kho
-  "NamXuatBan": 2024,                 // [Integer] Năm xuất bản sách
-  "MaNXB": "NXB-0001",                // [Khóa ngoại FK] Tham chiếu đến nhaxuatban.MaNXB
-  "MaTheLoai": "TL-0002",              // [Bắt buộc, FK] Tham chiếu đến theloai.MaTheLoai
-  "TacGia": "Nguyễn Văn An",          // [Bắt buộc] Tên tác giả hoặc cơ quan biên soạn
-  "HinhAnh": "https://...",           // Đường dẫn ảnh bìa sách
-  "MoTa": "Giáo trình toàn diện..."  // Tóm tắt nội dung sách
-}
-```
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo. |
+| `MaTheLoai` | String | Không; unique index | Không | Mã thể loại, ví dụ `TL-0001`; backend tạo unique index cho trường này. |
+| `TenTheLoai` | String | Không | Không | Tên thể loại hiển thị. |
+| `MoTa` | String | Không | Không | Mô tả thể loại. |
+| `CreatedAt` | Date | Không | Không | Thời điểm tạo; các thể loại mặc định được seed idempotent. |
 
-* **Xóa mềm**: `DELETE /api/sach/:id` đặt `deleted=true`, `DeletedAt`, `DeletedBy`, không xóa document. Sách đã xóa bị ẩn khỏi tra cứu/chi tiết và không thể đăng ký/duyệt mượn. Chỉ Admin được xem danh sách xóa mềm và khôi phục (`deleted=false`); mọi thao tác được ghi log. Bản ghi cũ thiếu `deleted` được hiểu là đang hoạt động.
-* **Ràng buộc toàn vẹn**: Không cho phép xóa mềm nếu sách đang có phiếu `DangMuon`, `ChoDuyet` hoặc `ChoNhan`.
-* **Ràng buộc thể loại**: Mỗi đầu sách có một thể loại chính; `MaTheLoai` bắt buộc và phải tồn tại trong `theloai`. Danh mục không nhúng vào document sách.
-* `deleted`, `DeletedAt`, `DeletedBy` là metadata kỹ thuật ngoài CDM; chỉ endpoint danh sách đã xóa dành cho Admin trả các trường này.
+### 2.3.6. Theo dõi mượn sách (`theodoimuonsach`)
 
----
+Lưu phiếu mượn và các mốc trong vòng đời xử lý phiếu. Các trường ngày nghiệp vụ hiện được lưu dưới dạng chuỗi ngày `YYYY-MM-DD`.
 
-### 2.5. Bảng Thể Loại (`theloai`)
-Danh mục chuẩn để phân loại và lọc đầu sách. Mã thể loại ổn định được lưu trong sách dưới dạng tham chiếu `MaTheLoai`.
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ của phiếu. |
+| `MaDocGia` | String | Không | Tham chiếu `docgia.MaDocGia` | Độc giả sở hữu phiếu mượn. |
+| `MaSach` | String | Không | Tham chiếu `sach.MaSach` | Đầu sách trong phiếu. |
+| `NgayDangKy` | String (`YYYY-MM-DD`) | Không | Không | Ngày độc giả gửi yêu cầu mượn. |
+| `NgayDuyet` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày nhân viên duyệt và giữ sách. |
+| `HanNhan` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày cuối độc giả được nhận sách sau khi duyệt. |
+| `NgayMuon` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày bàn giao sách thực tế tại quầy. |
+| `MSNV` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Nhân viên xử lý/duyệt/bàn giao phiếu, nếu có. |
+| `NgayHenTra` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Hạn trả tính từ ngày bàn giao; có thể được gia hạn. |
+| `SoLanGiaHan` | Number | Không | Không | Số lần gia hạn; giá trị khởi tạo `0`, tối đa `1` theo nghiệp vụ hiện tại. |
+| `NgayGiaHan` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày gia hạn, nếu phiếu đã được gia hạn. |
+| `NgayTra` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày trả thực tế hoặc ngày ghi nhận mất sách. |
+| `TrangThai` | String | Không | Không | `ChoDuyet`, `ChoNhan`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`, `DaHuy` hoặc `QuaHanNhan`. |
+| `GiaTriBoiThuong` | Number | Không | Không | Tiền bồi thường ghi nhận khi mất sách; mặc định `0`. |
+| `GhiChu` | String | Không | Không | Ghi chú tình trạng sách hoặc lý do xử lý/từ chối. |
+| `CreatedAt` | Date | Không | Không | Thời điểm tạo phiếu, nếu được ghi nhận. |
+| `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật phiếu, nếu được ghi nhận. |
 
-```json
-{
-  "_id": "ObjectId",
-  "MaTheLoai": "TL-0002",              // [Duy nhất] Mã định danh thể loại
-  "TenTheLoai": "Công nghệ thông tin", // [Bắt buộc] Tên hiển thị
-  "MoTa": "",
-  "CreatedAt": "Date"
-}
-```
+## 2.4. Mô tả các collection hỗ trợ vận hành
 
-Danh mục mặc định: Giáo trình và tài liệu học tập; Công nghệ thông tin; Khoa học tự nhiên và Toán học; Kỹ thuật và Công nghệ; Kinh tế và Quản trị; Luật và Chính trị; Ngoại ngữ; Giáo dục và Tâm lý; Nông nghiệp và Môi trường; Y học và Sức khỏe; Văn học Việt Nam; Văn học thiếu nhi; Lịch sử và Văn hóa; Triết học và Tôn giáo; Kỹ năng và Phát triển bản thân; Từ điển và Tài liệu tra cứu; Khác. Collection này được seed idempotent khi backend khởi động.
+### 2.4.1. Hồ sơ đăng ký nhân viên (`yeucaunhanvien`)
 
----
+Lưu hồ sơ ứng tuyển trước khi tài khoản được tạo trong `nhanvien`.
 
-### 2.6. Bảng Nhà Xuất Bản (`nhaxuatban`)
-Lưu trữ danh mục các đơn vị xuất bản cung cấp ấn phẩm cho thư viện.
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ của hồ sơ. |
+| `HoTenNV` | String | Không | Không | Họ tên người đăng ký. |
+| `SoDienThoai` | String | Không | Không | Số điện thoại đăng ký. |
+| `DiaChi` | String | Không | Không | Địa chỉ người đăng ký. |
+| `MatKhau` | String | Không | Không | Mật khẩu đã băm; không trả về API và được gỡ sau khi duyệt. |
+| `TrangThai` | String | Không | Không | `ChoDuyet`, `DangDuyet`, `DaDuyet` hoặc `TuChoi`. |
+| `ThoiGianGui` | Date | Không | Không | Thời điểm gửi hồ sơ. |
+| `ThoiGianXuLy` | Date hoặc null | Không | Không | Thời điểm xử lý hồ sơ. |
+| `NguoiDuyet` | String hoặc null | Không | Tham chiếu logic đến mã nhân viên xử lý | Mã Admin/người xử lý hồ sơ, nếu có. |
+| `MSNV` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Mã tài khoản nhân viên sinh ra khi hồ sơ được duyệt. |
+| `LyDoTuChoi` | String hoặc null | Không | Không | Lý do từ chối hồ sơ. |
 
-```json
-{
-  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
-  "MaNXB": "NXB-0001",                // [Duy nhất] Mã định danh nhà xuất bản (Tự sinh NXB-0001)
-  "TENNXB": "NXB Giáo Dục Việt Nam", // [Bắt buộc] Tên nhà xuất bản (Chuẩn báo cáo CDM)
-  "DiaChi": "81 Trần Hưng Đạo, HN"    // Địa chỉ trụ sở nhà xuất bản
-}
-```
+### 2.4.2. Nhật ký kiểm toán (`nhatkykiemtoan`)
 
-* **Ràng buộc toàn vẹn**: Không cho phép xóa Nhà xuất bản nếu vẫn còn sách trong kho tham chiếu đến `MaNXB` này.
+Lưu nối tiếp các sự kiện; tập trường thực tế có thể thay đổi theo loại sự kiện.
 
----
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ của bản ghi log. |
+| `HanhDong` | String | Không | Không | Mã hành động như `SACH_TAO`, `PHIEU_GIA_HAN`, khóa/mở khóa tài khoản. |
+| `LoaiDoiTuong` | String | Không | Không | Loại đối tượng như sách, phiếu mượn, nhân viên hoặc độc giả. |
+| `MaDoiTuong` | String | Không | Không | Mã định danh đối tượng liên quan. |
+| `MaSach` | String | Không | Tham chiếu logic `sach.MaSach` | Mã sách liên quan, nếu có. |
+| `TenSach` | String | Không | Không | Snapshot tên sách để giữ lịch sử hiển thị. |
+| `MaDocGia` | String | Không | Tham chiếu logic `docgia.MaDocGia` | Mã độc giả liên quan, nếu có. |
+| `TenDocGia` | String | Không | Không | Snapshot tên độc giả. |
+| `MSNV` | String | Không | Tham chiếu logic `nhanvien.MSNV` | Mã nhân viên liên quan hoặc chịu trách nhiệm. |
+| `TenNhanVien` | String | Không | Không | Snapshot tên nhân viên. |
+| `LoaiTacNhan` | String | Không | Không | Loại tác nhân: `docgia`, `nhanvien` hoặc `hethong`. |
+| `MaTacNhan` | String | Không | Tham chiếu logic đến mã hồ sơ tác nhân | Mã của người/hệ thống thực hiện. |
+| `TenTacNhan` | String | Không | Không | Tên snapshot của tác nhân. |
+| `ChiTiet` | Object | Không | Không | Chi tiết trạng thái hoặc dữ liệu thay đổi, nếu có. |
+| `ThoiGian` | Date | Không | Không | Thời điểm sự kiện. |
 
-### 2.7. Bảng Theo Dõi Mượn Sách (`theodoimuonsach`)
-Bảng `theodoimuonsach` đóng vai trò là bảng giao dịch trung gian giữa `docgia` và `sach`, ghi nhận toàn bộ vòng đời của một phiếu mượn từ lúc gửi yêu cầu, duyệt giao sách, hẹn ngày trả, cho đến khi hoàn trả hoặc xử lý bồi thường mất sách.
+### 2.4.3. Thông báo (`thongbao`)
 
-```json
-{
-  "_id": "ObjectId",                  // [Khóa chính PK] Định danh duy nhất tự sinh bởi MongoDB
-  "MaDocGia": "DG-000001",            // [Khóa ngoại FK] Tham chiếu đến docgia.MaDocGia
-  "MaSach": "SACH-000004",            // [Khóa ngoại FK] Tham chiếu đến sach.MaSach
-  "NgayDangKy": "2026-10-14",         // Ngày độc giả gửi yêu cầu
-  "NgayDuyet": "2026-10-15",          // Ngày thủ thư duyệt và giữ sách
-  "HanNhan": "2026-10-18",            // Hạn cuối đến nhận (3 ngày từ ngày duyệt, được nhận hết ngày này)
-  "NgayMuon": "2026-10-17",           // Ngày thủ thư thực tế bàn giao sách; null trước bàn giao
-  "MSNV": "NV-0002",                  // [Khóa ngoại FK] Nhân viên duyệt/bàn giao (nhanvien.MSNV)
-  "NgayHenTra": "2026-10-31",         // Hạn trả: 14 ngày kể từ NgayMuon; null trước bàn giao
-  "SoLanGiaHan": 0,                    // Số lần gia hạn; tối đa 1 lần cho mỗi phiếu
-  "NgayGiaHan": null,                  // Ngày độc giả gia hạn; null nếu chưa gia hạn
-  "NgayTra": null,                    // Ngày thực tế mang trả sách tại quầy (null nếu chưa trả)
-  "TrangThai": "DangMuon",            // ["ChoDuyet" | "ChoNhan" | "DangMuon" | "DaTra" | "MatSach" | "TuChoi" | "DaHuy" | "QuaHanNhan"]
-  "GiaTriBoiThuong": 0,               // [Double >= 0] Tiền bồi hoàn theo đơn giá nếu làm mất sách
-  "GhiChu": "Sách bìa cứng, mới"      // Lý do từ chối mượn hoặc ghi chú tình trạng sách lúc trả
-}
-```
+Lưu thông báo nghiệp vụ theo từng độc giả hoặc nhân viên nhận.
 
-### 2.8. Nhật Ký Kiểm Toán (`nhatkykiemtoan`)
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ thông báo. |
+| `NguoiNhanId` | ObjectId | Không | Tham chiếu `_id` của `docgia` hoặc `nhanvien` | Định danh document người nhận. |
+| `LoaiNguoiNhan` | String | Không | Phân biệt collection được tham chiếu | `docgia` hoặc `nhanvien`. |
+| `LoaiThongBao` | String | Không | Không | Mã loại thông báo. |
+| `TieuDe` | String | Không | Không | Tiêu đề thông báo. |
+| `NoiDung` | String | Không | Không | Nội dung thông báo. |
+| `MaThamChieu` | String | Không | Tham chiếu logic, tùy loại thông báo | Mã phiếu/sách/đối tượng liên quan, nếu có. |
+| `DaDoc` | Boolean | Không | Không | Trạng thái đã đọc; mặc định `false`. |
+| `ThoiGian` | Date | Không | Không | Thời điểm tạo thông báo. |
 
-Collection kỹ thuật append-only, lưu snapshot tên/mã để còn truy cứu sau khi sách xóa mềm hoặc tên hiển thị thay đổi. Không có API sửa/xóa log.
+### 2.4.4. Thu hồi JWT (`jwt_revocations`)
 
-```json
-{
-  "_id": "ObjectId",
-  "HanhDong": "PHIEU_GIA_HAN",
-  "LoaiDoiTuong": "phieumuon",
-  "MaDoiTuong": "ObjectId hoặc MaSach",
-  "MaSach": "SACH-000001",
-  "TenSach": "Lập trình Web Vue.js",
-  "MaDocGia": "DG-000001",
-  "TenDocGia": "Trần Minh Triết",
-  "MSNV": "NV-0002",
-  "TenNhanVien": "Nguyễn Thủ Thư",
-  "LoaiTacNhan": "nhanvien",
-  "MaTacNhan": "NV-0002",
-  "TenTacNhan": "Nguyễn Thủ Thư",
-  "ChiTiet": { "HanTraCu": "2026-10-31", "HanTraMoi": "2026-11-07", "SoNgayGiaHan": 7 },
-  "ThoiGian": "2026-10-23T10:00:00.000Z"
-}
-```
+Lưu dấu vết token bị thu hồi, không lưu JWT gốc.
 
-`HanhDong` sử dụng các giá trị `SACH_TAO`, `SACH_CAP_NHAT`, `SACH_XOA_MEM`, `SACH_KHOI_PHUC`, `PHIEU_DANG_KY_MUON`, `PHIEU_DUYET_MUON`, `PHIEU_BAN_GIAO_SACH`, `PHIEU_QUA_HAN_NHAN`, `PHIEU_GIA_HAN`, `PHIEU_TU_CHOI_MUON`, `PHIEU_TRA_SACH`, `PHIEU_BAO_MAT_SACH` và `PHIEU_XOA`. `LoaiDoiTuong` là `sach` hoặc `phieumuon`; `LoaiTacNhan` là `docgia`, `nhanvien` hoặc `hethong`. Tác nhân được xác định từ JWT phía server, không tin mã do client tự khai.
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo. |
+| `tokenHash` | String | Không; dùng làm khóa tra cứu | Không | Hash SHA-256 của JWT đã thu hồi. |
+| `expiresAt` | Date | Không | Không | Hạn token; TTL index tự dọn document sau thời điểm này. |
 
-### 2.9. Hộp Thư Thông Báo (`thongbao`)
+## 2.5. Quan hệ tham chiếu giữa các lớp
 
-Collection kỹ thuật lưu thông báo cần người dùng biết sau khi Admin/Thủ thư thực hiện nghiệp vụ. Khác nhật ký kiểm toán, người nhận được phép cập nhật `DaDoc`; nội dung và người nhận chỉ do backend tạo, không có API tạo/sửa/xóa tùy ý.
+| Collection chứa tham chiếu | Thuộc tính tham chiếu | Collection được tham chiếu | Thuộc tính đích | Ý nghĩa |
+|---|---|---|---|---|
+| `theodoimuonsach` | `MaDocGia` | `docgia` | `MaDocGia` | Mỗi phiếu thuộc một độc giả; một độc giả có thể có nhiều phiếu. |
+| `theodoimuonsach` | `MaSach` | `sach` | `MaSach` | Mỗi phiếu gắn với một đầu sách; một đầu sách có thể nằm trong nhiều phiếu theo thời gian. |
+| `theodoimuonsach` | `MSNV` | `nhanvien` | `MSNV` | Nhân viên xử lý phiếu, nếu đã được ghi nhận. |
+| `sach` | `MaNXB` | `nhaxuatban` | `MaNXB` | Nhà xuất bản của sách. |
+| `sach` | `MaTheLoai` | `theloai` | `MaTheLoai` | Thể loại chính của sách. |
+| `nhanvien` | `MaYeuCauDangKy` | `yeucaunhanvien` | `_id` (chuỗi) | Hồ sơ đăng ký đã sinh tài khoản nhân viên, nếu có. |
+| `yeucaunhanvien` | `MSNV` | `nhanvien` | `MSNV` | Tài khoản nhân viên được tạo khi hồ sơ được duyệt. |
+| `thongbao` | `NguoiNhanId` + `LoaiNguoiNhan` | `docgia` hoặc `nhanvien` | `_id` | Xác định hồ sơ nhận thông báo. |
 
-```json
-{
-  "_id": "ObjectId",
-  "NguoiNhanId": "ObjectId của docgia hoặc nhanvien",
-  "LoaiNguoiNhan": "docgia",
-  "LoaiThongBao": "THE_KHOA",
-  "TieuDe": "Thẻ thư viện đã bị khóa",
-  "NoiDung": "Quản trị viên đã khóa thẻ của bạn...",
-  "MaThamChieu": "DG-000001 hoặc mã sách/phiếu",
-  "DaDoc": false,
-  "ThoiGian": "2026-10-24T10:00:00.000Z"
-}
-```
-
-Chỉ mục phục vụ hộp thư: `{ LoaiNguoiNhan, NguoiNhanId, ThoiGian }` và `{ LoaiNguoiNhan, NguoiNhanId, DaDoc }`. Người nhận và loại tài khoản được đối chiếu từ JWT; API không nhận recipient id từ client.
-
----
-
-## 3. Sơ Đồ Quan Hệ Dữ Liệu (Entity Relationship Diagram - ERD)
-
-```mermaid
-erDiagram
-    DOCGIA ||--o{ THEODOIMUONSACH : "thuocvedocgia (1,n)"
-    NHANVIEN ||--o{ THEODOIMUONSACH : "chiutrachnhiem (1,n)"
-    SACH ||--o{ THEODOIMUONSACH : "cuasach (1,n)"
-    NHAXUATBAN ||--o{ SACH : "sachthuocnhaxuatban (1,n)"
-    THELOAI ||--o{ SACH : "phanloai (1,n)"
-
-    DOCGIA {
-        ObjectId _id PK
-        string MaDocGia UK
-        string HoLot
-        string Ten
-        date NgaySinh
-        int Phai "1: Nam, 0: Nữ"
-        string DiaChi
-        string DienThoai UK
-        string MatKhau "Bcrypt"
-        string VaiTro "USER"
-        int SoLanViPham
-        string TrangThaiThe "HoatDong/Khoa/DanhSachDen"
-    }
-
-    NHANVIEN {
-        ObjectId _id PK
-        string MSNV UK
-        string HoTenNV
-        string MatKhau "Bcrypt"
-        string ChucVu "STAFF/ADMIN"
-        string SoDienThoai
-        string DiaChi
-    }
-
-    SACH {
-        ObjectId _id PK
-        string MaSach UK
-        string TenSach
-        double DonGia
-        int SoQuyen
-        int NamXuatBan
-        string MaNXB FK
-        string MaTheLoai FK
-        string TacGia
-        string HinhAnh
-        string MoTa
-    }
-
-    NHAXUATBAN {
-        ObjectId _id PK
-        string MaNXB UK
-        string TENNXB
-        string DiaChi
-    }
-
-    THELOAI {
-        ObjectId _id PK
-        string MaTheLoai UK
-        string TenTheLoai
-        string MoTa
-    }
-
-    THEODOIMUONSACH {
-        ObjectId _id PK
-        string MaDocGia FK
-        string MaSach FK
-        string MSNV FK
-        date NgayDangKy
-        date NgayDuyet
-        date HanNhan
-        date NgayMuon
-        date NgayHenTra
-        int SoLanGiaHan
-        date NgayGiaHan
-        date NgayTra
-        string TrangThai
-        double GiaTriBoiThuong
-        string GhiChu
-    }
-
-    NHATKYKIEMTOAN {
-        ObjectId _id PK
-        string HanhDong
-        string LoaiDoiTuong
-        string MaDoiTuong
-        string MaSach
-        string MaDocGia
-        string MSNV
-        string LoaiTacNhan
-        string MaTacNhan
-        date ThoiGian
-    }
-```
+Các quan hệ trên là tham chiếu logic do backend kiểm tra. `_id` vẫn là khóa chính của từng document; mã nghiệp vụ là mã duy nhất và được dùng để liên kết các collection nghiệp vụ.
