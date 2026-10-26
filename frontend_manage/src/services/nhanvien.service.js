@@ -23,6 +23,14 @@ class NhanVienService {
     async unlockAccount(id, LyDo) {
         return (await this.api.put(`/${id}/unlock`, { LyDo })).data;
     }
+
+    async delete(id) {
+        return (await this.api.delete(`/${id}`)).data;
+    }
+
+    async restore(id) {
+        return (await this.api.put(`/${id}/restore`)).data;
+    }
 }
 
 export default new NhanVienService();

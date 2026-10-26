@@ -30,7 +30,10 @@ exports.create = async (req, res, next) => {
 exports.findAll = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);
-        const results = await service.find(req.query);
+        if (req.query.includeDeleted === "true" && req.user?.role !== "ADMIN") {
+            return next(new ApiError(403, "Chỉ quản trị viên mới được xem tài khoản đã xóa mềm."));
+        }
+        const results = await service.find({ ...req.query, includeDeleted: req.user?.role === "ADMIN" && req.query.includeDeleted === "true" });
         return res.json(results);
     } catch (error) {
         return next(new ApiError(500, "Lỗi xảy ra khi lấy danh sách độc giả."));
@@ -178,11 +181,37 @@ exports.reinstate = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
     try {
         const service = new DocGiaService(MongoDB.client);
-        const result = await service.delete(req.params.id);
+        const result = await service.delete(req.params.id, req.user?.username);
         if (!result) {
             return next(new ApiError(404, "Không tìm thấy độc giả để xóa."));
         }
-        return res.json({ message: "Xóa hồ sơ độc giả thành công." });
+        await new AuditLogService(MongoDB.client).record({
+            action: "READER_SOFT_DELETED",
+            entityType: "reader",
+            entityId: result.MaDocGia,
+            MaDocGia: result.MaDocGia,
+            TenDocGia: [result.HoLot, result.Ten].filter(Boolean).join(" "),
+            actorType: req.user?.type,
+            actorId: req.user?.username,
+            Details: { to: "XoaMem" },
+        });
+        return res.json({ message: "Đã chuyển hồ sơ độc giả vào trạng thái xóa mềm." });
+    } catch (error) {
+        return next(new ApiError(400, error.message));
+    }
+};
+
+exports.restore = async (req, res, next) => {
+    try {
+        const service = new DocGiaService(MongoDB.client);
+        const result = await service.restore(req.params.id);
+        if (!result) return next(new ApiError(404, "Không tìm thấy độc giả đã xóa mềm để khôi phục."));
+        await new AuditLogService(MongoDB.client).record({
+            action: "READER_RESTORED", entityType: "reader", entityId: result.MaDocGia,
+            MaDocGia: result.MaDocGia, TenDocGia: [result.HoLot, result.Ten].filter(Boolean).join(" "),
+            actorType: req.user?.type, actorId: req.user?.username, Details: { from: "XoaMem", to: "HoatDong" },
+        });
+        return res.json({ message: "Đã khôi phục hồ sơ độc giả.", data: result });
     } catch (error) {
         return next(new ApiError(400, error.message));
     }

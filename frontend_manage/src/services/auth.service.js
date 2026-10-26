@@ -5,7 +5,7 @@ import createApiClient from "./api.service";
  * SERVICE XÁC THỰC FRONTEND (AUTH SERVICE)
  * =========================================================================================
  * Quản lý toàn bộ vòng đời phiên đăng nhập phía Client:
- *  - Gọi API đăng nhập / đăng ký / Google OAuth
+ *  - Gọi API đăng nhập nhân viên bằng số điện thoại và đăng ký hồ sơ STAFF
  *  - Lưu JWT token vào localStorage
  *  - Cung cấp helpers: getUser(), isLoggedIn(), isStaffOrAdmin(),...
  * =========================================================================================
@@ -17,11 +17,11 @@ class AuthService {
     }
 
     /**
-     * Đăng nhập nhân viên bằng số điện thoại; độc giả vẫn dùng thông tin đăng nhập của cổng độc giả.
+     * Đăng nhập nhân viên bằng số điện thoại và mật khẩu.
      * Lưu JWT token và thông tin user vào localStorage.
      */
-    async login(identifier, password) {
-        const response = await this.api.post("/staff-login", { identifier, password });
+    async login(phone, password) {
+        const response = await this.api.post("/staff-login", { phone, password });
         if (response.data) {
             if (response.data.token) {
                 localStorage.setItem("token", response.data.token);
@@ -42,26 +42,6 @@ class AuthService {
 
     async registerStaff(data) {
         return (await this.staffApplicationApi.post("/", data)).data;
-    }
-
-    /**
-     * Đăng nhập bằng Google - gửi credential (ID Token JWT) từ GSI lên backend.
-     * @param {string} credential - Chuỗi JWT credential do Google Identity Services trả về
-     */
-    async loginWithGoogle(credential) {
-        if (!credential) {
-            throw new Error("Thiếu Google credential. Vui lòng thử đăng nhập lại.");
-        }
-        const response = await this.api.post("/google", { idToken: credential });
-        if (response.data) {
-            if (response.data.token) {
-                localStorage.setItem("token", response.data.token);
-            }
-            if (response.data.data) {
-                localStorage.setItem("user", JSON.stringify(response.data.data));
-            }
-        }
-        return response.data;
     }
 
     /**

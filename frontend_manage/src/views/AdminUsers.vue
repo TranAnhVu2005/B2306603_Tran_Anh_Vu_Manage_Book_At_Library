@@ -39,7 +39,7 @@
           <div class="admin-filter-options" role="group" aria-label="Lọc tài khoản">
             <button class="btn btn-sm" :class="filterRole === 'all' ? 'ath-btn-primary' : 'ath-btn-outline'"
               :aria-pressed="filterRole === 'all'" @click="filterRole = 'all'">
-              Tất cả ({{ accounts.length }})
+              Tất cả ({{ accounts.filter(account => !account.deleted).length }})
             </button>
             <button class="btn btn-sm" :class="filterRole === 'DanhSachDen' ? 'ath-btn-danger' : 'ath-btn-outline'"
               :aria-pressed="filterRole === 'DanhSachDen'" @click="filterRole = 'DanhSachDen'">
@@ -56,6 +56,10 @@
                 <path d="M8 10V7a4 4 0 1 1 8 0v3" />
               </svg>
               Tài khoản/thẻ bị khóa ({{ lockedCount }})
+            </button>
+            <button class="btn btn-sm" :class="filterRole === 'deleted' ? 'ath-btn-primary' : 'ath-btn-outline'"
+              :aria-pressed="filterRole === 'deleted'" @click="filterRole = 'deleted'">
+              Đã xóa mềm ({{ deletedCount }})
             </button>
           </div>
         </div>
@@ -110,7 +114,10 @@
                   <span v-else class="badge bg-light text-dark border">ĐỘC GIẢ (USER)</span>
                 </td>
                 <td>
-                  <span v-if="account._kind === 'staff' && account.TrangThaiThe === 'Khoa'"
+                  <span v-if="account.deleted" class="ath-badge ath-badge-out">
+                    Đã xóa mềm
+                  </span>
+                  <span v-else-if="account._kind === 'staff' && account.TrangThaiThe === 'Khoa'"
                     class="ath-badge ath-badge-out">
                     <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                       <rect x="4" y="10" width="16" height="11" rx="2" />
@@ -147,7 +154,13 @@
                   <strong v-else :class="(account.SoLanViPham || 0) >= 3 ? 'text-danger' : 'text-dark'">{{
                     account.SoLanViPham || 0 }} / 3</strong>
                 </td>
-                <td v-if="account._kind === 'reader'" class="text-end">
+                <td v-if="account.deleted" class="text-end">
+                  <button class="ath-action-btn ath-action-btn-success" @click="restoreAccount(account)"
+                    title="Khôi phục tài khoản đã xóa mềm">
+                    Khôi phục
+                  </button>
+                </td>
+                <td v-else-if="account._kind === 'reader'" class="text-end">
                   <button v-if="account.TrangThaiThe === 'HoatDong'" class="ath-action-btn ath-action-btn-danger me-1"
                     @click="lockUser(account)" title="Khóa khẩn cấp thẻ, không thay đổi số lần vi phạm">
                     <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true">
@@ -171,9 +184,8 @@
                     </svg> Xét gỡ danh sách đen
                   </button>
 
-                  <!-- Xóa độc giả -->
                   <button class="ath-action-btn ath-action-btn-danger" @click="deleteUser(account)"
-                    title="Xóa tài khoản">
+                    title="Xóa mềm tài khoản">
                     <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3" />
                     </svg>
@@ -193,6 +205,12 @@
                       <rect x="4" y="10" width="16" height="11" rx="2" />
                       <path d="M8 10V7a4 4 0 0 1 7.5-2" />
                     </svg> Mở khóa
+                  </button>
+                  <button class="ath-action-btn ath-action-btn-danger ms-1" @click="deleteUser(account)"
+                    title="Xóa mềm tài khoản nhân viên">
+                    <svg class="ui-icon text-danger" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3" />
+                    </svg>
                   </button>
                 </td>
                 <td v-else class="text-muted text-center">—</td>
@@ -307,6 +325,9 @@ export default {
       return this.users.filter(u => u.TrangThaiThe === "Khoa").length +
         this.staff.filter(person => person.TrangThaiThe === "Khoa").length;
     },
+    deletedCount() {
+      return this.accounts.filter(account => account.deleted).length;
+    },
     accounts() {
       return [
         ...this.users.map(user => ({ ...user, _kind: "reader" })),
@@ -324,8 +345,12 @@ export default {
         ].some(value => String(value || "").toLocaleLowerCase("vi").includes(query));
 
         let matchesFilter = true;
-        if (this.filterRole === "DanhSachDen") matchesFilter = account._kind === "reader" && account.TrangThaiThe === "DanhSachDen";
-        if (this.filterRole === "Khoa") matchesFilter = account.TrangThaiThe === "Khoa";
+        if (this.filterRole === "deleted") matchesFilter = account.deleted === true;
+        else {
+          matchesFilter = !account.deleted;
+          if (this.filterRole === "DanhSachDen") matchesFilter = matchesFilter && account._kind === "reader" && account.TrangThaiThe === "DanhSachDen";
+          if (this.filterRole === "Khoa") matchesFilter = matchesFilter && account.TrangThaiThe === "Khoa";
+        }
         return matchesSearch && matchesFilter;
       });
     }
@@ -366,7 +391,10 @@ export default {
     async fetchData() {
       this.loading = true;
       try {
-        const [users, staff] = await Promise.all([docGiaService.getAll(), nhanVienService.getAll()]);
+        const [users, staff] = await Promise.all([
+          docGiaService.getAll({ includeDeleted: true }),
+          nhanVienService.getAll({ includeDeleted: true }),
+        ]);
         this.users = users;
         this.staff = staff;
       } catch (err) {
@@ -482,14 +510,27 @@ export default {
         return;
       }
 
-      if (!confirm(`Xác nhận xóa tài khoản '${u.HoLot} ${u.Ten}'?`)) return;
+      const displayName = u._kind === "staff" ? u.HoTenNV : `${u.HoLot} ${u.Ten}`;
+      if (!confirm(`Chuyển tài khoản '${displayName}' vào trạng thái xóa mềm? Tài khoản sẽ không đăng nhập được và vẫn có thể khôi phục; lịch sử mượn/nhật ký được giữ lại.`)) return;
       try {
-        await docGiaService.delete(u._id || u.MaDocGia);
-        this.$refs.toast.show("Đã xóa tài khoản.");
+        const service = u._kind === "staff" ? nhanVienService : docGiaService;
+        await service.delete(u._id || (u._kind === "staff" ? u.MSNV : u.MaDocGia));
+        this.$refs.toast.show("Đã chuyển tài khoản sang trạng thái xóa mềm.");
         this.fetchData();
       } catch (err) {
         const msg = err.response?.data?.message || err.message || "Không thể xóa tài khoản.";
         this.$refs.toast.show(msg, "error", 4500);
+      }
+    },
+    async restoreAccount(account) {
+      const service = account._kind === "staff" ? nhanVienService : docGiaService;
+      const id = account._id || (account._kind === "staff" ? account.MSNV : account.MaDocGia);
+      try {
+        await service.restore(id);
+        this.$refs.toast.show("Đã khôi phục tài khoản. Trạng thái khóa hoặc thẻ hiện tại vẫn được giữ nguyên.");
+        await this.fetchData();
+      } catch (err) {
+        this.$refs.toast.show(err.response?.data?.message || "Không thể khôi phục tài khoản.", "error");
       }
     }
   }

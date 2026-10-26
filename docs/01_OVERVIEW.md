@@ -16,7 +16,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; đưa thẻ vào `DanhSachDen` khi vi phạm đạt 3 lần.
 - **Bảo mật và an toàn dữ liệu**: Bảo vệ mật khẩu bằng Bcrypt; kiểm soát quyền theo chức năng ở backend; xác thực và quản lý phiên; kiểm tra dữ liệu chống NoSQL injection; giảm thiểu XSS, CSRF/XSRF, XXE và SSRF phù hợp với kiến trúc MongoDB/JSON hiện tại. Các biện pháp này là yêu cầu cần triển khai và xác minh, không được xem là hoàn tất chỉ từ mô tả tài liệu.
 - **Truy cứu hoạt động**: Lưu log append-only cho thao tác sách và vòng đời mượn-trả; Admin được lọc theo sách, độc giả, nhân viên và thời gian. Xóa sách dùng soft delete để giữ lịch sử và dữ liệu gốc.
-- **Tích hợp**: Đăng nhập Google OAuth 2.0 đã có trong mã nguồn. Thanh toán MoMo là yêu cầu tài liệu/định hướng còn chờ triển khai; hiện chưa có payment route/service trong backend.
+- **Đăng nhập**: Độc giả có thể dùng số điện thoại/mật khẩu hoặc tài khoản Google; STAFF và ADMIN dùng số điện thoại/mật khẩu. Mã nghiệp vụ chỉ dùng nhận diện hồ sơ và nghiệp vụ. Backend xác minh Google ID Token và chỉ cấp phiên `USER`; MoMo vẫn là định hướng chưa triển khai.
 - **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (STAFF)**, và **Quản trị viên hệ thống (ADMIN)**.
 
 ---
@@ -24,7 +24,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 ## 2. Phân Quyền & Các Tác Nhân Hệ Thống (RBAC)
 
 ### 2.1. Độc giả (Reader / USER)
-- **Tài khoản**: Đăng ký thẻ thư viện trực tuyến hoặc đăng nhập bằng tài khoản Google. Mật khẩu được mã hóa an toàn.
+- **Tài khoản**: Đăng ký thẻ thư viện trực tuyến và đăng nhập bằng số điện thoại cùng mật khẩu. Mật khẩu được mã hóa an toàn.
 - **Quyền hạn**:
   - Tìm kiếm, lọc và xem thông tin chi tiết từng đầu sách, nhà xuất bản.
   - Đăng ký mượn sách trực tuyến (giới hạn tối đa **3 quyển** đang lưu thông).
@@ -51,7 +51,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
   - Xét duyệt hồ sơ ứng tuyển nhân viên; chỉ hồ sơ được Admin duyệt mới tạo tài khoản thủ thư. Hồ sơ nhân viên tách biệt khỏi tài khoản độc giả và không ảnh hưởng các phiếu mượn hiện có.
   - Quản lý trạng thái thẻ: khóa/mở khóa khẩn cấp độc lập với chế tài Danh sách đen; mở khóa khẩn cấp không xóa số lần vi phạm.
   - Có thể xét gỡ khỏi Danh sách đen bằng thao tác riêng; lịch sử vi phạm vẫn được bảo toàn.
-  - Quyền xóa vĩnh viễn các tài khoản vi phạm nghiêm trọng khỏi CSDL.
+  - Quyền xóa mềm và khôi phục hồ sơ độc giả/nhân viên; hồ sơ nghiệp vụ được giữ lại để bảo toàn lịch sử.
   - Tra cứu nhật ký kiểm toán append-only theo sách, độc giả, nhân viên, loại sự kiện và thời gian; xem/khôi phục sách đã xóa mềm.
 
 ---

@@ -5,7 +5,7 @@ import createApiClient from "./api.service";
  * SERVICE XÁC THỰC FRONTEND (AUTH SERVICE)
  * =========================================================================================
  * Quản lý toàn bộ vòng đời phiên đăng nhập phía Client:
- *  - Gọi API đăng nhập / đăng ký / Google OAuth
+ *  - Gọi API đăng nhập bằng số điện thoại / đăng ký độc giả
  *  - Lưu JWT token vào localStorage
  *  - Cung cấp helpers: getUser(), isLoggedIn(), isStaffOrAdmin(),...
  * =========================================================================================
@@ -16,11 +16,11 @@ class AuthService {
     }
 
     /**
-     * Đăng nhập bằng số điện thoại / MSNV và mật khẩu.
+     * Đăng nhập bằng số điện thoại và mật khẩu.
      * Lưu JWT token và thông tin user vào localStorage.
      */
-    async login(identifier, password) {
-        const response = await this.api.post("/login", { identifier, password });
+    async login(phone, password) {
+        const response = await this.api.post("/login", { phone, password });
         if (response.data) {
             if (response.data.token) {
                 localStorage.setItem("token", response.data.token);
@@ -29,6 +29,14 @@ class AuthService {
                 this.setUser(response.data.data);
             }
         }
+        return response.data;
+    }
+
+    /** Đăng nhập độc giả bằng Google Identity Services ID Token. */
+    async loginWithGoogle(credential) {
+        const response = await this.api.post("/google", { idToken: credential });
+        if (response.data?.token) localStorage.setItem("token", response.data.token);
+        if (response.data?.data) this.setUser(response.data.data);
         return response.data;
     }
 
@@ -37,26 +45,6 @@ class AuthService {
      */
     async register(data) {
         return (await this.api.post("/register", data)).data;
-    }
-
-    /**
-     * Đăng nhập bằng Google - gửi credential (ID Token JWT) từ GSI lên backend.
-     * @param {string} credential - Chuỗi JWT credential do Google Identity Services trả về
-     */
-    async loginWithGoogle(credential) {
-        if (!credential) {
-            throw new Error("Thiếu Google credential. Vui lòng thử đăng nhập lại.");
-        }
-        const response = await this.api.post("/google", { idToken: credential });
-        if (response.data) {
-            if (response.data.token) {
-                localStorage.setItem("token", response.data.token);
-            }
-            if (response.data.data) {
-                this.setUser(response.data.data);
-            }
-        }
-        return response.data;
     }
 
     /**

@@ -48,8 +48,7 @@ export default (baseURL = "") => {
             if (error.response?.status === 401 && authorization) {
                 // Token hết hạn hoặc không hợp lệ → xóa dữ liệu phiên
                 const isAuthRoute = error.config?.url?.includes("/auth/login") ||
-                    error.config?.url?.includes("/auth/register") ||
-                    error.config?.url?.includes("/auth/google");
+                    error.config?.url?.includes("/auth/register");
 
                 if (!isAuthRoute) {
                     localStorage.removeItem("token");

@@ -30,6 +30,8 @@ const publicFields = {
 class NhanVienService {
     constructor(client) {
         this.NhanVien = client.db().collection("nhanvien");
+        this.DocGia = client.db().collection("docgia");
+        this.YeuCauNhanVien = client.db().collection("yeucaunhanvien");
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
@@ -95,6 +97,10 @@ class NhanVienService {
         if (await this.NhanVien.findOne({ SoDienThoai: data.SoDienThoai }, { projection: { _id: 1 } })) {
             throw new Error("Số điện thoại nhân viên đã được sử dụng.");
         }
+        if (await this.DocGia.findOne({ DienThoai: data.SoDienThoai }, { projection: { _id: 1 } }) ||
+            await this.YeuCauNhanVien.findOne({ SoDienThoai: data.SoDienThoai }, { projection: { _id: 1 } })) {
+            throw new Error("Số điện thoại đã được sử dụng trong tài khoản hoặc hồ sơ đăng ký khác.");
+        }
 
         // Tự sinh mã số nhân viên
         data.MSNV = await this.generateMSNV();
@@ -123,7 +129,8 @@ class NhanVienService {
             UpdatedAt: new Date(),
             MaYeuCauDangKy: String(request._id),
         };
-        if (await this.NhanVien.findOne({ SoDienThoai: data.SoDienThoai }, { projection: { _id: 1 } })) {
+        if (await this.NhanVien.findOne({ SoDienThoai: data.SoDienThoai }, { projection: { _id: 1 } }) ||
+            await this.DocGia.findOne({ DienThoai: data.SoDienThoai }, { projection: { _id: 1 } })) {
             throw new Error("Số điện thoại nhân viên đã được sử dụng.");
         }
         try {
@@ -139,7 +146,7 @@ class NhanVienService {
 
     // Lấy danh sách nhân viên thư viện, có lọc theo họ tên, msnv, số điện thoại - Completed
     async find(filter = {}) {
-        const query = {};
+        const query = filter.includeDeleted ? {} : { deleted: { $ne: true } };
         if (filter.search) {
             const regex = { $regex: new RegExp(filter.search, "i") };
             query.$or = [{ HoTenNV: regex }, { MSNV: regex }, { SoDienThoai: regex }];
@@ -148,7 +155,10 @@ class NhanVienService {
             query.ChucVu = filter.chucVu;
         }
 
-        const cursor = await this.NhanVien.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
+        const projection = filter.includeDeleted
+            ? { ...publicFields, deleted: 1, DeletedAt: 1, DeletedBy: 1 }
+            : publicFields;
+        const cursor = await this.NhanVien.find(query, { projection }).sort({ CreatedAt: -1, _id: -1 });
         return await cursor.toArray();
     }
 
@@ -157,19 +167,19 @@ class NhanVienService {
     async findById(id) {
         let query = {};
         if (ObjectId.isValid(id)) {
-            query = { $or: [{ _id: new ObjectId(id) }, { MSNV: id }] };
+            query = { $or: [{ _id: new ObjectId(id) }, { MSNV: id }], deleted: { $ne: true } };
         } else {
-            query = { MSNV: id };
+            query = { MSNV: id, deleted: { $ne: true } };
         }
 
         return await this.NhanVien.findOne(query, { projection: publicFields });
     }
 
     //Xác thực đăng nhập cho nhân viên thủ thư/ quản trị viên - Completed
-    async loginWithStatus(identifier, password) {
-        const accountIdentifier = String(identifier || "").trim();
-        if (!/^\+?[0-9]{9,15}$/.test(accountIdentifier)) return { staff: null, status: "invalid" };
-        const staff = await this.NhanVien.findOne({ SoDienThoai: accountIdentifier });
+    async loginWithStatus(phone, password) {
+        const accountPhone = String(phone || "").trim();
+        if (!/^\+?[0-9]{9,15}$/.test(accountPhone)) return { staff: null, status: "invalid" };
+        const staff = await this.NhanVien.findOne({ SoDienThoai: accountPhone, deleted: { $ne: true } });
 
         if (!staff || !["STAFF", "ADMIN"].includes(staff.ChucVu)) return { staff: null, status: "invalid" };
 
@@ -180,8 +190,8 @@ class NhanVienService {
         return { staff, status: "authenticated" };
     }
 
-    async login(identifier, password) {
-        const result = await this.loginWithStatus(identifier, password);
+    async login(phone, password) {
+        const result = await this.loginWithStatus(phone, password);
         return result.staff;
     }
 
@@ -256,7 +266,18 @@ class NhanVienService {
             let phoneFilter = { SoDienThoai: data.SoDienThoai };
             if (ObjectId.isValid(id)) phoneFilter._id = { $ne: new ObjectId(id) };
             else phoneFilter.MSNV = { $ne: id };
-            if (await this.NhanVien.findOne(phoneFilter, { projection: { _id: 1 } })) {
+            const currentStaff = ObjectId.isValid(id)
+                ? await this.NhanVien.findOne({ _id: new ObjectId(id) }, { projection: { SoDienThoai: 1 } })
+                : await this.NhanVien.findOne({ MSNV: id }, { projection: { SoDienThoai: 1 } });
+            const isChangingPhone = data.SoDienThoai !== currentStaff?.SoDienThoai;
+            const duplicateStaffPhone = await this.NhanVien.findOne(phoneFilter, { projection: { _id: 1 } });
+            const duplicateReaderPhone = isChangingPhone
+                ? await this.DocGia.findOne({ DienThoai: data.SoDienThoai }, { projection: { _id: 1 } })
+                : null;
+            const duplicateApplicationPhone = isChangingPhone
+                ? await this.YeuCauNhanVien.findOne({ SoDienThoai: data.SoDienThoai, TrangThai: { $ne: "DaDuyet" } }, { projection: { _id: 1 } })
+                : null;
+            if (duplicateStaffPhone || duplicateReaderPhone || duplicateApplicationPhone) {
                 throw new Error("Số điện thoại nhân viên đã được sử dụng.");
             }
         }
@@ -280,7 +301,7 @@ class NhanVienService {
     }
 
     // Xóa nhân viên, quản trị viên duy nhất của hệ thống không được xóa
-    async delete(id) {
+    async delete(id, actorCode) {
         let filter = {};
         if (ObjectId.isValid(id)) {
             filter = { $or: [{ _id: new ObjectId(id) }, { MSNV: id }] };
@@ -288,6 +309,7 @@ class NhanVienService {
             filter = { MSNV: id };
         }
 
+        filter.deleted = { $ne: true };
         const current = await this.NhanVien.findOne(filter);
         if (!current) return null;
 
@@ -295,8 +317,39 @@ class NhanVienService {
         if (current.ChucVu === "ADMIN") {
             throw new Error("Không thể xóa tài khoản quản trị viên.");
         }
+        if (String(current._id) === String(actorCode || "")) {
+            throw new Error("Không thể xóa tài khoản của chính mình.");
+        }
+        const activeBorrows = await this.TheoDoi.countDocuments({
+            MSNV: current.MSNV,
+            TrangThai: { $in: ["DangMuon", "ChoNhan"] },
+        });
+        if (activeBorrows > 0) {
+            throw new Error(`Không thể xóa nhân viên '${current.MSNV}' vì đang phụ trách ${activeBorrows} phiếu mượn chưa hoàn tất.`);
+        }
+        const now = new Date();
+        const result = await this.NhanVien.updateOne(
+            { _id: current._id, deleted: { $ne: true } },
+            {
+                $set: { deleted: true, DeletedAt: now, DeletedBy: String(actorCode || ""), UpdatedAt: now },
+                $inc: { PhienBanToken: 1 },
+            }
+        );
+        return result.modifiedCount
+            ? { ...current, deleted: true, DeletedAt: now, DeletedBy: String(actorCode || "") }
+            : null;
+    }
 
-        return await this.NhanVien.findOneAndDelete({ _id: current._id });
+    async restore(id) {
+        let filter = {};
+        if (ObjectId.isValid(id)) filter = { $or: [{ _id: new ObjectId(id) }, { MSNV: id }] };
+        else filter = { MSNV: id };
+        const result = await this.NhanVien.findOneAndUpdate(
+            { ...filter, deleted: true, ChucVu: "STAFF" },
+            { $unset: { deleted: "", DeletedAt: "", DeletedBy: "" }, $set: { UpdatedAt: new Date() } },
+            { returnDocument: "after" }
+        );
+        return result ? this.findById(String(result._id)) : null;
     }
 }
 

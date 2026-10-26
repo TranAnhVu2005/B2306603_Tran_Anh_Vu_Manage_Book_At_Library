@@ -70,6 +70,11 @@ function authRateLimit({ windowMs = 15 * 60 * 1000, max = 10 } = {}) {
     };
 }
 
+// Mỗi ca trong test_api.js độc lập; không để giới hạn theo IP của ca trước làm nhiễu ca sau.
+function resetAuthRateLimitsForTests() {
+    loginAttempts.clear();
+}
+
 function allowFields(...fields) {
     const allowed = new Set(fields);
     return (req, res, next) => {
@@ -86,4 +91,4 @@ function allowFields(...fields) {
     };
 }
 
-module.exports = { securityHeaders, rejectXml, rejectSimpleFormMutations, rejectMongoOperators, authRateLimit, allowFields };
+module.exports = { securityHeaders, rejectXml, rejectSimpleFormMutations, rejectMongoOperators, authRateLimit, resetAuthRateLimitsForTests, allowFields };

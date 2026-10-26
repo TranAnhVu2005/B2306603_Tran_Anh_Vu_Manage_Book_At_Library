@@ -18,6 +18,10 @@ const actionNames = {
     STAFF_ACCOUNT_LOCKED: "NHANVIEN_KHOA_TAI_KHOAN",
     STAFF_ACCOUNT_UNLOCKED: "NHANVIEN_MO_KHOA_TAI_KHOAN",
     READER_BLACKLIST_REINSTATED: "DOCGIA_GO_DANH_SACH_DEN",
+    READER_SOFT_DELETED: "DOCGIA_XOA_MEM",
+    READER_RESTORED: "DOCGIA_KHOI_PHUC",
+    STAFF_SOFT_DELETED: "NHANVIEN_XOA_MEM",
+    STAFF_RESTORED: "NHANVIEN_KHOI_PHUC",
 };
 const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong", HanTraCu: "HanTraCu", HanTraMoi: "HanTraMoi", SoNgayGiaHan: "SoNgayGiaHan" };
 const translateDetails = (value) => {

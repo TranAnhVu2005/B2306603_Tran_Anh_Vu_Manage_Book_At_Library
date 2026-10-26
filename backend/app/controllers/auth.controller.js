@@ -1,25 +1,24 @@
 const DocGiaService = require("../services/docgia.service");
 const NhanVienService = require("../services/nhanvien.service");
-const googleAuthService = require("../services/google-auth.service");
 const JwtUtil = require("../utils/jwt.util");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 const TokenRevocation = require("../utils/token-revocation.util");
 const YeuCauNhanVienService = require("../services/yeu-cau-nhan-vien.service");
+const GoogleAuthService = require("../services/google-auth.service");
 
 /**
  * POST /api/auth/login    - Đăng nhập => trả JWT
  * POST /api/auth/register - Đăng ký thẻ độc giả mới
- * POST /api/auth/google   - Đăng nhập / Đăng ký qua Google OAuth 2.0 => trả JWT
  * GET  /api/auth/me       - Lấy thông tin người dùng hiện tại từ JWT (yêu cầu authenticate)
  */
 class AuthController {
 
     async staffLogin(req, res, next) {
         try {
-            const { identifier, password } = req.body;
-            if (!identifier || !password) return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu."));
-            const staffAuth = await new NhanVienService(MongoDB.client).loginWithStatus(identifier, password);
+            const { phone, password } = req.body;
+            if (!phone || !password) return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu."));
+            const staffAuth = await new NhanVienService(MongoDB.client).loginWithStatus(phone, password);
             if (staffAuth.status === "locked") {
                 return next(new ApiError(403, "Tài khoản thủ thư của bạn đang bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."));
             }
@@ -34,7 +33,7 @@ class AuthController {
                 const token = JwtUtil.sign({ id: String(staff._id), username: staff.MSNV, role, type: "staff", sessionVersion: staff.PhienBanToken || 0 });
                 return res.json({ message: `Đăng nhập thành công với vai trò ${role === "ADMIN" ? "Quản trị viên" : "Thủ thư"}.`, token, data });
             }
-            const status = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(identifier, password);
+            const status = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(phone, password);
             if (status) return next(new ApiError(403, status.message));
             return next(new ApiError(401, "Số điện thoại hoặc mật khẩu không chính xác."));
         } catch (error) {
@@ -45,8 +44,8 @@ class AuthController {
     // Xử lý đăng nhập - Completed
     async login(req, res, next) {
         try {
-            const { identifier, password } = req.body;
-            if (!identifier || !password) {
+            const { phone, password } = req.body;
+            if (!phone || !password) {
                 return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu."));
             }
 
@@ -54,7 +53,7 @@ class AuthController {
             const docGiaService = new DocGiaService(MongoDB.client);
 
             // 1. Kiểm tra tài khoản Nhân viên / Quản trị viên trước
-            const staffAuth = await nhanVienService.loginWithStatus(identifier, password);
+            const staffAuth = await nhanVienService.loginWithStatus(phone, password);
             if (staffAuth.status === "locked") {
                 return next(new ApiError(403, "Tài khoản nhân viên của bạn đang bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."));
             }
@@ -87,7 +86,7 @@ class AuthController {
             }
 
             // 2. Kiểm tra tài khoản Độc giả
-            const reader = await docGiaService.login(identifier, password);
+            const reader = await docGiaService.login(phone, password);
             if (reader) {
                 const userData = {
                     _id: String(reader._id),
@@ -108,6 +107,7 @@ class AuthController {
                     username: reader.MaDocGia,
                     role: "USER",
                     type: "reader",
+                    sessionVersion: reader.PhienBanToken || 0,
                 });
 
                 return res.json({
@@ -117,12 +117,50 @@ class AuthController {
                 });
             }
 
-            const applicationStatus = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(identifier, password);
+            const applicationStatus = await new YeuCauNhanVienService(MongoDB.client).matchLoginStatus(phone, password);
             if (applicationStatus) return next(new ApiError(403, applicationStatus.message));
 
             return next(new ApiError(401, "Tài khoản hoặc mật khẩu không chính xác."));
         } catch (error) {
             return next(new ApiError(500, "Lỗi xảy ra trong quá trình xác thực đăng nhập."));
+        }
+    }
+
+    // Google ID Token chỉ được dùng để xác thực độc giả, không dò hồ sơ nhân viên.
+    async loginWithGoogle(req, res, next) {
+        try {
+            const googleProfile = await GoogleAuthService.verifyIdToken(req.body.idToken);
+            const docGiaService = new DocGiaService(MongoDB.client);
+            const reader = await docGiaService.findOrCreateGoogleReader(googleProfile);
+            const data = {
+                _id: String(reader._id),
+                MaDocGia: reader.MaDocGia,
+                HoLot: reader.HoLot || "",
+                Ten: reader.Ten || "",
+                Phai: reader.Phai,
+                NgaySinh: reader.NgaySinh,
+                DiaChi: reader.DiaChi || "",
+                DienThoai: reader.DienThoai || "",
+                VaiTro: "USER",
+                SoLanViPham: reader.SoLanViPham || 0,
+                TrangThaiThe: reader.TrangThaiThe || "HoatDong",
+                AnhDaiDien: reader.AnhDaiDien || "",
+            };
+            const token = JwtUtil.sign({
+                id: String(reader._id),
+                username: reader.MaDocGia,
+                role: "USER",
+                type: "reader",
+                sessionVersion: reader.PhienBanToken || 0,
+                authProvider: "google",
+            });
+            return res.json({ message: "Đăng nhập bằng tài khoản Google thành công.", token, data });
+        } catch (error) {
+            const status = error.statusCode || 500;
+            const message = status === 401
+                ? "Không thể xác thực tài khoản Google. Vui lòng thử lại."
+                : (error.statusCode ? error.message : "Đăng nhập Google tạm thời không khả dụng.");
+            return next(new ApiError(status, message));
         }
     }
 
@@ -137,72 +175,6 @@ class AuthController {
             });
         } catch (error) {
             return next(new ApiError(400, error.message));
-        }
-    }
-
-    // Xử lý đăng nhập bằng google - Completed
-    async loginWithGoogle(req, res, next) {
-        try {
-            const { idToken } = req.body;
-            const token = idToken;
-
-            if (!token) {
-                return next(new ApiError(400, "Thiếu Google ID Token."));
-            }
-
-            const googleProfile = await googleAuthService.verifyIdToken(token);
-
-            const docGiaService = new DocGiaService(MongoDB.client);
-            const db = MongoDB.client.db();
-
-            let reader = await db.collection("docgia").findOne({
-                $or: [
-                    { GoogleId: googleProfile.googleId },
-                    { Email: googleProfile.email },
-                    { DienThoai: `GG_${String(googleProfile.googleId).slice(-8)}` }
-                ]
-            });
-
-            // Chưa đăng nhập bằng tài khoản google thì tạo cái mới
-            if (!reader) {
-                const newReaderData = googleAuthService.formatReaderFromGoogleProfile(googleProfile);
-                newReaderData.MaDocGia = await docGiaService.generateMaDocGia();
-                newReaderData.CreatedAt = new Date();
-                newReaderData.UpdatedAt = new Date();
-
-                const insertRes = await db.collection("docgia").insertOne(newReaderData);
-                reader = await db.collection("docgia").findOne({ _id: insertRes.insertedId });
-            }
-
-            const userData = {
-                _id: String(reader._id),
-                MaDocGia: reader.MaDocGia,
-                HoLot: reader.HoLot || "",
-                Ten: reader.Ten,
-                Phai: reader.Phai,
-                NgaySinh: reader.NgaySinh,
-                DiaChi: reader.DiaChi,
-                DienThoai: reader.DienThoai,
-                VaiTro: "USER",
-                SoLanViPham: reader.SoLanViPham || 0,
-                TrangThaiThe: reader.TrangThaiThe,
-            };
-
-            const jwtToken = JwtUtil.sign({
-                id: String(reader._id),
-                username: reader.MaDocGia,
-                role: "USER",
-                type: "reader",
-                isGoogleAccount: true,
-            });
-
-            return res.json({
-                message: "Đăng nhập bằng tài khoản Google thành công.",
-                token: jwtToken,
-                data: userData,
-            });
-        } catch (error) {
-            return next(new ApiError(401, error.message || "Xác thực tài khoản Google thất bại."));
         }
     }
 

@@ -26,7 +26,10 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 | **TC-AUTH-01** | Đăng nhập nhân viên và migration vai trò | Số điện thoại/mật khẩu hợp lệ; fixture legacy `ChucVu: THUTHU` | HTTP 200; `ChucVu` và JWT `role` là `STAFF`; migration đổi dữ liệu cũ sang `STAFF` | ✅ PASSED |
 | **TC-AUTH-02** | Đăng nhập sai mật khẩu | Nhân viên kiểm thử, mật khẩu sai | HTTP 401: Báo sai mật khẩu | ✅ PASSED |
 | **TC-AUTH-03** | Độc giả đăng nhập bằng SĐT | Độc giả kiểm thử, đúng mật khẩu | HTTP 200, trả hồ sơ tiếng Việt | ✅ PASSED |
-| **TC-AUTH-04** | Từ chối Google ID Token không hợp lệ | `idToken: "sample_mock_google_id_token"` | HTTP 401, không tạo/đăng nhập tài khoản | ✅ PASSED |
+| **TC-AUTH-04** | Từ chối Google ID Token không hợp lệ | Gọi `POST /api/auth/google` bằng token giả, thiếu token và trường ngoài allowlist | Token giả nhận HTTP 401, thiếu token nhận HTTP 400, trường ngoài allowlist bị từ chối; không cấp JWT | ✅ PASSED |
+| **TC-AUTH-05** | Chỉ nhận số điện thoại làm thông tin đăng nhập | Kiểm tra mã `DG-...`, alias `identifier` và số điện thoại hợp lệ | HTTP 401 với mã hồ sơ; HTTP 400 với alias; số điện thoại đăng nhập được | ✅ PASSED |
+| **TC-AUTH-06** | Đăng nhập Google thành công và liên kết hồ sơ độc giả | Dùng Google ID Token thật; kiểm tra người đọc mới, hồ sơ đã liên kết, email trùng duy nhất, email/Google ID xung đột và tài khoản xóa mềm | Chỉ cấp phiên `USER`; liên kết đúng hồ sơ hoặc tạo mới không có số điện thoại giả; trường hợp xung đột/xóa mềm bị từ chối | 🟡 Kiểm thử tích hợp thủ công bằng tài khoản Google đã cấu hình |
+| **TC-ACCOUNT-SOFT-DELETE-01** | Xóa mềm/khôi phục độc giả và nhân viên | ADMIN xóa và khôi phục hồ sơ; thử đăng nhập và dùng JWT cũ | Document còn trong MongoDB với metadata xóa; danh sách mặc định ẩn, chỉ ADMIN xem `includeDeleted=true`; login/JWT cũ bị chặn; khôi phục giữ lịch sử và yêu cầu đăng nhập mới | ✅ PASSED |
 | **TC-STATUS-01** | Chuẩn hóa trạng thái danh sách đen | Tạo độc giả với giá trị trạng thái cũ `Blacklist` | HTTP 400; chỉ chấp nhận `HoatDong`, `Khoa`, `DanhSachDen` | ✅ PASSED |
 | **TC-PROFILE-01** | Độc giả cập nhật hồ sơ của mình | PUT hồ sơ có JWT của chủ tài khoản; thử thiếu token và token nhân viên | HTTP 200 khi đúng chủ; HTTP 401/403 khi thiếu quyền; chỉ trường cá nhân thay đổi, không lộ/sửa mật khẩu, vai trò, vi phạm hoặc trạng thái | ✅ PASSED |
 | **TC-PROFILE-02** | Nhân viên/Admin tự cập nhật hồ sơ | PUT hồ sơ nhân viên có JWT; thử thiếu token và cập nhật hồ sơ người khác | HTTP 200 cho đúng chủ; HTTP 401/403 khi thiếu quyền; chỉ `HoTenNV`, `SoDienThoai`, `DiaChi` thay đổi, không lộ/sửa `MSNV`, `ChucVu` hoặc mật khẩu | ✅ PASSED |
@@ -76,7 +79,7 @@ Chạy kiểm thử thực tế bằng lệnh: `node test_api.js` trong thư m�
 
 Do backend dùng MongoDB Native Driver và không có parser XML, các ca SQLi/XXE phải được ghi nhận đúng phạm vi: kiểm tra NoSQL injection hiện tại; xác nhận XML không được chấp nhận. Nếu bổ sung SQL/XML sau này, mở rộng kiểm thử tương ứng.
 
-Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc giả và fixture tạm thời. Khi kết thúc, harness dọn hồ sơ/thông báo/phiếu kiểm thử, xóa vật lý sách fixture (API nghiệp vụ chỉ soft delete), và xóa các audit log chỉ gắn với mã sách hoặc tác nhân fixture. Không xóa nhật ký của hoạt động nghiệp vụ thật. Sau mỗi lượt chạy, xác nhận các fixture không còn trong database. Assertions kiểm tra response hồ sơ, sách, nhà xuất bản và phiếu mượn không chứa trường ngoài CDM; `MatKhau` không được trả về.
+Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc giả và fixture tạm thời. Khi kết thúc, harness dọn hồ sơ/thông báo/phiếu kiểm thử bằng cách xóa vật lý đúng fixture, xóa vật lý sách fixture (API nghiệp vụ chỉ soft delete), và xóa các audit log chỉ gắn với mã sách hoặc tác nhân fixture. Không xóa nhật ký của hoạt động nghiệp vụ thật. Sau mỗi lượt chạy, xác nhận các fixture không còn trong database. Assertions kiểm tra response hồ sơ, sách, nhà xuất bản và phiếu mượn không chứa trường ngoài CDM; `MatKhau` không được trả về.
 
 ### Kết quả lần chạy gần nhất
 

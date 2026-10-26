@@ -36,16 +36,20 @@ Lưu thông tin cá nhân, thông tin đăng nhập và tình trạng thẻ thư
 | `NgaySinh` | String | Không | Không | Ngày sinh theo định dạng ngày ứng dụng sử dụng, thông thường `YYYY-MM-DD`. |
 | `Phai` | Number | Không | Không | Giới tính: `1` Nam, `0` Nữ, `2` Khác. |
 | `DiaChi` | String | Không | Không | Địa chỉ độc giả. |
-| `DienThoai` | String | Không; duy nhất theo quy tắc tài khoản | Không | Số điện thoại đăng nhập/liên hệ. Tài khoản Google có thể dùng giá trị hệ thống thay thế. |
-| `MatKhau` | String | Không | Không | Mật khẩu được băm bằng Bcrypt; không trả về API. Có thể vắng mặt với tài khoản đăng nhập Google. |
+| `DienThoai` | String | Không; duy nhất nếu có | Không | Số điện thoại đăng nhập/liên hệ; bắt buộc với tài khoản đăng ký bằng điện thoại, có thể chưa có với tài khoản Google-only. Không dùng `MaDocGia` làm thông tin đăng nhập. |
+| `MatKhau` | String | Không | Không | Mật khẩu được băm bằng Bcrypt; không trả về API. Có thể chưa có với tài khoản Google-only. |
 | `VaiTro` | String | Không | Không | Vai trò của hồ sơ độc giả; giá trị chuẩn là `USER`. |
 | `SoLanViPham` | Number | Không | Không | Bộ đếm vi phạm hiện tại; được đặt lại khi Admin gỡ khỏi danh sách đen. |
 | `TrangThaiThe` | String | Không | Không | Trạng thái `HoatDong`, `Khoa` hoặc `DanhSachDen`. |
 | `AnhDaiDien` | String | Không | Không | Đường dẫn ảnh đại diện, nếu có. |
-| `Email` | String | Không | Không | Email tài khoản Google, nếu có. |
-| `GoogleId` | String | Không | Không | Định danh Google, nếu tài khoản được tạo/liên kết qua Google. |
+| `GoogleId` | String | Không; duy nhất nếu có | Không | Định danh tài khoản Google đã xác minh và liên kết với độc giả; không lưu ID Token. Có thể không tồn tại với tài khoản đăng ký bằng số điện thoại. |
+| `Email` | String | Không | Không | Email được Google xác minh, dùng liên kết tài khoản khi đăng nhập lần đầu; không phải thông tin đăng nhập mật khẩu. Có thể không tồn tại với tài khoản chỉ đăng ký bằng điện thoại. |
+| `PhienBanToken` | Number | Không | Không | Phiên bản JWT hiện tại; tăng khi xóa mềm để thu hồi các phiên đăng nhập cũ. |
 | `CreatedAt` | Date | Không | Không | Thời điểm tạo hồ sơ, nếu được ghi nhận. |
 | `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật hồ sơ, nếu được ghi nhận. |
+| `deleted` | Boolean | Không | Không | Cờ xóa mềm; khi `true`, tài khoản bị ẩn khỏi danh sách mặc định và không thể đăng nhập/sử dụng JWT. |
+| `DeletedAt` | Date | Không | Không | Thời điểm xóa mềm, nếu đã xóa. |
+| `DeletedBy` | String | Không | Không | Mã Admin thực hiện xóa mềm, nếu đã xóa. |
 
 ### 2.3.2. Nhân viên (`nhanvien`)
 
@@ -66,6 +70,9 @@ Lưu tài khoản nhân viên thư viện và quản trị viên.
 | `MaYeuCauDangKy` | String | Không | Tham chiếu logic `yeucaunhanvien._id` (dạng chuỗi), nếu có | Mã hồ sơ đăng ký đã sinh tài khoản; hỗ trợ liên kết và xử lý duyệt idempotent. |
 | `CreatedAt` | Date | Không | Không | Thời điểm tạo hồ sơ, nếu được ghi nhận. |
 | `UpdatedAt` | Date | Không | Không | Thời điểm cập nhật hồ sơ, nếu được ghi nhận. |
+| `deleted` | Boolean | Không | Không | Cờ xóa mềm; khi `true`, tài khoản bị ẩn khỏi danh sách mặc định và không thể đăng nhập/sử dụng JWT. |
+| `DeletedAt` | Date | Không | Không | Thời điểm xóa mềm, nếu đã xóa. |
+| `DeletedBy` | String | Không | Không | Mã Admin thực hiện xóa mềm, nếu đã xóa. |
 
 ### 2.3.3. Nhà xuất bản (`nhaxuatban`)
 

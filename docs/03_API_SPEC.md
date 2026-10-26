@@ -19,9 +19,9 @@
 - **Xác thực input và NoSQL injection**: Chỉ nhận JSON với schema, kiểu và giới hạn kích thước rõ ràng; không gán trực tiếp `req.body` vào MongoDB query/update, không nhận toán tử MongoDB do client gửi, không tạo query bằng nối chuỗi. Dùng MongoDB Native Driver có cấu trúc. SQL injection không áp dụng trực tiếp vì dự án không dùng SQL; cần giữ quy tắc tương đương nếu bổ sung SQL sau này.
 - **XSS**: Trả dữ liệu theo JSON, không phản chiếu HTML không tin cậy; dữ liệu UI phải được render/encode theo ngữ cảnh, HTML rich text (nếu có) phải sanitize allowlist. Cấu hình CSP và security headers ở backend.
 - **CSRF/XSRF**: Với JWT truyền trong `Authorization` header và không dùng cookie xác thực, trình duyệt không tự gắn token nên CSRF cổ điển được giảm thiểu; bảo vệ XSS vẫn bắt buộc. Nếu dùng cookie, bật `HttpOnly`, `Secure`, `SameSite`, CSRF token cho request thay đổi trạng thái và kiểm tra `Origin`/`Referer`.
-- **Broken authentication/session**: Bcrypt; thông tin đăng nhập sai nhận lỗi chung để tránh dò tài khoản, trạng thái bị khóa chỉ được thông báo sau khi mật khẩu đúng; rate limit đăng nhập/đăng ký/Google auth (bộ đếm hiện giữ trong bộ nhớ tiến trình); JWT dùng secret từ env, thuật toán allowlist, hạn dùng và xác minh claim. Hiện có thu hồi token khi logout; thu hồi khi đổi mật khẩu/khóa tài khoản và khoá phiên phân tán nhiều instance vẫn cần hoàn thiện. Không log thông tin xác thực; HTTPS bắt buộc ở triển khai.
+- **Broken authentication/session**: Bcrypt; thông tin đăng nhập sai nhận lỗi chung để tránh dò tài khoản, trạng thái bị khóa chỉ được thông báo sau khi mật khẩu đúng; rate limit đăng nhập/đăng ký (bộ đếm hiện giữ trong bộ nhớ tiến trình); JWT dùng secret từ env, thuật toán allowlist, hạn dùng và xác minh claim. STAFF/ADMIN đăng nhập bằng số điện thoại; độc giả có thể dùng số điện thoại hoặc Google Identity Services. Backend xác minh chữ ký, issuer, audience, hạn dùng và email Google đã xác minh; endpoint Google chỉ cấp JWT `USER`, không nhận mã độc giả/MSNV hoặc tài khoản nhân viên. Hiện có thu hồi token khi logout và tăng phiên bản JWT khi khóa/xóa mềm tài khoản. Không log thông tin xác thực; HTTPS bắt buộc ở triển khai.
 - **XXE**: API hiện không có nhu cầu nhận XML. Từ chối XML nếu không được hỗ trợ; nếu bổ sung parser XML phải tắt DTD, external entities, XInclude và truy cập file/network bên ngoài, giới hạn kích thước/độ sâu.
-- **SSRF**: Backend hiện không có tính năng fetch URL do client cung cấp; ảnh sách/avatar được upload vào storage cục bộ, Google auth xác minh token qua thư viện cấu hình sẵn. Nếu bổ sung outbound request (bao gồm MoMo tương lai), phải allowlist host/protocol, kiểm tra IP sau DNS resolution, chặn loopback/private/link-local/metadata, giới hạn redirect/timeout/response size.
+- **SSRF**: Backend hiện không có tính năng fetch URL do client cung cấp; ảnh sách/avatar được upload vào storage cục bộ. Nếu bổ sung outbound request (bao gồm MoMo tương lai), phải allowlist host/protocol, kiểm tra IP sau DNS resolution, chặn loopback/private/link-local/metadata, giới hạn redirect/timeout/response size.
 - **CORS, headers, lỗi và vận hành**: CORS allowlist theo môi trường, body size limit, HTTPS, security headers/CSP, lỗi production không lộ stack/secret, secrets trong biến môi trường; audit các thao tác nhạy cảm mà không ghi token/mật khẩu.
 - **Upload**: MIME/đuôi file không đủ để xác minh; kiểm tra chữ ký file và allowlist định dạng, random filename, giới hạn dung lượng, không thực thi file upload và không chấp nhận SVG/HTML chưa sanitize.
 
@@ -33,25 +33,32 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 - Không trả trường `MatKhau` trong response vì đây là dữ liệu xác thực nhạy cảm.
 - Các lớp bao giao thức như `message`, `data`, `token` và response do MoMo quy định không phải trường collection, nên giữ nguyên.
 - Response phiếu mượn chỉ gồm trường của collection `theodoimuonsach`, không nhúng thông tin sách, độc giả hoặc nhân viên.
-- Metadata `deleted`, `DeletedAt`, `DeletedBy` không có trong response sách đang hoạt động. Chỉ Admin dùng `/api/sach?includeDeleted=true` để xem/khôi phục sách đã xóa; nhật ký dùng schema tiếng Việt riêng của `nhatkykiemtoan`.
+- Metadata `deleted`, `DeletedAt`, `DeletedBy` không có trong response tài nguyên hoạt động. Chỉ Admin dùng `includeDeleted=true` ở danh sách sách, độc giả hoặc nhân viên để xem bản ghi đã xóa mềm; metadata chỉ xuất hiện trên các bản ghi đã xóa trong danh sách Admin. Nhật ký dùng schema tiếng Việt riêng của `nhatkykiemtoan`.
 
 ---
 
 ## 1. Phân Hệ Xác Thực & Tài Khoản (`/api/auth`)
 
 ### 📌 `POST /api/auth/login` (Đăng nhập hệ thống)
-* **Mô tả**: Độc giả đăng nhập bằng số điện thoại hoặc mã độc giả; Thủ thư/Quản trị viên bắt buộc đăng nhập bằng số điện thoại đã đăng ký. Mã nhân viên (MSNV) chỉ dùng làm mã hồ sơ và ghi nhận nghiệp vụ, không dùng đăng nhập. Tài khoản nhân viên bị khóa chỉ nhận thông báo trạng thái riêng khi số điện thoại và mật khẩu chính xác; thông tin sai vẫn nhận lỗi chung để không tiết lộ tài khoản.
+* **Mô tả**: Độc giả đăng nhập bằng số điện thoại đã đăng ký và mật khẩu; STAFF/ADMIN cũng đăng nhập bằng số điện thoại tại cổng nhân viên. Độc giả còn có thể dùng Google tại endpoint riêng bên dưới. `MaDocGia` và `MSNV` chỉ là mã hồ sơ/nghiệp vụ, không được dùng để đăng nhập. Số điện thoại được kiểm tra không trùng giữa độc giả, nhân viên và hồ sơ đăng ký nhân viên. Tài khoản bị khóa chỉ nhận thông báo trạng thái riêng khi số điện thoại và mật khẩu chính xác; thông tin sai vẫn nhận lỗi chung.
 * **Request Body**:
   ```json
   {
-    "identifier": "0912345678", // Nhân viên: số điện thoại; độc giả: SĐT hoặc mã độc giả
+    "phone": "0912345678",
     "password": "hashed_password_or_plain"
   }
   ```
 
+### 📌 `POST /api/auth/google` (Đăng nhập độc giả bằng Google)
+* **Quyền truy cập**: Public, có rate limit; chỉ dùng đăng nhập độc giả.
+* **Request Body**: `{ "idToken": "<Google Identity Services ID Token>" }`; endpoint chỉ chấp nhận trường `idToken`.
+* **Xử lý**: Backend xác minh ID Token bằng `GOOGLE_CLIENT_ID`, gồm chữ ký, issuer, audience, hạn dùng và email đã xác minh. Hồ sơ được tìm bằng `GoogleId`; hồ sơ độc giả cũ chỉ được liên kết theo email đã xác minh nếu email khớp duy nhất và chưa liên kết với Google ID khác. Nếu chưa có hồ sơ phù hợp, tạo hồ sơ `USER` mới; không tạo số điện thoại hoặc mật khẩu giả. Hồ sơ đã xóa mềm không được đăng nhập.
+* **Response (200 OK)**: `{ message, token, data }`; JWT có `type: reader`, `role: USER`; `data` không có `MatKhau`, `GoogleId`, ID Token hay secret.
+* **Lỗi**: HTTP 400 với ID Token thiếu/sai kiểu hoặc trường không cho phép; HTTP 401 với token không hợp lệ; HTTP 403 với hồ sơ đã xóa mềm; HTTP 409 khi email/định danh xung đột; HTTP 503 khi chưa cấu hình Client ID.
+
 ### 📌 `POST /api/auth/staff-login` (Đăng nhập cổng nhân viên)
 * **Quyền truy cập**: Public, rate limit.
-* **Mô tả**: Chỉ xác thực hồ sơ `nhanvien`; không nhận phiên độc giả kể cả khi dùng cùng số điện thoại. Hồ sơ ứng tuyển đang chờ/từ chối chỉ nhận thông báo trạng thái nếu số điện thoại và mật khẩu khớp; tài khoản thủ thư đã khóa nhận HTTP 403 và hướng dẫn liên hệ quản trị viên chỉ khi thông tin xác thực khớp. Thông tin sai vẫn nhận lỗi chung HTTP 401; không trường hợp nào trong số này được cấp JWT.
+* **Mô tả**: Chỉ xác thực hồ sơ `nhanvien` theo trường `phone`; không nhận phiên độc giả. Hồ sơ ứng tuyển đang chờ/từ chối chỉ nhận thông báo trạng thái nếu số điện thoại và mật khẩu khớp; tài khoản nhân viên đã khóa nhận HTTP 403 chỉ khi thông tin xác thực khớp. Thông tin sai vẫn nhận lỗi chung HTTP 401; không trường hợp nào trong số này được cấp JWT.
 * **Response (200 OK)**:
   ```json
   {
@@ -85,7 +92,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ### 📌 `POST /api/yeu-cau-nhan-vien` (Gửi hồ sơ đăng ký nhân viên)
 * **Quyền truy cập**: Public, có rate limit; chỉ nhận `HoTenNV`, `SoDienThoai`, `DiaChi`, `MatKhau` scalar. Mật khẩu tối thiểu 8 ký tự và được Bcrypt trước khi lưu.
-* **Xử lý**: Tạo hồ sơ `yeucaunhanvien` trạng thái `ChoDuyet`; không tạo hồ sơ độc giả/nhân viên, không cấp JWT. Số điện thoại phải hợp lệ, chưa tồn tại trong `nhanvien` và chưa có hồ sơ đang chờ.
+* **Xử lý**: Tạo hồ sơ `yeucaunhanvien` trạng thái `ChoDuyet`; không tạo hồ sơ độc giả/nhân viên, không cấp JWT. Số điện thoại phải hợp lệ, chưa tồn tại trong `docgia`, `nhanvien` và chưa có hồ sơ đang chờ.
 * **Response (201 Created)**: `{ message, data }`; dữ liệu chỉ gồm id, họ tên, số điện thoại, địa chỉ, trạng thái và thời gian gửi; không có mật khẩu.
 
 ### API duyệt hồ sơ nhân viên
@@ -94,10 +101,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `PUT /api/yeu-cau-nhan-vien/:id/reject`: [ADMIN] Nhận `{ "LyDoTuChoi": "..." }`, lưu trạng thái `TuChoi` và lý do. Ứng viên đăng nhập bằng đúng số điện thoại/mật khẩu đã đăng ký sẽ thấy trạng thái/lý do nhưng không nhận JWT.
 * Cả duyệt và từ chối ghi sự kiện append-only vào `nhatkykiemtoan`; API này không cho sửa/xóa hồ sơ đã xét duyệt.
 
-### 📌 `POST /api/auth/google` (Đăng nhập / Đăng ký nhanh qua tài khoản Google)
-* **Mô tả**: Tiếp nhận Google ID Token từ Client, xác thực thông qua `GoogleAuthService`, tự động liên kết hoặc tạo tài khoản mới.
-* **Request Body**: `{ "idToken": "google_jwt_token_here" }`
-* **Response (200 OK)**: Trả về `{ "message": "...", "token": "...", "data": { ... } }`. `data` chỉ gồm các trường độc giả trong sơ đồ CDM, không bao gồm `MatKhau`.
+Đăng nhập Google chỉ dành cho độc giả qua `POST /api/auth/google`; STAFF/ADMIN vẫn dùng số điện thoại và mật khẩu tại cổng quản lý. Tài khoản Google-only có thể chưa có `DienThoai`/`MatKhau`; độc giả có thể bổ sung số điện thoại qua cập nhật hồ sơ trước khi cần liên hệ thư viện.
 
 ### 📌 `GET /api/auth/me` (Thông tin người dùng hiện tại)
 * **Response (200 OK)**: `{ "data": { ... } }`; dữ liệu `data` chỉ gồm các trường của collection tương ứng trong sơ đồ CDM. Hồ sơ nhân viên chỉ có `ChucVu`, không thêm trường `VaiTro`.
@@ -115,7 +119,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ### Tạo tài khoản nhân viên (`POST /api/nhanvien`)
 * **Quyền truy cập**: Chỉ ADMIN.
 * **Trường bắt buộc**: `HoTenNV`, `SoDienThoai`, `MatKhau`; số điện thoại phải có 9–15 chữ số (có thể có tiền tố `+`) và chưa được dùng bởi nhân viên khác. Hệ thống tự sinh `MSNV`.
-* **Đăng nhập**: Tài khoản nhân viên dùng `SoDienThoai`; đăng nhập bằng `MSNV` bị từ chối.
+* **Đăng nhập**: Tài khoản nhân viên dùng `SoDienThoai`; đăng nhập bằng `MSNV` bị từ chối. Tài khoản đã xóa mềm không đăng nhập được; Admin có thể khôi phục qua API bên dưới.
 * `PUT /api/nhanvien/:id/lock`: [ADMIN] Nhận `{ "LyDo": "..." }`; chỉ khóa thủ thư đang hoạt động. Admin tự khóa hoặc tác động lên tài khoản Admin khác bị từ chối 403. Tăng `PhienBanToken`, ghi nhật ký kiểm toán và thông báo thủ thư.
 * `PUT /api/nhanvien/:id/unlock`: [ADMIN] Nhận `{ "LyDo": "..." }`; chỉ mở khóa thủ thư đang bị khóa. Giữ nguyên phiên bản token đã tăng, ghi nhật ký và thông báo.
 * Khi `TrangThaiThe = "Khoa"`, số điện thoại và mật khẩu đúng nhận HTTP 403 với thông báo tài khoản đang bị khóa; mật khẩu sai hoặc tài khoản không tồn tại vẫn nhận HTTP 401 chung. Không cấp JWT trong cả hai trường hợp bị từ chối. Middleware kiểm tra trạng thái và phiên bản JWT trên mọi request đã xác thực; token cũ vẫn bị thu hồi sau khi mở khóa, nên không thể bỏ qua bằng Postman.
@@ -156,13 +160,20 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 - `PUT /api/thongbao/read-all`: [Người nhận đã đăng nhập] Đánh dấu tất cả thông báo của tài khoản hiện tại đã đọc.
 - API không nhận nội dung/người nhận từ client và không cung cấp xóa thông báo. Backend tạo thông báo cho thay đổi trạng thái thẻ độc giả, duyệt/từ chối/trả/báo mất phiếu mượn, lúc Admin tạo nhân viên và khi hồ sơ ứng tuyển được duyệt.
 - Response GET: `{ "data": [{ "_id", "LoaiNguoiNhan", "NguoiNhanId", "LoaiThongBao", "TieuDe", "NoiDung", "MaThamChieu", "DaDoc", "ThoiGian" }], "unreadCount": 2 }`. Đây là schema riêng của collection kỹ thuật, không thuộc 5 entity CDM.
-* `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`.
+* `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`; hồ sơ đã xóa mềm trả 404.
+* `GET /api/docgia?includeDeleted=true`: [ADMIN] Xem cả hồ sơ đã xóa mềm; metadata `deleted`, `DeletedAt`, `DeletedBy` chỉ trả trên hồ sơ đã xóa.
 * `POST /api/docgia`: Tạo hồ sơ độc giả mới.
 * `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Số điện thoại phải đúng định dạng và chưa được tài khoản khác sử dụng.
 * `PUT /api/docgia/:id/lock`: [Super Admin] Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`), không thay đổi `SoLanViPham`.
 * `PUT /api/docgia/:id/unblock`: [Super Admin] Chỉ mở khóa thẻ trạng thái `Khoa`; giữ nguyên `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, trạng thái sau mở khóa là `DanhSachDen`.
 * `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`) và đặt `SoLanViPham = 0` cho chu kỳ tiếp theo; ghi sự kiện `DOCGIA_GO_DANH_SACH_DEN` với giá trị trước/sau vào `nhatkykiemtoan`. Không dùng thay cho mở khóa khẩn cấp.
-* `DELETE /api/docgia/:id`: [Super Admin] Xóa độc giả vĩnh viễn (Chặn xóa nếu còn phiếu mượn chưa hoàn tất).
+* `DELETE /api/docgia/:id`: [ADMIN] Xóa mềm độc giả; chặn nếu còn phiếu mượn `ChoDuyet`, `ChoNhan` hoặc `DangMuon`; tăng `PhienBanToken`, ghi audit và giữ lịch sử mượn. Document không bị xóa khỏi MongoDB.
+* `PUT /api/docgia/:id/restore`: [ADMIN] Khôi phục hồ sơ; giữ nguyên trạng thái thẻ và số lần vi phạm. JWT cũ không được kích hoạt lại.
+
+### Quản lý tài khoản nhân viên (`/api/nhanvien`)
+* `GET /api/nhanvien?includeDeleted=true`: [ADMIN] Xem danh sách gồm tài khoản đã xóa mềm; metadata xóa chỉ trả trên bản ghi đã xóa.
+* `DELETE /api/nhanvien/:id`: [ADMIN] Xóa mềm tài khoản `STAFF`; không cho xóa `ADMIN`, không cho tự xóa, chặn khi còn phụ trách phiếu `ChoNhan`/`DangMuon`; tăng `PhienBanToken`, ghi audit và giữ lịch sử liên quan.
+* `PUT /api/nhanvien/:id/restore`: [ADMIN] Khôi phục tài khoản `STAFF`; giữ nguyên trạng thái khóa; yêu cầu đăng nhập lại.
 
 ---
 

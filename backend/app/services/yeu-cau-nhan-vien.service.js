@@ -13,6 +13,7 @@ class YeuCauNhanVienService {
         this.client = client;
         this.YeuCau = client.db().collection("yeucaunhanvien");
         this.NhanVien = client.db().collection("nhanvien");
+        this.DocGia = client.db().collection("docgia");
     }
 
     async ensureIndexes() {
@@ -32,6 +33,9 @@ class YeuCauNhanVienService {
         await this.ensureIndexes();
         if (await this.NhanVien.findOne({ SoDienThoai }, { projection: { _id: 1 } })) {
             throw new Error("Số điện thoại này đã có tài khoản nhân viên.");
+        }
+        if (await this.DocGia.findOne({ DienThoai: SoDienThoai }, { projection: { _id: 1 } })) {
+            throw new Error("Số điện thoại này đã được dùng cho tài khoản độc giả.");
         }
         if (await this.YeuCau.findOne({ SoDienThoai, TrangThai: { $in: ["ChoDuyet", "DangDuyet"] } }, { projection: { _id: 1 } })) {
             throw new Error("Số điện thoại này đã có hồ sơ đang chờ xử lý.");

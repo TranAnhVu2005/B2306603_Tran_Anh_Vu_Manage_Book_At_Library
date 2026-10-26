@@ -14,7 +14,7 @@ const publicFields = {
     VaiTro: 1,
     SoLanViPham: 1,
     TrangThaiThe: 1,
-    AnhDaiDien: 1.
+    AnhDaiDien: 1,
 };
 
 /**
@@ -42,6 +42,8 @@ class DocGiaService {
     //Trong service này có cả bảng docgia và theodoimuonsach - Completed
     constructor(client) {
         this.DocGia = client.db().collection("docgia");
+        this.NhanVien = client.db().collection("nhanvien");
+        this.YeuCauNhanVien = client.db().collection("yeucaunhanvien");
         this.TheoDoi = client.db().collection("theodoimuonsach");
     }
 
@@ -111,6 +113,7 @@ class DocGiaService {
             if (data.SoLanViPham === undefined) data.SoLanViPham = 0;
             if (data.TrangThaiThe === undefined) data.TrangThaiThe = "HoatDong";
             if (data.DiaChi === undefined) data.DiaChi = "";
+            data.PhienBanToken = 0;
         }
         return data;
     }
@@ -122,16 +125,20 @@ class DocGiaService {
             throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc: Họ lót, Tên, Số điện thoại và Mật khẩu.");
         }
 
-        // Kiểm tra định dạng số điện thoại và không phải đăng nhập bằng google
-        const phoneRegex = /^(0[3|5|7|8|9])([0-9]{8})$/;
-        if (!phoneRegex.test(data.DienThoai) && !data.DienThoai.startsWith("GG_")) {
-            throw new Error("Số điện thoại không đúng định dạng chuẩn và không phải đăng nhập bằng Google.");
+        // Tài khoản độc giả hiện chỉ hỗ trợ đăng nhập bằng số điện thoại Việt Nam.
+        const phoneRegex = /^0[35789][0-9]{8}$/;
+        if (!phoneRegex.test(data.DienThoai)) {
+            throw new Error("Số điện thoại không đúng định dạng chuẩn.");
         }
 
         // Kiểm tra trùng số điện thoại
         const existingPhone = await this.DocGia.findOne({ DienThoai: data.DienThoai });
         if (existingPhone) {
             throw new Error(`Số điện thoại '${data.DienThoai}' đã được sử dụng để đăng ký.`);
+        }
+        if (await this.NhanVien.findOne({ SoDienThoai: data.DienThoai }, { projection: { _id: 1 } }) ||
+            await this.YeuCauNhanVien.findOne({ SoDienThoai: data.DienThoai }, { projection: { _id: 1 } })) {
+            throw new Error(`Số điện thoại '${data.DienThoai}' đã được sử dụng trong hồ sơ nhân viên.`);
         }
 
         // Tự động sinh mã độc giả
@@ -147,9 +154,95 @@ class DocGiaService {
         return await this.findById(result.insertedId);
     }
 
+    // Tìm hồ sơ Google đã liên kết hoặc tạo hồ sơ độc giả mới không có số điện thoại giả.
+    async findOrCreateGoogleReader(profile) {
+        const googleId = String(profile?.googleId || "").trim();
+        const email = String(profile?.email || "").trim().toLowerCase();
+        if (!googleId || !email) throw new Error("Thông tin Google không đầy đủ.");
+
+        await this.DocGia.createIndex(
+            { GoogleId: 1 },
+            { unique: true, sparse: true, name: "uq_docgia_google_id" }
+        );
+
+        let reader = await this.DocGia.findOne({ GoogleId: googleId });
+        if (reader?.deleted === true) {
+            const error = new Error("Tài khoản độc giả đã bị xóa mềm. Vui lòng liên hệ thư viện.");
+            error.statusCode = 403;
+            throw error;
+        }
+        if (reader) return reader;
+
+        // Email đã được Google xác minh nên có thể liên kết với hồ sơ cũ chưa gắn GoogleId.
+        const emailOwners = await this.DocGia.find({ Email: email }).limit(2).toArray();
+        if (emailOwners.length > 1) {
+            const error = new Error("Email Google đang gắn với nhiều hồ sơ. Vui lòng liên hệ thư viện.");
+            error.statusCode = 409;
+            throw error;
+        }
+        if (emailOwners.length === 1) {
+            const owner = emailOwners[0];
+            if (owner.deleted === true) {
+                const error = new Error("Tài khoản độc giả đã bị xóa mềm. Vui lòng liên hệ thư viện.");
+                error.statusCode = 403;
+                throw error;
+            }
+            if (owner.GoogleId && owner.GoogleId !== googleId) {
+                const error = new Error("Email Google đã được liên kết với hồ sơ khác.");
+                error.statusCode = 409;
+                throw error;
+            }
+            const linked = await this.DocGia.updateOne(
+                {
+                    _id: owner._id,
+                    deleted: { $ne: true },
+                    $or: [{ GoogleId: { $exists: false } }, { GoogleId: null }, { GoogleId: "" }],
+                },
+                { $set: { GoogleId: googleId, Email: email, UpdatedAt: new Date() } }
+            );
+            reader = await this.DocGia.findOne({ _id: owner._id, GoogleId: googleId });
+            if (reader) return reader;
+            if (linked.matchedCount === 0) {
+                const error = new Error("Hồ sơ vừa được liên kết với tài khoản khác. Vui lòng thử lại.");
+                error.statusCode = 409;
+                throw error;
+            }
+        }
+
+        const nameParts = String(profile.fullName || "").trim().split(/\s+/).filter(Boolean);
+        const ten = nameParts.pop() || email.split("@")[0];
+        const now = new Date();
+        const data = {
+            MaDocGia: await this.generateMaDocGia(),
+            HoLot: nameParts.join(" "),
+            Ten: ten,
+            Email: email,
+            GoogleId: googleId,
+            AnhDaiDien: String(profile.picture || ""),
+            Phai: 2,
+            DiaChi: "",
+            VaiTro: "USER",
+            SoLanViPham: 0,
+            TrangThaiThe: "HoatDong",
+            PhienBanToken: 0,
+            CreatedAt: now,
+            UpdatedAt: now,
+        };
+        try {
+            const result = await this.DocGia.insertOne(data);
+            return await this.DocGia.findOne({ _id: result.insertedId });
+        } catch (error) {
+            if (error.code === 11000) {
+                reader = await this.DocGia.findOne({ GoogleId: googleId });
+                if (reader && reader.deleted !== true) return reader;
+            }
+            throw error;
+        }
+    }
+
     // Tìm kiếm độc giả có thể có bộ lọc - Completed
     async find(filter = {}) {
-        const query = {};
+        const query = filter.includeDeleted ? {} : { deleted: { $ne: true } };
         if (filter.search) {
             const regex = { $regex: new RegExp(filter.search, "i") };
             query.$or = [{ Ten: regex }, { HoLot: regex }, { MaDocGia: regex }, { DienThoai: regex }];
@@ -158,7 +251,10 @@ class DocGiaService {
             query.TrangThaiThe = filter.trangThai;
         }
 
-        const cursor = await this.DocGia.find(query, { projection: publicFields }).sort({ CreatedAt: -1, _id: -1 });
+        const projection = filter.includeDeleted
+            ? { ...publicFields, deleted: 1, DeletedAt: 1, DeletedBy: 1 }
+            : publicFields;
+        const cursor = await this.DocGia.find(query, { projection }).sort({ CreatedAt: -1, _id: -1 });
         const list = await cursor.toArray();
         return list.map((reader) => ({ ...reader, VaiTro: "USER" }));
     }
@@ -167,9 +263,9 @@ class DocGiaService {
     async findById(id) {
         let query = {};
         if (ObjectId.isValid(id)) {
-            query = { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }, { DienThoai: id }] };
+            query = { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }, { DienThoai: id }], deleted: { $ne: true } };
         } else {
-            query = { $or: [{ MaDocGia: id }, { DienThoai: id }] };
+            query = { $or: [{ MaDocGia: id }, { DienThoai: id }], deleted: { $ne: true } };
         }
 
         const reader = await this.DocGia.findOne(query, { projection: publicFields });
@@ -177,11 +273,10 @@ class DocGiaService {
     }
 
     //Đăng nhập của độc giả - Completed
-    async login(identifier, password) {
-        const accountIdentifier = String(identifier || "").trim();
-        const user = await this.DocGia.findOne({
-            $or: [{ DienThoai: accountIdentifier }, { MaDocGia: accountIdentifier }]
-        });
+    async login(phone, password) {
+        const accountPhone = String(phone || "").trim();
+        if (!/^\+?[0-9]{9,15}$/.test(accountPhone)) return null;
+        const user = await this.DocGia.findOne({ DienThoai: accountPhone, deleted: { $ne: true } });
 
         if (!user) return null; // Không thấy user :<<, trả về null thôi
 
@@ -214,6 +309,7 @@ class DocGiaService {
             filter = { MaDocGia: id };
         }
 
+        filter.deleted = { $ne: true };
         const current = await this.DocGia.findOne(filter, { projection: { _id: 1, DienThoai: 1 } });
         if (!current) return null;
 
@@ -232,7 +328,14 @@ class DocGiaService {
                 DienThoai: data.DienThoai,
                 _id: { $ne: current._id },
             });
-            if (existingPhone) {
+            const isChangingPhone = data.DienThoai !== current.DienThoai;
+            const staffWithPhone = isChangingPhone
+                ? await this.NhanVien.findOne({ SoDienThoai: data.DienThoai }, { projection: { _id: 1 } })
+                : null;
+            const applicationWithPhone = isChangingPhone
+                ? await this.YeuCauNhanVien.findOne({ SoDienThoai: data.DienThoai }, { projection: { _id: 1 } })
+                : null;
+            if (existingPhone || staffWithPhone || applicationWithPhone) {
                 throw new Error(`Số điện thoại '${data.DienThoai}' đã được sử dụng để đăng ký.`);
             }
         }
@@ -248,9 +351,9 @@ class DocGiaService {
     // Hàm này xử lý id cho mã hay cho object id (Dùng chung) - Completed
     buildIdFilter(id) {
         if (ObjectId.isValid(id)) {
-            return { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }] };
+            return { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }], deleted: { $ne: true } };
         }
-        return { MaDocGia: id };
+        return { MaDocGia: id, deleted: { $ne: true } };
     }
 
     // Khóa người dùng - Completed
@@ -265,7 +368,7 @@ class DocGiaService {
         }
 
         const result = await this.DocGia.findOneAndUpdate(
-            { _id: current._id, TrangThaiThe: "HoatDong" },
+            { _id: current._id, TrangThaiThe: "HoatDong", deleted: { $ne: true } },
             { $set: { TrangThaiThe: "Khoa", UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
@@ -285,7 +388,7 @@ class DocGiaService {
 
         const trangThaiThe = (current.SoLanViPham || 0) >= 3 ? "DanhSachDen" : "HoatDong";
         const result = await this.DocGia.findOneAndUpdate(
-            { _id: current._id, TrangThaiThe: "Khoa" },
+            { _id: current._id, TrangThaiThe: "Khoa", deleted: { $ne: true } },
             { $set: { TrangThaiThe: trangThaiThe, UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
@@ -296,7 +399,7 @@ class DocGiaService {
     async reinstate(id) {
         const filter = this.buildIdFilter(id);
         const result = await this.DocGia.findOneAndUpdate(
-            { ...filter, TrangThaiThe: "DanhSachDen" },
+            { ...filter, TrangThaiThe: "DanhSachDen", deleted: { $ne: true } },
             { $set: { TrangThaiThe: "HoatDong", SoLanViPham: 0, UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
@@ -305,14 +408,14 @@ class DocGiaService {
 
     // Tăng số lần vi phạm, từ 3 trở lên thì đổi trạng thái thẻ thành "DanhSachDen" - Completed
     async incrementViPham(maDocGia) {
-        const user = await this.DocGia.findOne({ MaDocGia: maDocGia });
+        const user = await this.DocGia.findOne({ MaDocGia: maDocGia, deleted: { $ne: true } });
         if (!user) return null;
 
         const newCount = (user.SoLanViPham || 0) + 1;
         const newStatus = newCount >= 3 ? "DanhSachDen" : user.TrangThaiThe;
 
         const result = await this.DocGia.findOneAndUpdate(
-            { MaDocGia: maDocGia },
+            { MaDocGia: maDocGia, deleted: { $ne: true } },
             {
                 $set: {
                     SoLanViPham: newCount,
@@ -328,7 +431,7 @@ class DocGiaService {
 
     //Hàm xóa hồ sơ độc giả, ràng buộc không xóa khi còn phiếu mượn - Completed
     // Xóa có thể dùng cả mã độc giả hoặc object id
-    async delete(id) {
+    async delete(id, actorCode) {
         let filter = {};
         if (ObjectId.isValid(id)) {
             filter = { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }] };
@@ -336,6 +439,7 @@ class DocGiaService {
             filter = { MaDocGia: id };
         }
 
+        filter.deleted = { $ne: true };
         const current = await this.DocGia.findOne(filter);
         if (!current) {
             return null;
@@ -351,8 +455,29 @@ class DocGiaService {
             throw new Error(`Không thể xóa độc giả '${current.MaDocGia}' vì đang có ${activeBorrows} phiếu mượn chưa hoàn tất.`);
         }
 
-        const result = await this.DocGia.findOneAndDelete({ _id: current._id });
-        return result;
+        const now = new Date();
+        const result = await this.DocGia.updateOne(
+            { _id: current._id, deleted: { $ne: true } },
+            {
+                $set: { deleted: true, DeletedAt: now, DeletedBy: String(actorCode || ""), UpdatedAt: now },
+                $inc: { PhienBanToken: 1 },
+            }
+        );
+        return result.modifiedCount
+            ? { ...current, deleted: true, DeletedAt: now, DeletedBy: String(actorCode || "") }
+            : null;
+    }
+
+    async restore(id) {
+        const filter = ObjectId.isValid(id)
+            ? { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }] }
+            : { MaDocGia: id };
+        const result = await this.DocGia.findOneAndUpdate(
+            { ...filter, deleted: true },
+            { $unset: { deleted: "", DeletedAt: "", DeletedBy: "" }, $set: { UpdatedAt: new Date() } },
+            { returnDocument: "after" }
+        );
+        return result ? this.findById(String(result._id)) : null;
     }
 }
 

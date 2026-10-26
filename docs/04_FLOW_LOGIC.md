@@ -80,6 +80,12 @@ stateDiagram-v2
 
 ## 5. Phân Quyền Quản Trị Hệ Thống (RBAC - Role-Based Access Control)
 
+### Đăng nhập và liên kết tài khoản Google
+- Độc giả có thể đăng nhập bằng số điện thoại/mật khẩu hoặc Google Identity Services; STAFF/ADMIN chỉ dùng số điện thoại/mật khẩu.
+- Frontend gửi Google ID Token tới `POST /api/auth/google`; backend xác minh token với Client ID cấu hình, email phải được Google xác minh. Không tin email/tên/Google ID do client tự gửi riêng.
+- Chỉ tìm/liên kết/tạo hồ sơ trong `docgia` và chỉ cấp JWT `USER`; endpoint không xác thực hay cấp phiên nhân viên. Không tạo số điện thoại giả cho hồ sơ Google-only.
+- Khi email Google khớp duy nhất với một hồ sơ độc giả chưa liên kết, gắn `GoogleId`; nếu email/Google ID xung đột hoặc hồ sơ đã xóa mềm thì từ chối, không tạo hồ sơ trùng. Hồ sơ Google-only có thể bổ sung số điện thoại sau trong trang cá nhân.
+
 Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 1. **Độc giả (`USER`)**:
    - Tra cứu, tìm kiếm, lọc sách và nhà xuất bản.
@@ -100,7 +106,7 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
    - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); đặt `SoLanViPham = 0` để bắt đầu chu kỳ theo dõi mới theo quyết định có chủ đích của Admin. Nhật ký kiểm toán vẫn lưu các sự kiện vi phạm và quyết định xét gỡ trước đó.
    - Sau khi gỡ, JWT độc giả hiện tại vẫn hợp lệ; frontend đồng bộ hồ sơ qua `/api/auth/me` khi nhận thông báo thay đổi trạng thái và kiểm tra trạng thái mới nhất ngay trước khi mở luồng mượn. API mượn luôn đối chiếu MongoDB, không dùng trạng thái cache trong JWT/localStorage làm quyền quyết định.
-   - Quyền xóa tài khoản vi phạm vĩnh viễn khỏi CSDL.
+   - Xóa mềm và khôi phục tài khoản độc giả/STAFF; không xóa cứng hồ sơ nghiệp vụ. Tài khoản ADMIN không thể bị xóa qua API.
    - Được khóa/mở khóa tài khoản thủ thư bằng `nhanvien.TrangThaiThe`; không khóa tài khoản Admin. Backend từ chối yêu cầu tự khóa, kể cả khi Admin gọi API trực tiếp.
    - Khi khóa, tăng `PhienBanToken`; đăng nhập mới bị từ chối và middleware chặn JWT đã cấp trước đó. Mở khóa chỉ cho phép phiên đăng nhập mới, không kích hoạt token cũ trở lại. Ghi lý do kiểm toán và thông báo thủ thư.
    - Nếu thủ thư nhập đúng số điện thoại và mật khẩu trong lúc tài khoản đang khóa, trả thông báo “Tài khoản thủ thư của bạn đang bị khóa...” để hướng dẫn liên hệ Admin; nếu thông tin xác thực sai, tiếp tục trả lỗi chung 401. Không cấp token khi tài khoản khóa.

@@ -22,15 +22,15 @@
             <form @submit.prevent="handleLogin">
               <div class="mb-3">
                 <label class="small fw-bold text-dark mb-1">
-                  Số điện thoại: 
+                  Số điện thoại:
                 </label>
                 <div class="input-group">
                   <span class="input-group-text bg-white me-2" style="border-color: var(--paper-border);">
                     <i class="fas fa-user text-muted"></i>
                   </span>
-                  <input type="text" 
+                  <input type="tel" inputmode="tel" autocomplete="tel" pattern="\+?[0-9]{9,15}"
                          class="form-control ath-input border-start-0" 
-                         v-model="identifier" 
+                         v-model="phone"
                          placeholder="Nhập số điện thoại..."
                          required />
                 </div>
@@ -62,39 +62,19 @@
               </button>
             </form>
 
-            <!-- Divider -->
-            <div class="position-relative my-3 text-center">
-              <hr style="border-color: var(--paper-border);" />
-              <span class="position-absolute bg-white px-3 text-muted small" style="top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem;">
-                Hoặc tiếp tục với
-              </span>
+            <div class="login-divider" aria-hidden="true"><span>HOẶC</span></div>
+            <div v-if="googleClientId" class="google-login-block">
+              <div ref="googleButton" class="google-button" aria-label="Đăng nhập bằng Google"></div>
+              <p v-if="googleLoading" class="small text-muted text-center mt-2 mb-0" role="status">
+                Đang xác thực tài khoản Google…
+              </p>
+              <p v-if="googleError" class="small text-danger text-center mt-2 mb-0" role="alert">
+                {{ googleError }}
+              </p>
             </div>
-
-            <!-- Google Sign-In Button (GSI rendered button) -->
-            <div class="google-btn-wrapper">
-              <!-- Nút Google chính thức do GSI render - ưu tiên dùng nếu GSI load thành công -->
-              <div id="google-signin-btn" ref="googleBtnContainer" class="d-flex justify-content-center"></div>
-
-              <!-- Nút dự phòng hiển thị khi GSI chưa tải hoặc đang tải -->
-              <button
-                v-if="!gsiReady"
-                type="button"
-                class="btn google-fallback-btn w-100 py-2 d-flex align-items-center justify-content-center fw-bold"
-                :disabled="googleLoading"
-                @click="handleFallbackGoogleLogin"
-              >
-                <i v-if="googleLoading" class="fas fa-spinner fa-spin me-2"></i>
-                <template v-else>
-                  <svg class="me-2" width="18" height="18" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Đăng nhập bằng tài khoản Google
-                </template>
-              </button>
-            </div>
+            <p v-else class="google-config-note small text-muted text-center mb-0">
+              Đăng nhập Google chưa được cấu hình cho cổng độc giả.
+            </p>
 
             <!-- Register Link -->
             <div class="text-center mt-4 small text-muted">
@@ -116,9 +96,6 @@
 import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
 
-// Google Client ID khớp với cấu hình trên Google Cloud Console
-const GOOGLE_CLIENT_ID = "662587995671-tgve448mjem4jffqkqkgqcgrog4v6nuo.apps.googleusercontent.com";
-
 export default {
   name: "LoginView",
   components: {
@@ -126,151 +103,92 @@ export default {
   },
   data() {
     return {
-      identifier: "",
+      phone: "",
       password: "",
       showPassword: false,
       loading: false,
+      googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
       googleLoading: false,
-      gsiReady: false,       // Trạng thái Google Identity Services đã load xong
-      gsiScriptLoaded: false,
+      googleError: "",
     };
   },
   mounted() {
-    this.loadGoogleIdentityServices();
-  },
-  beforeUnmount() {
-    // Dọn dẹp script tag khi rời khỏi trang để tránh duplicate
-    const existingScript = document.getElementById("google-gsi-script");
-    if (existingScript) {
-      existingScript.remove();
-    }
+    if (this.googleClientId) this.loadGoogleIdentityServices();
   },
   methods: {
-    /**
-     * Tải thư viện Google Identity Services (GSI) từ CDN.
-     * Khi load xong, khởi tạo nút đăng nhập Google chính thức.
-     */
     loadGoogleIdentityServices() {
-      // Nếu GSI đã được tải trước đó (ví dụ khi quay lại trang)
-      if (window.google && window.google.accounts) {
-        this.initializeGSI();
+      if (window.google?.accounts?.id) {
+        this.initializeGoogleIdentityServices();
         return;
       }
-
-      // Tránh tải script trùng lặp
-      if (document.getElementById("google-gsi-script")) {
-        // Script đang tải, đợi callback
-        window.__onGSILoaded = () => this.initializeGSI();
+      const existingScript = document.getElementById("google-gsi-script");
+      if (existingScript) {
+        existingScript.addEventListener("load", this.initializeGoogleIdentityServices, { once: true });
+        existingScript.addEventListener("error", this.handleGoogleScriptError, { once: true });
         return;
       }
-
       const script = document.createElement("script");
       script.id = "google-gsi-script";
       script.src = "https://accounts.google.com/gsi/client";
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        this.gsiScriptLoaded = true;
-        this.initializeGSI();
-        if (window.__onGSILoaded) window.__onGSILoaded();
-      };
-      script.onerror = () => {
-        console.warn("[LoginView] Không thể tải Google Identity Services. Sử dụng nút dự phòng.");
-        // gsiReady vẫn = false → nút dự phòng hiển thị
-      };
+      script.onload = this.initializeGoogleIdentityServices;
+      script.onerror = this.handleGoogleScriptError;
       document.head.appendChild(script);
     },
-
-    /**
-     * Khởi tạo Google Identity Services:
-     * - Gọi google.accounts.id.initialize() với clientId và callback
-     * - Render nút "Sign in with Google" chuẩn của Google vào container
-     */
-    initializeGSI() {
-      if (!window.google || !window.google.accounts) return;
-
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
+    handleGoogleScriptError() {
+      this.googleError = "Không tải được dịch vụ đăng nhập Google. Vui lòng thử lại sau.";
+    },
+    initializeGoogleIdentityServices() {
+      const googleIdentity = window.google?.accounts?.id;
+      const container = this.$refs.googleButton;
+      if (!googleIdentity || !container) return;
+      container.replaceChildren();
+      googleIdentity.initialize({
+        client_id: this.googleClientId,
         callback: this.handleGoogleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
       });
-
-      // Render nút Google chính thức
-      const container = this.$refs.googleBtnContainer;
-      if (container) {
-        window.google.accounts.id.renderButton(container, {
-          type: "standard",
-          shape: "rectangular",
-          theme: "outline",
-          text: "signin_with",
-          size: "large",
-          logo_alignment: "left",
-          width: container.offsetWidth || 400,
-        });
-        this.gsiReady = true;
-      }
+      googleIdentity.renderButton(container, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        shape: "rectangular",
+        text: "signin_with",
+        logo_alignment: "left",
+        width: Math.min(Math.max(container.clientWidth, 200), 400),
+      });
     },
-
-    /**
-     * Callback được gọi khi người dùng chọn tài khoản Google thành công.
-     * Google trả về { credential: "JWT_ID_TOKEN_STRING" }
-     * @param {Object} response - Response từ Google GSI
-     */
     async handleGoogleCredentialResponse(response) {
-      if (!response || !response.credential) {
-        this.$refs.toast.show("Không nhận được thông tin từ Google.", "error");
+      if (!response?.credential) {
+        this.googleError = "Google không trả về thông tin xác thực. Vui lòng thử lại.";
         return;
       }
-
       this.googleLoading = true;
+      this.googleError = "";
       try {
-        // Gửi credential (ID Token) lên backend để xác thực và tạo phiên
-        const res = await authService.loginWithGoogle(response.credential);
-        this.$refs.toast.show(res.message || "Đăng nhập Google thành công!");
+        const result = await authService.loginWithGoogle(response.credential);
+        if (!authService.isReader(result.data)) {
+          await authService.logout();
+          throw new Error("Cổng này chỉ hỗ trợ đăng nhập Google cho độc giả.");
+        }
+        this.$refs.toast.show(result.message || "Đăng nhập bằng Google thành công.");
         setTimeout(() => {
           const requested = typeof this.$route.query.redirect === "string" ? this.$route.query.redirect : "/";
           const redirect = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
           this.$router.push(redirect);
-        }, 700);
-      } catch (err) {
-        const msg = err.response?.data?.message || "Không thể đăng nhập bằng tài khoản Google.";
-        this.$refs.toast.show(msg, "error");
+        }, 600);
+      } catch (error) {
+        this.googleError = error.response?.data?.message || error.message || "Không thể đăng nhập bằng Google.";
       } finally {
         this.googleLoading = false;
       }
     },
-
-    /**
-     * Nút dự phòng: kích hoạt popup One Tap của Google theo cách thủ công
-     * khi nút GSI render không hiển thị được (lỗi mạng, tải chậm).
-     */
-    handleFallbackGoogleLogin() {
-      if (window.google && window.google.accounts) {
-        // Thử render lại và prompt One Tap
-        this.initializeGSI();
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            this.$refs.toast.show(
-              "Cửa sổ đăng nhập Google không thể mở. Hãy kiểm tra trình duyệt có chặn pop-up không.",
-              "error"
-            );
-          }
-        });
-      } else {
-        this.$refs.toast.show(
-          "Dịch vụ Google chưa sẵn sàng. Vui lòng kiểm tra kết nối internet và thử lại.",
-          "error"
-        );
-        // Thử tải lại GSI
-        this.loadGoogleIdentityServices();
-      }
-    },
-
     async handleLogin() {
       this.loading = true;
       try {
-        const res = await authService.login(this.identifier, this.password);
+        const res = await authService.login(this.phone, this.password);
         if (authService.isStaffOrAdmin(res.data)) {
           const manageUrl = import.meta.env.VITE_MANAGE_APP_URL || (import.meta.env.DEV ? "http://localhost:3002" : "");
           if (!manageUrl) {
@@ -326,28 +244,40 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Container cho nút Google - đảm bảo full width */
-.google-btn-wrapper {
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  color: #716f68;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--paper-border, #d7d2c5);
+}
+
+.google-login-block,
+.google-button {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
 }
 
-#google-signin-btn {
-  width: 100%;
+.google-button {
+  display: flex;
+  justify-content: center;
 }
 
-/* Nút dự phòng khi GSI chưa load */
-.google-fallback-btn {
-  border: 1.5px solid #d1d5db;
-  color: #374151;
-  background: #fff;
-  border-radius: 8px;
-  font-size: 0.92rem;
-  transition: background 0.18s, box-shadow 0.18s;
+.google-config-note {
+  padding: 10px 12px;
+  border: 1px solid var(--paper-border, #d7d2c5);
+  background: rgba(255, 255, 255, 0.55);
 }
 
-.google-fallback-btn:hover:not(:disabled) {
-  background: #f8f9fa;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-}
 </style>

@@ -9,19 +9,22 @@ const ThongBaoService = require("./app/services/thongbao.service");
 const TheLoaiService = require("./app/services/theloai.service");
 const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
 const { ObjectId } = require("mongodb");
+const { resetAuthRateLimitsForTests } = require("./app/middleware/security.middleware");
 
 let server = null;
+let testPort = null;
 
 function hasOnlyFields(value, allowedFields) {
     return value && Object.keys(value).every(field => allowedFields.includes(field));
 }
 
 function request(method, path, body = null, headers = {}) {
+    resetAuthRateLimitsForTests();
     return new Promise((resolve, reject) => {
         const dataString = body ? JSON.stringify(body) : null;
         const options = {
             hostname: "127.0.0.1",
-            port: config.app.port,
+            port: testPort,
             path: path,
             method: method,
             headers: {
@@ -64,8 +67,12 @@ async function runTests() {
     await MongoDB.connect(config.db.uri);
     await migrateLegacyRoles(MongoDB.client.db());
     await new TheLoaiService(MongoDB.client).ensureDefaults();
-    server = await new Promise((resolve) => {
-        const s = app.listen(config.app.port, () => resolve(s));
+    server = await new Promise((resolve, reject) => {
+        const s = app.listen(0, "127.0.0.1", () => {
+            testPort = s.address().port;
+            resolve(s);
+        });
+        s.once("error", reject);
     });
 
     let passed = 0;
@@ -122,7 +129,7 @@ async function runTests() {
         testStaffCodes.push(staff.MSNV);
         temporaryStaffPhone = staff.SoDienThoai;
 
-        const res = await request("POST", "/api/auth/login", { identifier: temporaryStaffPhone, password: "staff_test_password" });
+        const res = await request("POST", "/api/auth/login", { phone: temporaryStaffPhone, password: "staff_test_password" });
         temporaryStaffToken = res.data.token;
         if (
             res.status !== 200 ||
@@ -139,13 +146,13 @@ async function runTests() {
         if (migration.staff < 1 || migratedStaff?.ChucVu !== "STAFF") {
             throw new Error("Migration không chuyển chức vụ legacy của nhân viên thành STAFF.");
         }
-        const codeLogin = await request("POST", "/api/auth/login", { identifier: temporaryStaffCode, password: "staff_test_password" });
+        const codeLogin = await request("POST", "/api/auth/login", { phone: temporaryStaffCode, password: "staff_test_password" });
         if (codeLogin.status !== 401) throw new Error("Đăng nhập nhân viên bằng mã MSNV vẫn được chấp nhận.");
     });
 
     // TC-AUTH-02: Đăng nhập sai mật khẩu bị chặn
     await assert("TC-AUTH-02: Đăng nhập sai mật khẩu (Báo lỗi 401)", async () => {
-        const res = await request("POST", "/api/auth/login", { identifier: temporaryStaffPhone, password: "wrong_password" });
+        const res = await request("POST", "/api/auth/login", { phone: temporaryStaffPhone, password: "wrong_password" });
         if (res.status !== 401) {
             throw new Error(`Kỳ vọng HTTP 401, nhận status=${res.status}`);
         }
@@ -180,7 +187,7 @@ async function runTests() {
         temporaryReaderPhone = reader.DienThoai;
 
         const res = await request("POST", "/api/auth/login", {
-            identifier: reader.DienThoai,
+            phone: reader.DienThoai,
             password: "reader_test_password"
         });
         if (
@@ -193,6 +200,11 @@ async function runTests() {
         }
         temporaryReaderObjectId = res.data.data._id;
         temporaryReaderToken = res.data.token;
+        const readerCodeLogin = await request("POST", "/api/auth/login", {
+            phone: temporaryReaderId,
+            password: "reader_test_password",
+        });
+        if (readerCodeLogin.status !== 401) throw new Error("Mã độc giả không được chấp nhận làm thông tin đăng nhập.");
         const readerCollection = MongoDB.client.db().collection("docgia");
         await readerCollection.updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "MANAGER" } });
         const legacyRoleMe = await request("GET", "/api/auth/me", null, { Authorization: `Bearer ${temporaryReaderToken}` });
@@ -313,11 +325,11 @@ async function runTests() {
         }
 
         const oldPasswordLogin = await request("POST", "/api/auth/login", {
-            identifier: temporaryReaderPhone,
+            phone: temporaryReaderPhone,
             password: "reader_test_password"
         });
         const injectedPasswordLogin = await request("POST", "/api/auth/login", {
-            identifier: temporaryReaderPhone,
+            phone: temporaryReaderPhone,
             password: "attacker_password"
         });
         if (oldPasswordLogin.status !== 200 || injectedPasswordLogin.status !== 401) {
@@ -339,7 +351,7 @@ async function runTests() {
         temporaryAdminPhone = admin.SoDienThoai;
 
         const login = await request("POST", "/api/auth/login", {
-            identifier: temporaryAdminPhone,
+            phone: temporaryAdminPhone,
             password: "admin_test_password"
         });
         const adminToken = login.data?.token;
@@ -439,16 +451,51 @@ async function runTests() {
         }
 
         const originalPasswordLogin = await request("POST", "/api/auth/login", {
-            identifier: temporaryAdminPhone,
+            phone: temporaryAdminPhone,
             password: "admin_test_password"
         });
         const injectedPasswordLogin = await request("POST", "/api/auth/login", {
-            identifier: temporaryAdminPhone,
+            phone: temporaryAdminPhone,
             password: "attacker_password"
         });
         if (originalPasswordLogin.status !== 200 || injectedPasswordLogin.status !== 401) {
             throw new Error("Mật khẩu Admin bị thay đổi ngoài ý muốn khi cập nhật hồ sơ.");
         }
+    });
+
+    // TC-ACCOUNT-SOFT-DELETE-01: Tài khoản chỉ xóa mềm, phiên bị chặn và Admin có thể khôi phục.
+    await assert("TC-ACCOUNT-SOFT-DELETE-01: Xóa mềm và khôi phục tài khoản độc giả/nhân viên", async () => {
+        const readerDelete = await request("DELETE", `/api/docgia/${temporaryReaderObjectId}`, null, { Authorization: `Bearer ${temporaryAdminToken}` });
+        const readerDocument = await MongoDB.client.db().collection("docgia").findOne({ _id: new ObjectId(temporaryReaderObjectId) });
+        const readerLoginAfterDelete = await request("POST", "/api/auth/login", { phone: temporaryReaderPhone, password: "reader_test_password" });
+        const readerSessionAfterDelete = await request("GET", "/api/auth/me", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        const hiddenReader = await request("GET", "/api/docgia", null, { Authorization: `Bearer ${temporaryAdminToken}` });
+        const deletedReaders = await request("GET", "/api/docgia?includeDeleted=true", null, { Authorization: `Bearer ${temporaryAdminToken}` });
+        if (readerDelete.status !== 200 || readerDocument?.deleted !== true || readerLoginAfterDelete.status !== 401 || readerSessionAfterDelete.status !== 401 || hiddenReader.data.some(item => item.MaDocGia === temporaryReaderId) || !deletedReaders.data.some(item => item.MaDocGia === temporaryReaderId && item.DeletedAt && item.DeletedBy)) {
+            throw new Error(`Độc giả phải được ẩn mềm, giữ document, mất quyền đăng nhập và chỉ xuất hiện trong danh sách Admin; delete=${readerDelete.status}, deleted=${readerDocument?.deleted}, login=${readerLoginAfterDelete.status}, oldSession=${readerSessionAfterDelete.status}, activeList=${Array.isArray(hiddenReader.data) && hiddenReader.data.some(item => item.MaDocGia === temporaryReaderId)}, adminList=${Array.isArray(deletedReaders.data) && deletedReaders.data.some(item => item.MaDocGia === temporaryReaderId && item.DeletedAt && item.DeletedBy)}`);
+        }
+        const readerRestore = await request("PUT", `/api/docgia/${temporaryReaderObjectId}/restore`, {}, { Authorization: `Bearer ${temporaryAdminToken}` });
+        const readerLoginAfterRestore = await request("POST", "/api/auth/login", { phone: temporaryReaderPhone, password: "reader_test_password" });
+        const oldReaderSessionAfterRestore = await request("GET", "/api/auth/me", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        if (readerRestore.status !== 200 || readerLoginAfterRestore.status !== 200 || oldReaderSessionAfterRestore.status !== 401 || Object.hasOwn(readerRestore.data.data, "deleted")) {
+            throw new Error(`Khôi phục độc giả phải xóa metadata xóa mềm và cho phép đăng nhập lại bằng số điện thoại; restore=${readerRestore.status}, login=${readerLoginAfterRestore.status}, oldSession=${oldReaderSessionAfterRestore.status}, hasDeleted=${Object.hasOwn(readerRestore.data?.data || {}, "deleted")}`);
+        }
+        temporaryReaderToken = readerLoginAfterRestore.data.token;
+
+        const staffDelete = await request("DELETE", `/api/nhanvien/${createdNotificationStaffId}`, null, { Authorization: `Bearer ${temporaryAdminToken}` });
+        const staffDocument = await MongoDB.client.db().collection("nhanvien").findOne({ _id: new ObjectId(createdNotificationStaffId) });
+        const staffLoginAfterDelete = await request("POST", "/api/auth/staff-login", { phone: createdNotificationStaffPhone, password: "notification_staff_password" });
+        if (staffDelete.status !== 200 || staffDocument?.deleted !== true || staffLoginAfterDelete.status !== 401) {
+            throw new Error("Nhân viên phải được xóa mềm và không đăng nhập được sau khi bị xóa.");
+        }
+        const staffRestore = await request("PUT", `/api/nhanvien/${createdNotificationStaffId}/restore`, {}, { Authorization: `Bearer ${temporaryAdminToken}` });
+        const staffLoginAfterRestore = await request("POST", "/api/auth/staff-login", { phone: createdNotificationStaffPhone, password: "notification_staff_password" });
+        if (staffRestore.status !== 200 || staffLoginAfterRestore.status !== 200) {
+            throw new Error("Khôi phục nhân viên phải cho phép đăng nhập lại bằng số điện thoại.");
+        }
+        createdNotificationStaffToken = staffLoginAfterRestore.data.token;
+        const selfDelete = await request("DELETE", `/api/nhanvien/${temporaryAdminId}`, null, { Authorization: `Bearer ${temporaryAdminToken}` });
+        if (selfDelete.status !== 400) throw new Error("Không được xóa tài khoản ADMIN, kể cả gọi trực tiếp API.");
     });
 
     // TC-STAFF-LOCK-01: Admin khóa/mở khóa thủ thư, chặn tự khóa qua API và thu hồi JWT đang có.
@@ -478,15 +525,15 @@ async function runTests() {
             Authorization: `Bearer ${createdNotificationStaffToken}`,
         });
         const blockedLogin = await request("POST", "/api/auth/staff-login", {
-            identifier: createdNotificationStaffPhone,
+            phone: createdNotificationStaffPhone,
             password: "notification_staff_password",
         });
         const wrongPasswordWhileLocked = await request("POST", "/api/auth/staff-login", {
-            identifier: createdNotificationStaffPhone,
+            phone: createdNotificationStaffPhone,
             password: "wrong_notification_staff_password",
         });
         const sharedLoginBlocked = await request("POST", "/api/auth/login", {
-            identifier: createdNotificationStaffPhone,
+            phone: createdNotificationStaffPhone,
             password: "notification_staff_password",
         });
         if (
@@ -509,7 +556,7 @@ async function runTests() {
             Authorization: `Bearer ${createdNotificationStaffToken}`,
         });
         const freshLogin = await request("POST", "/api/auth/staff-login", {
-            identifier: createdNotificationStaffPhone,
+            phone: createdNotificationStaffPhone,
             password: "notification_staff_password",
         });
         if (staleSession.status !== 401 || freshLogin.status !== 200) {
@@ -529,11 +576,37 @@ async function runTests() {
         }
     });
 
-    // TC-AUTH-04: Từ chối Google ID Token không hợp lệ
+    // TC-AUTH-04: Google chỉ cấp phiên USER và phải từ chối token/field giả mạo.
     await assert("TC-AUTH-04: Từ chối Google ID Token không hợp lệ", async () => {
-        const res = await request("POST", "/api/auth/google", { idToken: "sample_mock_google_id_token" });
-        if (res.status !== 401) {
-            throw new Error(`Kỳ vọng HTTP 401 với Google ID Token không hợp lệ, nhận status=${res.status}`);
+        const invalidToken = await request("POST", "/api/auth/google", { idToken: "sample_mock_google_id_token" });
+        const missingToken = await request("POST", "/api/auth/google", {});
+        const extraField = await request("POST", "/api/auth/google", {
+            idToken: "sample_mock_google_id_token",
+            role: "ADMIN",
+        });
+        if (invalidToken.status !== 401 || invalidToken.data?.token) {
+            throw new Error(`Google token giả phải bị từ chối và không cấp JWT; nhận HTTP ${invalidToken.status}`);
+        }
+        if (missingToken.status !== 400 || extraField.status !== 400) {
+            throw new Error(`Thiếu token/trường role giả phải nhận HTTP 400; nhận ${missingToken.status}/${extraField.status}`);
+        }
+    });
+
+    await assert("TC-AUTH-05: Chỉ nhận số điện thoại làm thông tin đăng nhập", async () => {
+        const readerCodeLogin = await request("POST", "/api/auth/login", {
+            phone: temporaryReaderId,
+            password: "reader_test_password",
+        });
+        const identifierAliasLogin = await request("POST", "/api/auth/login", {
+            identifier: temporaryReaderPhone,
+            password: "reader_test_password",
+        });
+        const phoneLogin = await request("POST", "/api/auth/login", {
+            phone: temporaryReaderPhone,
+            password: "reader_test_password",
+        });
+        if (readerCodeLogin.status !== 401 || identifierAliasLogin.status !== 400 || phoneLogin.status !== 200) {
+            throw new Error(`Chỉ đăng nhập bằng SĐT; mã/alias/SĐT hợp lệ=${readerCodeLogin.status}/${identifierAliasLogin.status}/${phoneLogin.status}`);
         }
     });
 
@@ -849,7 +922,8 @@ async function runTests() {
                 id: temporaryReaderObjectId,
                 username: temporaryReaderId,
                 role: "STAFF",
-                type: "reader"
+                type: "reader",
+                sessionVersion: JwtUtil.verify(temporaryReaderToken).sessionVersion || 0,
             })}` }
         );
         if (readerRequest.status !== 403) {
@@ -1027,7 +1101,7 @@ async function runTests() {
         if (submitted.status !== 201 || submitted.data.data.TrangThai !== "ChoDuyet" || "MatKhau" in submitted.data.data) {
             throw new Error(`Đăng ký hồ sơ không đúng, status=${submitted.status}`);
         }
-        const blockedLogin = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        const blockedLogin = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_test_password" });
         if (blockedLogin.status !== 403 || blockedLogin.data.token || !blockedLogin.data.message.includes("chờ")) {
             throw new Error(`Hồ sơ chờ duyệt không bị chặn đúng, status=${blockedLogin.status}`);
         }
@@ -1047,7 +1121,7 @@ async function runTests() {
         if (approved.status !== 200 || approved.data.data.ChucVu !== "STAFF" || !approved.data.data.MSNV || "MatKhau" in approved.data.data) {
             throw new Error(`Duyệt hồ sơ không tạo đúng tài khoản thủ thư, status=${approved.status}`);
         }
-        const activeLogin = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        const activeLogin = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_test_password" });
         if (activeLogin.status !== 200 || activeLogin.data.data.MSNV !== approved.data.data.MSNV) {
             throw new Error(`Nhân viên được duyệt không đăng nhập được, status=${activeLogin.status}`);
         }
@@ -1075,7 +1149,7 @@ async function runTests() {
         if (submitted.status !== 201) throw new Error(`Không gửi được hồ sơ kiểm thử, status=${submitted.status}`);
         const headers = { Authorization: `Bearer ${temporaryAdminToken}` };
         const rejected = await request("PUT", `/api/yeu-cau-nhan-vien/${submitted.data.data._id}/reject`, { LyDoTuChoi: "Thiếu thông tin xác minh." }, headers);
-        const login = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
+        const login = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_test_password" });
         const saved = await MongoDB.client.db().collection("yeucaunhanvien").findOne({ _id: new (require("mongodb").ObjectId)(submitted.data.data._id) });
         if (rejected.status !== 200 || login.status !== 403 || !login.data.message.includes("Thiếu thông tin") || saved?.TrangThai !== "TuChoi") {
             throw new Error(`Từ chối hồ sơ chưa đúng, reject/login=${rejected.status}/${login.status}`);
@@ -1084,8 +1158,8 @@ async function runTests() {
             HoTenNV: "Ứng viên bị từ chối", SoDienThoai: phone, DiaChi: "Cần Thơ", MatKhau: "applicant_new_password",
         });
         if (resubmitted.data?.data?._id) testApplicationIds.push(String(resubmitted.data.data._id));
-        const previousPassword = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_test_password" });
-        const newPassword = await request("POST", "/api/auth/staff-login", { identifier: phone, password: "applicant_new_password" });
+        const previousPassword = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_test_password" });
+        const newPassword = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_new_password" });
         if (resubmitted.status !== 201 || resubmitted.data.data.TrangThai !== "ChoDuyet" || previousPassword.status !== 401 || newPassword.status !== 403) {
             throw new Error("Ứng viên không thể gửi lại hồ sơ sau khi bị từ chối.");
         }
