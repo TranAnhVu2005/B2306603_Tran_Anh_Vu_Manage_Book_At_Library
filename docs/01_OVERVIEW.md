@@ -21,7 +21,7 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 
 ### Môi trường triển khai
 
-Hai frontend Vue/Vite được build và triển khai độc lập trên Vercel, cùng gọi backend Express trên Render. Khi phát triển local, backend dùng MongoDB local tại `127.0.0.1:27017`; trên Render, `MONGODB_URI` lấy từ biến môi trường và trỏ tới MongoDB Atlas. Cả hai môi trường dùng database `quanlymuonsach`. Không đưa thông tin kết nối MongoDB hoặc secret backend vào bundle frontend. Cấu hình và checklist deploy chi tiết nằm tại [DEPLOYMENT.md](../DEPLOYMENT.md).
+Hai frontend Vue/Vite được build và triển khai độc lập trên Vercel, cùng gọi backend Express trên Render. Backend local và Render đều nhận `MONGODB_URI` từ môi trường, chỉ chấp nhận Atlas cluster của dự án và chọn database `quanlymuonsach`. Không đưa thông tin kết nối MongoDB hoặc secret backend vào bundle frontend. Cấu hình và checklist deploy chi tiết nằm tại [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ---
 
