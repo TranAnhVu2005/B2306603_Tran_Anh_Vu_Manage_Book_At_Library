@@ -110,7 +110,7 @@ async function runTests() {
     console.log("=========================================================================\n");
 
     // Khởi động kết nối MongoDB và máy chủ kiểm thử nếu chưa chạy
-    await MongoDB.connect(config.db.uri);
+    await MongoDB.connect(config.db.uri, config.db.name);
     await migrateLegacyRoles(MongoDB.client.db());
     await migrateLegacyNotificationRecipients(MongoDB.client.db());
     await new TheLoaiService(MongoDB.client).ensureDefaults();

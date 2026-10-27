@@ -19,7 +19,7 @@ async function seedData() {
     try {
         console.log("---------------------------------------------------------------");
         console.log("Đang kết nối MongoDB để khởi tạo cơ sở dữ liệu mẫu...");
-        const client = await MongoDB.connect(config.db.uri);
+        const client = await MongoDB.connect(config.db.uri, config.db.name);
         const db = client.db();
 
         // 1. Dọn dẹp sạch dữ liệu cũ

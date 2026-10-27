@@ -1,13 +1,17 @@
 require("dotenv").config();
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const config = {
     app: {
-        port: process.env.PORT,
-        env: process.env.NODE_ENV,
+        port: Number(process.env.PORT || 3000),
+        env: process.env.NODE_ENV || "development",
     },
     db: {
-        uri: process.env.MONGODB_URI,
-        name: "quanlymuonsach",
+        // Local development defaults to local MongoDB. Production must supply
+        // the Atlas URI through Render's environment settings.
+        uri: process.env.MONGODB_URI || (isProduction ? "" : "mongodb://127.0.0.1:27017/quanlymuonsach"),
+        name: process.env.MONGODB_DB_NAME || "quanlymuonsach",
     },
     auth: {
         bcryptSaltRounds: 10,

@@ -9,7 +9,7 @@ const DATE_FIELDS = {
 const applyChanges = process.argv.includes("--apply");
 
 async function migrate() {
-    const client = await MongoDB.connect(config.db.uri);
+    const client = await MongoDB.connect(config.db.uri, config.db.name);
     const db = client.db(config.db.name);
     const operations = [];
     const totals = {};

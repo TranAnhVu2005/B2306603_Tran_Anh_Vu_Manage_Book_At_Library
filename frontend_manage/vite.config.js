@@ -8,6 +8,25 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig(({ mode }) => {
 
   const env = loadEnv(mode, process.cwd(), '')
+  const apiUrl = env.VITE_API_URL?.trim()
+
+  // Vercel creates a static bundle: its API origin must be injected at build
+  // time instead of silently falling back to a same-origin /api route.
+  if (mode === 'production') {
+    if (!apiUrl) {
+      throw new Error('Thiếu VITE_API_URL. Hãy cấu hình URL HTTPS của backend Render trong Vercel.');
+    }
+    let parsedApiUrl
+    try {
+      parsedApiUrl = new URL(apiUrl)
+    } catch {
+      throw new Error('VITE_API_URL phải là URL HTTPS hợp lệ của backend Render.');
+    }
+    if (parsedApiUrl.protocol !== 'https:' || !parsedApiUrl.hostname || !['', '/'].includes(parsedApiUrl.pathname) || parsedApiUrl.username || parsedApiUrl.password || parsedApiUrl.search || parsedApiUrl.hash) {
+      throw new Error('VITE_API_URL phải là origin HTTPS của backend, không kèm đường dẫn, thông tin đăng nhập hay query.');
+    }
+  }
+
   return {
     plugins: [
       vue(),
@@ -29,11 +48,11 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         "/api": {
-          target: env.VITE_API_URL || "http://localhost:3000/",
+          target: apiUrl || "http://localhost:3000/",
           changeOrigin: true,
         },
         "/uploads": {
-          target: env.VITE_API_URL || "http://localhost:3000/",
+          target: apiUrl || "http://localhost:3000/",
           changeOrigin: true,
         },
       }

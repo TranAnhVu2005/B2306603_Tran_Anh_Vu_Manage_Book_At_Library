@@ -9,8 +9,8 @@ const { migrateLegacyNotificationRecipients } = require("./app/utils/notificatio
 async function startServer() {
     try {
         console.log("Đang khởi tạo kết nối cơ sở dữ liệu MongoDB...");
-        await MongoDB.connect(config.db.uri);
-        console.log(`-> Kết nối CSDL thành công tại: ${config.db.uri}`);
+        await MongoDB.connect(config.db.uri, config.db.name);
+        console.log(`-> Kết nối MongoDB thành công (database: ${config.db.name}).`);
         const roleMigration = await migrateLegacyRoles(MongoDB.client.db());
         if (roleMigration.staff || roleMigration.readers) {
             console.log(`-> Chuẩn hóa vai trò: ${roleMigration.staff} nhân viên và ${roleMigration.readers} độc giả.`);
@@ -51,7 +51,7 @@ async function startServer() {
         }, 60 * 1000);
 
         const PORT = config.app.port;
-        const server = app.listen(PORT, () => {
+        const server = app.listen(PORT, "0.0.0.0", () => {
             console.log(`====================================================`);
             console.log(`Máy chủ Backend đang lắng nghe tại: http://localhost:${PORT}`);
             console.log(`Hệ thống Quản Lý Mượn Sách Thư Viện (CT449 - ĐH Cần Thơ)`);
