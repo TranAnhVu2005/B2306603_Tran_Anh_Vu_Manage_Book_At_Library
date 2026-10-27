@@ -3,6 +3,15 @@ const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 const ThongBaoService = require("../services/thongbao.service");
 const AuditLogService = require("../services/audit-log.service");
+const CloudinaryService = require("../services/cloudinary.service");
+
+async function deleteAvatarIfUnreferenced(publicId) {
+    if (!publicId) return;
+    try {
+        const reference = await MongoDB.client.db().collection("docgia").findOne({ AnhDaiDienPublicId: publicId }, { projection: { _id: 1 } });
+        if (!reference) await CloudinaryService.deleteImage(publicId);
+    } catch { /* Cleanup is best-effort; never hide the original request result. */ }
+}
 
 async function notifyReader(reader, type, title, message) {
     if (!reader?.MaDocGia) return;
@@ -13,16 +22,22 @@ async function notifyReader(reader, type, title, message) {
 
 // Thêm một độc giả mới - Completed
 exports.create = async (req, res, next) => {
+    let uploadedAvatar;
     try {
         const service = new DocGiaService(MongoDB.client);
-
+        if (req.file) {
+            uploadedAvatar = await CloudinaryService.uploadImage(req.file, "library/avatars");
+            req.body.AnhDaiDien = uploadedAvatar.secureUrl;
+            req.body.AnhDaiDienPublicId = uploadedAvatar.publicId;
+        }
         const result = await service.create(req.body);
         return res.status(201).json({
             message: "Đăng ký thẻ bạn đọc trực tuyến thành công.",
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        if (uploadedAvatar) await deleteAvatarIfUnreferenced(uploadedAvatar.publicId);
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 
@@ -61,6 +76,7 @@ exports.findOne = async (req, res, next) => {
 
 // Cập nhật thông tin độc giả - Completed
 exports.update = async (req, res, next) => {
+    let uploadedAvatar;
     try {
         const isOwnReaderProfile = req.user?.type === "reader" &&
             (req.user.id === req.params.id || req.user.username === req.params.id);
@@ -69,22 +85,28 @@ exports.update = async (req, res, next) => {
         }
 
         const service = new DocGiaService(MongoDB.client);
-
-
+        const previousAvatar = req.file ? await service.findImageMetadata(req.params.id) : null;
         if (req.file) {
-            req.body.AnhDaiDien = `/uploads/avatars/${req.file.filename}`;
+            uploadedAvatar = await CloudinaryService.uploadImage(req.file, "library/avatars");
+            req.body.AnhDaiDien = uploadedAvatar.secureUrl;
+            req.body.AnhDaiDienPublicId = uploadedAvatar.publicId;
         }
 
         const result = await service.update(req.params.id, req.body);
         if (!result) {
+            if (uploadedAvatar) await deleteAvatarIfUnreferenced(uploadedAvatar.publicId);
             return next(new ApiError(404, "Không tìm thấy độc giả để cập nhật."));
+        }
+        if (previousAvatar?.AnhDaiDienPublicId) {
+            await deleteAvatarIfUnreferenced(previousAvatar.AnhDaiDienPublicId);
         }
         return res.json({
             message: "Cập nhật hồ sơ độc giả thành công.",
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        if (uploadedAvatar) await deleteAvatarIfUnreferenced(uploadedAvatar.publicId);
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 

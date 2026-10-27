@@ -22,9 +22,10 @@
 - **CSRF/XSRF**: Với JWT truyền trong `Authorization` header và không dùng cookie xác thực, trình duyệt không tự gắn token nên CSRF cổ điển được giảm thiểu; bảo vệ XSS vẫn bắt buộc. Nếu dùng cookie, bật `HttpOnly`, `Secure`, `SameSite`, CSRF token cho request thay đổi trạng thái và kiểm tra `Origin`/`Referer`.
 - **Broken authentication/session**: Bcrypt; thông tin đăng nhập sai nhận lỗi chung để tránh dò tài khoản, trạng thái bị khóa chỉ được thông báo sau khi mật khẩu đúng; rate limit đăng nhập/đăng ký (bộ đếm hiện giữ trong bộ nhớ tiến trình); JWT dùng secret từ env, thuật toán allowlist, hạn dùng và xác minh claim. STAFF/ADMIN đăng nhập bằng số điện thoại; độc giả có thể dùng số điện thoại hoặc Google Identity Services. Backend xác minh chữ ký, issuer, audience, hạn dùng và email Google đã xác minh; endpoint Google chỉ cấp JWT `USER`, không nhận mã độc giả/MSNV hoặc tài khoản nhân viên. Hiện có thu hồi token khi logout và tăng phiên bản JWT khi khóa/xóa mềm tài khoản. Không log thông tin xác thực; HTTPS bắt buộc ở triển khai.
 - **XXE**: API hiện không có nhu cầu nhận XML. Từ chối XML nếu không được hỗ trợ; nếu bổ sung parser XML phải tắt DTD, external entities, XInclude và truy cập file/network bên ngoài, giới hạn kích thước/độ sâu.
-- **SSRF**: Backend hiện không có tính năng fetch URL do client cung cấp; ảnh sách/avatar được upload vào storage cục bộ. Nếu bổ sung outbound request (bao gồm MoMo tương lai), phải allowlist host/protocol, kiểm tra IP sau DNS resolution, chặn loopback/private/link-local/metadata, giới hạn redirect/timeout/response size.
+- **SSRF**: Backend không tải URL do client cung cấp. Ảnh được gửi dưới dạng tệp multipart và backend gọi cố định Cloudinary HTTPS API; không chuyển tiếp URL/credential tùy ý của client. Nếu bổ sung outbound request khác (bao gồm MoMo tương lai), phải allowlist host/protocol, kiểm tra IP sau DNS resolution, chặn loopback/private/link-local/metadata, giới hạn redirect/timeout/response size.
 - **CORS, headers, lỗi và vận hành**: CORS allowlist theo môi trường, body size limit, HTTPS, security headers/CSP, lỗi production không lộ stack/secret, secrets trong biến môi trường; audit các thao tác nhạy cảm mà không ghi token/mật khẩu.
 - **Upload**: MIME/đuôi file không đủ để xác minh; kiểm tra chữ ký file và allowlist định dạng, random filename, giới hạn dung lượng, không thực thi file upload và không chấp nhận SVG/HTML chưa sanitize.
+- **Cloudinary**: Backend ký request upload/delete bằng `CLOUDINARY_API_KEY` và `CLOUDINARY_API_SECRET`; secrets chỉ nằm ở local backend `.env`/Render. Frontend gửi multipart ảnh tới API; API lưu URL HTTPS và `public_id` nội bộ, nhưng response chỉ trả URL ảnh. Không cấu hình credential trong Vercel hay biến `VITE_*`.
 
 Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ thống đã đáp ứng. Mọi thay đổi cần cập nhật API/testing docs và kiểm thử cả trường hợp được phép lẫn bị từ chối.
 
@@ -110,8 +111,8 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ### Cập nhật hồ sơ nhân viên (`PUT /api/nhanvien/:id`)
 * **Quyền truy cập**: Nhân viên hoặc quản trị viên đã đăng nhập; chỉ được cập nhật hồ sơ có `_id` hoặc `MSNV` khớp với danh tính trong JWT.
-* **Trường được phép sửa**: `HoTenNV`, `SoDienThoai`, `DiaChi`. Không cho phép sửa `MSNV`, `ChucVu` hoặc `MatKhau`.
-* **Response**: `{ "message": "...", "data": { ... } }`; `data` chỉ gồm các trường nhân viên trong CDM và không chứa `MatKhau`.
+* **Trường được phép sửa**: `HoTenNV`, `SoDienThoai`, `DiaChi`; ảnh `AnhDaiDien` được gửi bằng multipart file và backend chuyển lên Cloudinary. Không cho phép sửa `MSNV`, `ChucVu` hoặc `MatKhau`.
+* **Response**: `{ "message": "...", "data": { ... } }`; `data` chỉ gồm các trường nhân viên trong CDM, có URL ảnh nhưng không chứa `MatKhau` hoặc `AnhDaiDienPublicId`.
 
 ### Danh sách nhân viên (`GET /api/nhanvien`)
 * **Quyền truy cập**: Chỉ `ADMIN` (JWT nhân viên có chức vụ ADMIN); STAFF/USER bị từ chối.
@@ -133,8 +134,8 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `GET /api/sach`: Lấy danh sách sách đang hoạt động (mặc định ẩn `deleted=true`; hỗ trợ `?search=...&maNxb=...&maTheLoai=TL-0002&availableOnly=true`).
 * `GET /api/sach/:id`: Chi tiết sách đang hoạt động theo ObjectId hoặc `MaSach`; sách đã xóa mềm trả 404.
 * `GET /api/sach?includeDeleted=true`: [Admin] Lấy danh sách sách đã xóa mềm; response kèm `deleted`, `DeletedAt`, `DeletedBy` để quản trị/phục hồi.
-* `POST /api/sach`: [Manager/Admin] Thêm sách mới (`TenSach`, `DonGia`, `SoQuyen`, `NamXuatBan`, `MaNXB`, `MaTheLoai`, `TacGia`, `HinhAnh`, `MoTa`). `MaTheLoai` bắt buộc và phải tồn tại trong danh mục. Tự động sinh `MaSach: SACH-000001`.
-* `PUT /api/sach/:id`: [Manager/Admin] Cập nhật thông tin sách / điều chỉnh số lượng tồn kho.
+* `POST /api/sach`: [STAFF/ADMIN] Thêm sách mới (`TenSach`, `DonGia`, `SoQuyen`, `NamXuatBan`, `MaNXB`, `MaTheLoai`, `TacGia`, `MoTa`); ảnh bìa `HinhAnh` được gửi bằng multipart file. Backend xác minh JPEG/PNG/WebP tối đa 5 MiB rồi tải ảnh lên Cloudinary. `MaTheLoai` bắt buộc và phải tồn tại trong danh mục. Tự động sinh `MaSach: SACH-000001`.
+* `PUT /api/sach/:id`: [STAFF/ADMIN] Cập nhật thông tin sách/điều chỉnh tồn kho; nếu thay ảnh, gửi multipart file `HinhAnh`. Response chỉ trả URL ảnh, không trả `HinhAnhPublicId`.
 * `GET /api/theloai`: Danh mục thể loại công khai (`_id`, `MaTheLoai`, `TenTheLoai`, `MoTa`); danh mục mặc định được khởi tạo idempotent.
 * `DELETE /api/sach/:id`: [STAFF/ADMIN] Xóa mềm; chặn nếu sách đang có phiếu `DangMuon`, `ChoDuyet` hoặc `ChoNhan`; document được giữ lại và actor được ghi log.
 * `PUT /api/sach/:id/restore`: [Admin] Khôi phục sách đã xóa mềm về danh mục hoạt động; log người thực hiện.
@@ -165,7 +166,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`; hồ sơ đã xóa mềm trả 404.
 * `GET /api/docgia?includeDeleted=true`: [ADMIN] Xem cả hồ sơ đã xóa mềm; metadata `deleted`, `DeletedAt`, `DeletedBy` chỉ trả trên hồ sơ đã xóa.
 * `POST /api/docgia`: Tạo hồ sơ độc giả mới.
-* `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`; ảnh đại diện được gửi dưới dạng multipart file `AnhDaiDien`. Tài khoản Google chưa có `DienThoai` được phép bỏ qua trường này khi cập nhật hồ sơ/ảnh; số điện thoại được bổ sung hoặc thay đổi phải đúng định dạng và chưa được tài khoản khác sử dụng. Nếu hồ sơ đã có số điện thoại thì không được xóa số đó. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm.
+* `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`; ảnh đại diện được gửi dưới dạng multipart file `AnhDaiDien` và được chuyển backend sang Cloudinary. Tài khoản Google chưa có `DienThoai` được phép bỏ qua trường này khi cập nhật hồ sơ/ảnh; số điện thoại được bổ sung hoặc thay đổi phải đúng định dạng và chưa được tài khoản khác sử dụng. Nếu hồ sơ đã có số điện thoại thì không được xóa số đó. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Response chỉ có URL ảnh, không có `AnhDaiDienPublicId`.
 * `PUT /api/docgia/:id/lock`: [Super Admin] Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`), không thay đổi `SoLanViPham`.
 * `PUT /api/docgia/:id/unblock`: [Super Admin] Chỉ mở khóa thẻ trạng thái `Khoa`; giữ nguyên `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, trạng thái sau mở khóa là `DanhSachDen`.
 * `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`) và đặt `SoLanViPham = 0` cho chu kỳ tiếp theo; ghi sự kiện `DOCGIA_GO_DANH_SACH_DEN` với giá trị trước/sau vào `nhatkykiemtoan`. Không dùng thay cho mở khóa khẩn cấp.

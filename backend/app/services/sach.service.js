@@ -76,6 +76,7 @@ class SachService {
         }
         if (payload.TacGia !== undefined) data.TacGia = String(payload.TacGia).trim();
         if (payload.HinhAnh !== undefined) data.HinhAnh = String(payload.HinhAnh).trim();
+        if (payload.HinhAnhPublicId !== undefined) data.HinhAnhPublicId = String(payload.HinhAnhPublicId).trim();
         if (payload.MoTa !== undefined) data.MoTa = String(payload.MoTa).trim();
         if (payload.NguonGoc !== undefined) data.NguonGoc = String(payload.NguonGoc).trim();
 
@@ -128,7 +129,7 @@ class SachService {
             action: "BOOK_CREATED", entityType: "book", entityId: data.MaSach,
             MaSach: data.MaSach, TenSach: data.TenSach,
             actorType: actor.type, actorId: actor.username,
-            Details: { createdFields: Object.keys(data).filter((field) => !["_id", "CreatedAt", "UpdatedAt", "deleted"].includes(field)) },
+            Details: { createdFields: Object.keys(data).filter((field) => !["_id", "CreatedAt", "UpdatedAt", "deleted", "HinhAnhPublicId"].includes(field)) },
         });
         return await this.findById(result.insertedId);
     }
@@ -173,6 +174,13 @@ class SachService {
         return await this.Sach.findOne({ ...query, deleted: { $ne: true } }, { projection: publicFields });
     }
 
+    async findImageMetadata(id) {
+        const query = ObjectId.isValid(id)
+            ? { $or: [{ _id: new ObjectId(id) }, { MaSach: id }], deleted: { $ne: true } }
+            : { MaSach: id, deleted: { $ne: true } };
+        return this.Sach.findOne(query, { projection: { _id: 1, HinhAnhPublicId: 1 } });
+    }
+
     // Cập nhật thông tin sách - Completed
     async update(id, payload, actor = {}) {
         const data = this.extractData(payload, false);
@@ -208,7 +216,7 @@ class SachService {
         if (!current) return null;
         const changes = {};
         for (const [key, value] of Object.entries(data)) {
-            if (key === "UpdatedAt" || JSON.stringify(current[key]) === JSON.stringify(value)) continue;
+            if (key === "UpdatedAt" || key === "HinhAnhPublicId" || JSON.stringify(current[key]) === JSON.stringify(value)) continue;
             changes[key] = { from: current[key] ?? null, to: value };
         }
 

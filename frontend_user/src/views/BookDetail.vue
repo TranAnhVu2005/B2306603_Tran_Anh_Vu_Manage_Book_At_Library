@@ -28,7 +28,7 @@
           <div class="cover-shell">
             <div class="cover-core">
               <img
-                :src="book.HinhAnh || defaultCover"
+                :src="coverUrl"
                 :alt="book.TenSach"
                 class="cover-img"
                 @error="onImageError"
@@ -168,6 +168,12 @@ export default {
     };
   },
   computed: {
+    coverUrl() {
+      const path = this.book?.HinhAnh || "";
+      if (/^https:\/\//i.test(path)) return path;
+      if (path.startsWith("/uploads/")) return `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${path}`;
+      return this.defaultCover;
+    },
     publisherName() {
       if (!this.book || !this.book.MaNXB) return "—";
       const p = this.publishers.find(n => n.MaNXB === this.book.MaNXB);

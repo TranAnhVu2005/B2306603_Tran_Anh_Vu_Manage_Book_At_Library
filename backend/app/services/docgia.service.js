@@ -101,6 +101,7 @@ class DocGiaService {
             data.TrangThaiThe = trangThaiThe;
         }
         if (payload.AnhDaiDien !== undefined) data.AnhDaiDien = String(payload.AnhDaiDien).trim();
+        if (payload.AnhDaiDienPublicId !== undefined) data.AnhDaiDienPublicId = String(payload.AnhDaiDienPublicId).trim();
 
 
         // Xử lý mật khẩu
@@ -275,6 +276,13 @@ class DocGiaService {
         return reader ? { ...reader, VaiTro: "USER" } : null;
     }
 
+    async findImageMetadata(id) {
+        const query = ObjectId.isValid(id)
+            ? { $or: [{ _id: new ObjectId(id) }, { MaDocGia: id }] }
+            : { MaDocGia: id };
+        return this.DocGia.findOne({ ...query, deleted: { $ne: true } }, { projection: { _id: 1, AnhDaiDienPublicId: 1 } });
+    }
+
     //Đăng nhập của độc giả - Completed
     async login(phone, password) {
         const accountPhone = String(phone || "").trim();
@@ -292,7 +300,7 @@ class DocGiaService {
 
     // Cho phép cập nhật thông tin cá nhân, dùng được cho mã và object id - Completed
     async update(id, payload) {
-        const editableFields = ["HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "AnhDaiDien"];
+        const editableFields = ["HoLot", "Ten", "NgaySinh", "Phai", "DiaChi", "DienThoai", "AnhDaiDien", "AnhDaiDienPublicId"];
         const editablePayload = Object.fromEntries(
             editableFields
                 .filter((field) => payload[field] !== undefined)

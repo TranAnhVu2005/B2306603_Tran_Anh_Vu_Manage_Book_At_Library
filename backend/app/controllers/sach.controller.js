@@ -1,13 +1,25 @@
 const SachService = require("../services/sach.service");
 const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
+const CloudinaryService = require("../services/cloudinary.service");
+
+async function deleteImageIfUnreferenced(publicId) {
+    if (!publicId) return;
+    try {
+        const reference = await MongoDB.client.db().collection("sach").findOne({ HinhAnhPublicId: publicId }, { projection: { _id: 1 } });
+        if (!reference) await CloudinaryService.deleteImage(publicId);
+    } catch { /* Cleanup is best-effort; never hide the original request result. */ }
+}
 
 // Thêm sách mới - Completed
 exports.create = async (req, res, next) => {
+    let uploadedImage;
     try {
         const service = new SachService(MongoDB.client);
         if (req.file) {
-            req.body.HinhAnh = `/uploads/books/${req.file.filename}`;
+            uploadedImage = await CloudinaryService.uploadImage(req.file, "library/books");
+            req.body.HinhAnh = uploadedImage.secureUrl;
+            req.body.HinhAnhPublicId = uploadedImage.publicId;
         }
         const result = await service.create(req.body, req.user);
         return res.status(201).json({
@@ -15,7 +27,8 @@ exports.create = async (req, res, next) => {
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        if (uploadedImage) await deleteImageIfUnreferenced(uploadedImage.publicId);
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 
@@ -50,22 +63,30 @@ exports.findOne = async (req, res, next) => {
 
 // Cập nhật thông tin sách - Completed
 exports.update = async (req, res, next) => {
+    let uploadedImage;
     try {
         const service = new SachService(MongoDB.client);
-
+        const previousImage = req.file ? await service.findImageMetadata(req.params.id) : null;
         if (req.file) {
-            req.body.HinhAnh = `/uploads/books/${req.file.filename}`;
+            uploadedImage = await CloudinaryService.uploadImage(req.file, "library/books");
+            req.body.HinhAnh = uploadedImage.secureUrl;
+            req.body.HinhAnhPublicId = uploadedImage.publicId;
         }
         const result = await service.update(req.params.id, req.body, req.user);
         if (!result) {
+            if (uploadedImage) await deleteImageIfUnreferenced(uploadedImage.publicId);
             return next(new ApiError(404, "Không tìm thấy sách để cập nhật."));
+        }
+        if (previousImage?.HinhAnhPublicId) {
+            await deleteImageIfUnreferenced(previousImage.HinhAnhPublicId);
         }
         return res.json({
             message: "Cập nhật thông tin sách thành công.",
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        if (uploadedImage) await deleteImageIfUnreferenced(uploadedImage.publicId);
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 

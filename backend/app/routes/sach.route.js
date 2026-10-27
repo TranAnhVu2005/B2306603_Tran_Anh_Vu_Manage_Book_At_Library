@@ -7,7 +7,7 @@ const { validateImageUpload } = require("../middleware/upload.middleware");
 const router = express.Router();
 const createUploader = require("../middleware/upload.middleware");
 
-const upload = createUploader("books")
+const upload = createUploader();
 
 // Gắn middleware upload.single("HinhAnh") vào route POST (Thêm) và PUT (Sửa)
 router.route("/")

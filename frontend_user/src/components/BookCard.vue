@@ -101,7 +101,10 @@ export default {
   },
   computed: {
     coverUrl() {
-      return `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${this.book.HinhAnh}`;
+      const path = this.book?.HinhAnh || "";
+      if (/^https:\/\//i.test(path)) return path;
+      if (path.startsWith("/uploads/")) return `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${path}`;
+      return path;
     },
     hasValidImage() {
       return (

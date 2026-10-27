@@ -1,8 +1,5 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 const ApiError = require("../api-error");
-const fsPromises = fs.promises;
 
 const imageTypes = {
     "image/jpeg": ".jpg",
@@ -17,23 +14,8 @@ function hasValidImageSignature(buffer, mimeType) {
     return false;
 }
 
-// Hàm tạo middleware upload theo từng thư mục mong muốn
-const createUploader = (folderName) => {
-    const storage = multer.diskStorage({
-        destination: (req, file, cb) => {
-            const dir = path.join(__dirname, `../../public/uploads/${folderName}`);
-            // Tự động tạo thư mục nếu chưa có
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-            cb(null, dir);
-        },
-        filename: (req, file, cb) => {
-            const uniqueSuffix = require("crypto").randomBytes(18).toString("hex");
-            cb(null, uniqueSuffix + (imageTypes[file.mimetype] || ".bin"));
-        }
-    });
-
+// Giữ tệp trong bộ nhớ để kiểm tra chữ ký rồi chuyển thẳng lên Cloudinary.
+const createUploader = () => {
     const fileFilter = (req, file, cb) => {
         if (imageTypes[file.mimetype]) {
             cb(null, true);
@@ -43,7 +25,7 @@ const createUploader = (folderName) => {
     };
 
     return multer({
-        storage,
+        storage: multer.memoryStorage(),
         fileFilter,
         limits: {
             fileSize: 5 * 1024 * 1024, // Giới hạn tối đa 5MB mỗi file
@@ -54,19 +36,12 @@ const createUploader = (folderName) => {
     });
 };
 
-const validateImageUpload = async (req, res, next) => {
+const validateImageUpload = (req, res, next) => {
     if (!req.file) return next();
-    try {
-        const contents = await fsPromises.readFile(req.file.path);
-        if (!hasValidImageSignature(contents, req.file.mimetype)) {
-            await fsPromises.unlink(req.file.path).catch(() => {});
-            return next(new ApiError(400, "Nội dung tệp không khớp định dạng ảnh được phép (JPEG, PNG, WebP)."));
-        }
-        next();
-    } catch (error) {
-        await fsPromises.unlink(req.file.path).catch(() => {});
-        next(new ApiError(400, "Không thể xác minh tệp ảnh đã tải lên."));
+    if (!Buffer.isBuffer(req.file.buffer) || !hasValidImageSignature(req.file.buffer, req.file.mimetype)) {
+        return next(new ApiError(400, "Nội dung tệp không khớp định dạng ảnh được phép (JPEG, PNG, WebP)."));
     }
+    next();
 };
 
 module.exports = createUploader;

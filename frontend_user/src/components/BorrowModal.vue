@@ -26,7 +26,7 @@
               </div>
               <img
                 v-if="book.HinhAnh && String(book.HinhAnh).trim()"
-                :src="book.HinhAnh"
+                :src="coverUrl"
                 :alt="book.TenSach"
                 class="bm-cover-img"
                 @error="$event.target.style.display = 'none'"
@@ -201,6 +201,14 @@ export default {
     }
   },
   emits: ["close", "confirm"],
+  computed: {
+    coverUrl() {
+      const path = this.book?.HinhAnh || "";
+      if (/^https:\/\//i.test(path)) return path;
+      if (path.startsWith("/uploads/")) return `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${path}`;
+      return path;
+    },
+  },
   watch: {
     show(val) {
       if (val) {

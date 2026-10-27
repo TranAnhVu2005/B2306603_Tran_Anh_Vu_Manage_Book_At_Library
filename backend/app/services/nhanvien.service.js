@@ -61,6 +61,7 @@ class NhanVienService {
         if (payload.DiaChi !== undefined) data.DiaChi = String(payload.DiaChi).trim();
         if (payload.SoDienThoai !== undefined) data.SoDienThoai = String(payload.SoDienThoai).trim();
         if (payload.AnhDaiDien !== undefined) data.AnhDaiDien = String(payload.AnhDaiDien).trim();
+        if (payload.AnhDaiDienPublicId !== undefined) data.AnhDaiDienPublicId = String(payload.AnhDaiDienPublicId).trim();
 
         // Mật khẩu tài khoản nhân viên
         const rawPassword = payload.MatKhau;
@@ -175,6 +176,13 @@ class NhanVienService {
         return await this.NhanVien.findOne(query, { projection: publicFields });
     }
 
+    async findImageMetadata(id) {
+        const query = ObjectId.isValid(id)
+            ? { $or: [{ _id: new ObjectId(id) }, { MSNV: id }] }
+            : { MSNV: id };
+        return this.NhanVien.findOne({ ...query, deleted: { $ne: true } }, { projection: { _id: 1, AnhDaiDienPublicId: 1 } });
+    }
+
     //Xác thực đăng nhập cho nhân viên thủ thư/ quản trị viên - Completed
     async loginWithStatus(phone, password) {
         const accountPhone = String(phone || "").trim();
@@ -245,7 +253,7 @@ class NhanVienService {
 
     // Cập nhật thông tin nhân viên - Completed
     async update(id, payload) {
-        const editableFields = ["HoTenNV", "SoDienThoai", "DiaChi", "AnhDaiDien"];
+        const editableFields = ["HoTenNV", "SoDienThoai", "DiaChi", "AnhDaiDien", "AnhDaiDienPublicId"];
         const editablePayload = Object.fromEntries(
             editableFields
                 .filter((field) => payload[field] !== undefined)

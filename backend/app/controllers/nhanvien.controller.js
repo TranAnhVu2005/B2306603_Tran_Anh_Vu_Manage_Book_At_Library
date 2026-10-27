@@ -3,13 +3,26 @@ const MongoDB = require("../utils/mongodb.util");
 const ApiError = require("../api-error");
 const ThongBaoService = require("../services/thongbao.service");
 const AuditLogService = require("../services/audit-log.service");
+const CloudinaryService = require("../services/cloudinary.service");
+
+async function deleteAvatarIfUnreferenced(publicId) {
+    if (!publicId) return;
+    try {
+        const reference = await MongoDB.client.db().collection("nhanvien").findOne({ AnhDaiDienPublicId: publicId }, { projection: { _id: 1 } });
+        if (!reference) await CloudinaryService.deleteImage(publicId);
+    } catch { /* Cleanup is best-effort; never hide the original request result. */ }
+}
 
 // Tạo tài khoản nhân viên - Completed
 exports.create = async (req, res, next) => {
+    let uploadedAvatar;
     try {
         const service = new NhanVienService(MongoDB.client);
-
-
+        if (req.file) {
+            uploadedAvatar = await CloudinaryService.uploadImage(req.file, "library/avatars");
+            req.body.AnhDaiDien = uploadedAvatar.secureUrl;
+            req.body.AnhDaiDienPublicId = uploadedAvatar.publicId;
+        }
         const result = await service.create(req.body);
         await new ThongBaoService(MongoDB.client).createSafely({
             recipientCode: result.MSNV,
@@ -24,7 +37,8 @@ exports.create = async (req, res, next) => {
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        if (uploadedAvatar) await deleteAvatarIfUnreferenced(uploadedAvatar.publicId);
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 
@@ -58,6 +72,7 @@ exports.findOne = async (req, res, next) => {
 
 // Cập nhật hồ sơ nhân viên - Completed
 exports.update = async (req, res, next) => {
+    let uploadedAvatar;
     try {
         const isOwnStaffProfile = req.user?.type === "staff" &&
             (req.user.id === req.params.id || req.user.username === req.params.id);
@@ -66,20 +81,27 @@ exports.update = async (req, res, next) => {
         }
 
         const service = new NhanVienService(MongoDB.client);
-
+        const previousAvatar = req.file ? await service.findImageMetadata(req.params.id) : null;
         if (req.file) {
-            req.body.AnhDaiDien = `/uploads/avatars/${req.file.filename}`;
+            uploadedAvatar = await CloudinaryService.uploadImage(req.file, "library/avatars");
+            req.body.AnhDaiDien = uploadedAvatar.secureUrl;
+            req.body.AnhDaiDienPublicId = uploadedAvatar.publicId;
         }
         const result = await service.update(req.params.id, req.body);
         if (!result) {
+            if (uploadedAvatar) await deleteAvatarIfUnreferenced(uploadedAvatar.publicId);
             return next(new ApiError(404, "Không tìm thấy nhân viên để cập nhật."));
+        }
+        if (previousAvatar?.AnhDaiDienPublicId) {
+            await deleteAvatarIfUnreferenced(previousAvatar.AnhDaiDienPublicId);
         }
         return res.json({
             message: "Cập nhật thông tin nhân viên thành công.",
             data: result,
         });
     } catch (error) {
-        return next(new ApiError(400, error.message));
+        if (uploadedAvatar) await deleteAvatarIfUnreferenced(uploadedAvatar.publicId);
+        return next(new ApiError(error.statusCode || 400, error.message));
     }
 };
 

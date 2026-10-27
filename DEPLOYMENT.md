@@ -23,7 +23,7 @@ Hai cổng frontend độc lập gọi chung API. Frontend không kết nối tr
    CORS_ALLOWED_ORIGINS=http://localhost:3001,http://localhost:3002
    ```
 
-   Điền các secret local cần thiết như `JWT_SECRET` và Google Client ID. `backend/.env` đã nằm trong `.gitignore`.
+   Điền các secret local cần thiết như `JWT_SECRET`, Google Client ID và Cloudinary credentials. Sao chép các biến Cloudinary từ `backend/.env.example`, dùng API Secret đã xoay vòng. `backend/.env` đã nằm trong `.gitignore`.
 3. Tạo `frontend_user/.env.local` từ `.env.example`: để `VITE_API_URL=http://localhost:3000`, `VITE_MANAGE_APP_URL=http://localhost:3002`; điền `VITE_GOOGLE_CLIENT_ID` nếu cần đăng nhập Google.
 4. Tạo `frontend_manage/.env.local` từ `.env.example`: để `VITE_API_URL=http://localhost:3000` và `VITE_USER_APP_URL=http://localhost:3001`.
 5. Chạy backend trong `backend/` bằng `npm run dev`; chạy từng frontend bằng `npm run dev` trong thư mục tương ứng.
@@ -44,6 +44,10 @@ Backend bắt buộc nhận `MONGODB_URI`, xác thực scheme/hostname đúng At
    | `JWT_EXPIRES_IN` | `7d` hoặc chính sách phiên đã chọn |
    | `CORS_ALLOWED_ORIGINS` | Hai origin Vercel đầy đủ, phân cách bằng dấu phẩy, không có path hoặc dấu `/` cuối |
    | `GOOGLE_CLIENT_ID` | Google OAuth Client ID dùng cho đăng nhập độc giả |
+   | `CLOUDINARY_CLOUD_NAME` | `ovs0odtq` |
+   | `CLOUDINARY_API_KEY` | API Key trong Cloudinary Console |
+   | `CLOUDINARY_API_SECRET` | API Secret mới sau khi xoay vòng; chỉ lưu tại Render, không commit |
+   | `CLOUDINARY_UPLOAD_PRESET` | `manage_book_at_library` (upload preset Signed) |
 
    Render tự cấp `PORT`; không cần cố định cổng production. Server bind `0.0.0.0` và đọc `PORT`. Mọi môi trường chỉ nhận URI `mongodb+srv` thuộc cluster `quanlymuonsach.csiixui.mongodb.net` và luôn chọn database `quanlymuonsach`; thiếu URI hoặc sai cluster thì backend dừng do cấu hình không hợp lệ.
 3. Trong Atlas tạo database user riêng cho ứng dụng và đưa địa chỉ egress của Render vào Network Access. Chỉ mở `0.0.0.0/0` khi chấp nhận rủi ro và không có phương án giới hạn IP/network phù hợp; không dùng quyền database admin cho ứng dụng.
@@ -77,6 +81,7 @@ Trong Google Cloud Console, thêm domain cổng độc giả vào Authorized Jav
 
 - Mở `/api/health` trên Render và xác nhận service kết nối MongoDB Atlas qua log thành công; log không chứa URI.
 - Mở catalog trên hai domain Vercel; xác nhận request `/api/...` đi tới Render, ảnh bìa và avatar `/uploads/...` tải được.
+- Tải ảnh bìa, avatar độc giả và avatar nhân viên lên qua API; xác nhận MongoDB lưu URL HTTPS Cloudinary và ảnh được phân phối từ Cloudinary. Response không được lộ `*PublicId`, API Key hay API Secret. Ảnh `/uploads/...` cũ vẫn được backend phục vụ trong giai đoạn chuyển đổi.
 - Thử đăng nhập Google ở cổng độc giả, đăng nhập STAFF/ADMIN ở cổng quản lý và kiểm tra CORS trong DevTools.
 - Kiểm tra tải trực tiếp một route con sau khi refresh; Vercel rewrite trả SPA `index.html`.
 - Chỉ chạy seed hoặc migration có ghi dữ liệu khi đã xác nhận rõ biến `MONGODB_URI` đang trỏ đúng môi trường; không chạy test fixture lên Atlas production.
@@ -86,4 +91,5 @@ Trong Google Cloud Console, thêm domain cổng độc giả vào Authorized Jav
 - Vercel báo thiếu `VITE_API_URL`: thêm biến vào đúng project và đúng environment, sau đó tạo deployment mới.
 - Browser báo CORS: so sánh chính xác Origin trên request với `CORS_ALLOWED_ORIGINS` của Render (scheme, hostname, port; không có path).
 - Render không kết nối được Atlas: kiểm tra database user, URI/encoding mật khẩu, database name, trạng thái cluster và Atlas Network Access.
+- Upload ảnh báo chưa cấu hình: thêm đủ `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_UPLOAD_PRESET` vào Render và redeploy; không thêm chúng vào Vercel. Chỉ dùng API Secret mới sau khi thu hồi secret đã bị lộ.
 - API gọi nhầm database: backend luôn chọn `quanlymuonsach`; mọi môi trường chỉ chấp nhận URI Atlas của cluster đã cấu hình, không nhận URI local hoặc cluster khác.

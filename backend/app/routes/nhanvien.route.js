@@ -8,7 +8,7 @@ const { allowFields } = require("../middleware/security.middleware");
 
 const router = express.Router();
 
-const upload = createUploader("avatars")
+const upload = createUploader();
 
 router.route("/")
     .get(authenticate, authorizeAdmin, controller.findAll)

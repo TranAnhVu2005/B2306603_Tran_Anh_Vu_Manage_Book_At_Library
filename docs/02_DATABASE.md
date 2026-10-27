@@ -41,7 +41,8 @@ Lưu thông tin cá nhân, thông tin đăng nhập và tình trạng thẻ thư
 | `VaiTro` | String | Không | Không | Vai trò của hồ sơ độc giả; giá trị chuẩn là `USER`. |
 | `SoLanViPham` | Number | Không | Không | Bộ đếm vi phạm hiện tại; được đặt lại khi Admin gỡ khỏi danh sách đen. |
 | `TrangThaiThe` | String | Không | Không | Trạng thái `HoatDong`, `Khoa` hoặc `DanhSachDen`. |
-| `AnhDaiDien` | String | Không | Không | Đường dẫn ảnh đại diện, nếu có. |
+| `AnhDaiDien` | String | Không | Không | URL HTTPS Cloudinary của ảnh đại diện mới; giữ được URL ảnh Google và đường dẫn ảnh cũ khi còn sử dụng. |
+| `AnhDaiDienPublicId` | String | Không | Không | Định danh nội bộ Cloudinary để thay/xóa ảnh cũ; không trả qua API. |
 | `GoogleId` | String | Không; duy nhất nếu có | Không | Định danh tài khoản Google đã xác minh và liên kết với độc giả; không lưu ID Token. Có thể không tồn tại với tài khoản đăng ký bằng số điện thoại. |
 | `Email` | String | Không | Không | Email được Google xác minh, dùng liên kết tài khoản khi đăng nhập lần đầu; không phải thông tin đăng nhập mật khẩu. Có thể không tồn tại với tài khoản chỉ đăng ký bằng điện thoại. |
 | `PhienBanToken` | Number | Không | Không | Phiên bản JWT hiện tại; tăng khi xóa mềm để thu hồi các phiên đăng nhập cũ. |
@@ -64,7 +65,8 @@ Lưu tài khoản nhân viên thư viện và quản trị viên.
 | `ChucVu` | String | Không | Không | Chức vụ `STAFF` hoặc `ADMIN`. |
 | `SoDienThoai` | String | Không; duy nhất | Không | Số điện thoại đăng nhập của nhân viên. |
 | `DiaChi` | String | Không | Không | Địa chỉ liên hệ. |
-| `AnhDaiDien` | String | Không | Không | Đường dẫn ảnh đại diện, nếu có. |
+| `AnhDaiDien` | String | Không | Không | URL HTTPS Cloudinary của ảnh đại diện mới; giữ được URL ảnh cũ khi còn sử dụng. |
+| `AnhDaiDienPublicId` | String | Không | Không | Định danh nội bộ Cloudinary để thay/xóa ảnh cũ; không trả qua API. |
 | `TrangThaiThe` | String | Không | Không | Trạng thái tài khoản nhân viên: `HoatDong` hoặc `Khoa`. Đây không phải trạng thái thẻ độc giả. |
 | `PhienBanToken` | Number | Không | Không | Phiên bản phiên xác thực; được dùng để làm mất hiệu lực JWT cũ. |
 | `MaYeuCauDangKy` | String | Không | Tham chiếu logic `yeucaunhanvien._id` (dạng chuỗi), nếu có | Mã hồ sơ đăng ký đã sinh tài khoản; hỗ trợ liên kết và xử lý duyệt idempotent. |
@@ -102,7 +104,8 @@ Lưu thông tin đầu sách, dữ liệu xuất bản, thể loại và tồn k
 | `MaNXB` | String | Không | Tham chiếu `nhaxuatban.MaNXB` | Mã nhà xuất bản của sách. |
 | `MaTheLoai` | String | Không | Tham chiếu `theloai.MaTheLoai` | Mã thể loại chính của sách. |
 | `TacGia` | String | Không | Không | Tác giả hoặc cơ quan biên soạn. |
-| `HinhAnh` | String | Không | Không | Đường dẫn ảnh bìa. |
+| `HinhAnh` | String | Không | Không | URL HTTPS Cloudinary của ảnh bìa mới; vẫn có thể là đường dẫn ảnh cũ trong giai đoạn chuyển đổi. |
+| `HinhAnhPublicId` | String | Không | Không | Định danh nội bộ Cloudinary để thay/xóa ảnh bìa cũ; không trả qua API. |
 | `MoTa` | String | Không | Không | Tóm tắt nội dung sách. |
 | `NguonGoc` | String | Không | Không | Thông tin nguồn gốc, nếu có. |
 | `CreatedAt` | Date | Không | Không | Thời điểm tạo sách, nếu được ghi nhận. |

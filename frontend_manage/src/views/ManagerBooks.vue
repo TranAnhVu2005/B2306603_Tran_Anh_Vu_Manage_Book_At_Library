@@ -362,7 +362,9 @@ export default {
   },
   methods: {
     assetUrl(path) {
-      if (typeof path !== "string" || !path.startsWith("/uploads/")) return "";
+      if (typeof path !== "string") return "";
+      if (/^https:\/\//i.test(path)) return path;
+      if (!path.startsWith("/uploads/")) return "";
       return `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${path}`;
     },
     handleKeyDown(e) {
