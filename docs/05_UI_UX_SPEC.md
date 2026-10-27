@@ -197,6 +197,11 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 - Ô tìm kiếm rộng đặt phía trên; sidebar bộ lọc nằm bên trái trên desktop và thu gọn sau nút điều khiển trên màn hình dưới 768px.
 - Màn quản lý kho nhóm NXB/thể loại và năm xuất bản/đơn giá để giảm bề rộng bảng; cột hành động luôn nằm tại mép phải của wrapper cuộn. Form thêm/sửa sách yêu cầu chọn một thể loại chính; hiển thị tên từ mã tham chiếu, không nhập văn bản tự do.
 - Select và hàng lọc phải xuống dòng có kiểm soát ở màn nhỏ, không gây tràn ngang toàn trang.
+
+## 7. Chọn và tải ảnh đại diện
+- Hồ sơ độc giả và nhân viên chỉ nhận JPEG, PNG hoặc WebP, tối đa 5 MiB; `accept` của input là gợi ý cho hộp thoại chọn tệp, không thay thế kiểm tra nội dung.
+- Hai cổng kiểm tra chữ ký byte của ảnh, chuẩn hóa MIME theo nội dung thay vì tin `File.type`, và giải mã trước khi hiển thị preview. Tệp hỏng/sai định dạng/quá giới hạn phải bị từ chối với thông báo cụ thể; không được gửi lên API.
+- Preview dùng Object URL và phải được thu hồi khi thay ảnh, đóng form hoặc rời trang. API/backend tiếp tục xác minh độc lập trước khi chuyển ảnh lên Cloudinary; chỉ gửi multipart, không đưa Cloudinary secret ra frontend.
 # Hộp thư thông báo
 
 - Cả hai cổng hiển thị nút chuông nhỏ trong header khi có phiên đăng nhập; huy hiệu đỏ thể hiện số chưa đọc (giới hạn hiển thị `99+`). Khách chưa đăng nhập không thấy nút.

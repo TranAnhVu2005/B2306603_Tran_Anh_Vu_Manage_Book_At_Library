@@ -578,6 +578,7 @@ import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
+import { prepareImageUpload, revokeObjectUrl } from "../utils/image-upload.util";
 
 export default {
   name: "ProfileView",
@@ -603,6 +604,7 @@ export default {
       avatarPreview: null,
       avatarPreviewError: false,
       avatarLoadError: false,
+      avatarSelectionVersion: 0,
       previousBodyOverflow: "",
       profileForm: {
         HoLot: "",
@@ -706,6 +708,7 @@ export default {
   mounted() { this.initReveal(); },
   beforeUnmount() {
     if (this.revealObserver) this.revealObserver.disconnect();
+    this.releaseAvatarPreview();
     if (this.showEditProfileModal) {
       document.body.style.overflow = this.previousBodyOverflow;
       document.removeEventListener("keydown", this.handleProfileEditorKeydown);
@@ -760,34 +763,39 @@ export default {
     onEditorAvatarError() {
       if (this.avatarPreview) {
         this.selectedAvatarFile = null;
-        this.avatarPreview = null;
+        this.releaseAvatarPreview();
         this.avatarPreviewError = false;
         if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
         this.avatarPreviewError = true;
-        this.$refs.toast?.show("Không thể xem trước ảnh này. Hãy chọn ảnh JPEG, PNG hoặc WebP hợp lệ.", "error");
+        this.$refs.toast?.show("Trình duyệt không thể xem trước ảnh. Hãy chọn lại tệp JPEG, PNG hoặc WebP hợp lệ.", "error");
       } else {
         this.avatarLoadError = true;
       }
     },
-    onAvatarChange(event) {
+    releaseAvatarPreview() {
+      revokeObjectUrl(this.avatarPreview);
+      this.avatarPreview = null;
+    },
+    async onAvatarChange(event) {
       const file = event.target.files[0];
-      if (file) {
-        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
-          this.selectedAvatarFile = null;
-          this.avatarPreview = null;
-          this.avatarPreviewError = false;
-          event.target.value = "";
-          this.$refs.toast?.show("Ảnh phải ở định dạng JPEG, PNG hoặc WebP và không vượt quá 5 MB.", "error");
-          return;
-        }
-        this.selectedAvatarFile = file;
-        this.avatarPreview = URL.createObjectURL(file);
+      const version = ++this.avatarSelectionVersion;
+      if (!file) return;
+
+      try {
+        const normalizedFile = await prepareImageUpload(file);
+        if (version !== this.avatarSelectionVersion) return;
+        this.releaseAvatarPreview();
+        this.selectedAvatarFile = normalizedFile;
+        this.avatarPreview = URL.createObjectURL(normalizedFile);
         this.avatarPreviewError = false;
         this.avatarLoadError = false;
-      } else {
+      } catch (error) {
+        if (version !== this.avatarSelectionVersion) return;
+        this.releaseAvatarPreview();
         this.selectedAvatarFile = null;
-        this.avatarPreview = null;
         this.avatarPreviewError = false;
+        event.target.value = "";
+        this.$refs.toast?.show(error.message || "Không thể đọc tệp ảnh đã chọn.", "error");
       }
     },
     openProfileEditor() {
@@ -797,7 +805,7 @@ export default {
         return;
       }
       this.selectedAvatarFile = null;
-      this.avatarPreview = null;
+      this.releaseAvatarPreview();
       this.avatarPreviewError = false;
       if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
 
@@ -818,7 +826,11 @@ export default {
       this.showEditProfileModal = true;
     },
     closeProfileEditor() {
-      if (!this.savingProfile) this.showEditProfileModal = false;
+      if (!this.savingProfile) {
+        this.showEditProfileModal = false;
+        this.selectedAvatarFile = null;
+        this.releaseAvatarPreview();
+      }
     },
     openCancelBorrowModal(item) {
       if (!["ChoDuyet", "ChoNhan"].includes(item?.TrangThai)) return;
@@ -926,6 +938,8 @@ export default {
         this.avatarLoadError = false;
 
         this.showEditProfileModal = false;
+        this.selectedAvatarFile = null;
+        this.releaseAvatarPreview();
         this.$refs.toast?.show(result.message || "Cập nhật hồ sơ thành công.");
       } catch (err) {
         this.$refs.toast?.show(err.response?.data?.message || err.message || "Không thể cập nhật hồ sơ.", "error");

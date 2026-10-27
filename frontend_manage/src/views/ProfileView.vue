@@ -339,7 +339,7 @@
               <div class="vg-avatar shadow-sm mx-auto mb-2 overflow-hidden position-relative"
                 style="width: 84px; height: 84px; font-size: 1.8rem;">
                 <img v-if="avatarPreview || profileAvatarUrl" :src="avatarPreview || profileAvatarUrl"
-                  alt="Avatar Preview" class="profile-avatar-img" />
+                  alt="Ảnh đại diện xem trước" class="profile-avatar-img" @error="onEditorAvatarError" />
                 <span v-else>{{ userInitials }}</span>
               </div>
               <div>
@@ -350,7 +350,7 @@
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                   Tải ảnh đại diện mới
-                  <input type="file" ref="avatarInput" accept="image/*" class="d-none" @change="onAvatarChange" />
+                  <input type="file" ref="avatarInput" accept="image/jpeg,image/png,image/webp" class="d-none" @change="onAvatarChange" />
                 </label>
               </div>
               <div v-if="selectedAvatarFile" class="small text-success mt-1 fw-semibold">
@@ -435,6 +435,7 @@ import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
+import { prepareImageUpload, revokeObjectUrl } from "../utils/image-upload.util";
 
 export default {
   name: "ProfileView",
@@ -453,6 +454,7 @@ export default {
       selectedAvatarFile: null,
       avatarPreview: null,
       avatarLoadError: false,
+      avatarSelectionVersion: 0,
       previousBodyOverflow: "",
       profileForm: {
         HoLot: "",
@@ -534,6 +536,7 @@ export default {
   mounted() { this.initReveal(); },
   beforeUnmount() {
     if (this.revealObserver) this.revealObserver.disconnect();
+    this.releaseAvatarPreview();
     if (this.showEditProfileModal) {
       document.body.style.overflow = this.previousBodyOverflow;
       document.removeEventListener("keydown", this.handleProfileEditorKeydown);
@@ -577,15 +580,38 @@ export default {
     onAvatarError() {
       this.avatarLoadError = true;
     },
-    onAvatarChange(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.selectedAvatarFile = file;
-        this.avatarPreview = URL.createObjectURL(file);
-        this.avatarLoadError = false;
-      } else {
+    onEditorAvatarError() {
+      if (this.avatarPreview) {
         this.selectedAvatarFile = null;
-        this.avatarPreview = null;
+        this.releaseAvatarPreview();
+        if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
+        this.$refs.toast?.show("Trình duyệt không thể xem trước ảnh. Hãy chọn lại tệp JPEG, PNG hoặc WebP hợp lệ.", "error");
+      } else {
+        this.avatarLoadError = true;
+      }
+    },
+    releaseAvatarPreview() {
+      revokeObjectUrl(this.avatarPreview);
+      this.avatarPreview = null;
+    },
+    async onAvatarChange(event) {
+      const file = event.target.files[0];
+      const version = ++this.avatarSelectionVersion;
+      if (!file) return;
+
+      try {
+        const normalizedFile = await prepareImageUpload(file);
+        if (version !== this.avatarSelectionVersion) return;
+        this.releaseAvatarPreview();
+        this.selectedAvatarFile = normalizedFile;
+        this.avatarPreview = URL.createObjectURL(normalizedFile);
+        this.avatarLoadError = false;
+      } catch (error) {
+        if (version !== this.avatarSelectionVersion) return;
+        this.releaseAvatarPreview();
+        this.selectedAvatarFile = null;
+        event.target.value = "";
+        this.$refs.toast?.show(error.message || "Không thể đọc tệp ảnh đã chọn.", "error");
       }
     },
     openProfileEditor() {
@@ -595,7 +621,7 @@ export default {
         return;
       }
       this.selectedAvatarFile = null;
-      this.avatarPreview = null;
+      this.releaseAvatarPreview();
       if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
 
       this.profileForm = this.isReader
@@ -615,7 +641,11 @@ export default {
       this.showEditProfileModal = true;
     },
     closeProfileEditor() {
-      if (!this.savingProfile) this.showEditProfileModal = false;
+      if (!this.savingProfile) {
+        this.showEditProfileModal = false;
+        this.selectedAvatarFile = null;
+        this.releaseAvatarPreview();
+      }
     },
     handleProfileEditorKeydown(event) {
       if (event.key === "Escape") this.closeProfileEditor();
@@ -657,6 +687,8 @@ export default {
         this.avatarLoadError = false;
 
         this.showEditProfileModal = false;
+        this.selectedAvatarFile = null;
+        this.releaseAvatarPreview();
         this.$refs.toast?.show(result.message || "Cập nhật hồ sơ thành công.");
       } catch (err) {
         this.$refs.toast?.show(err.response?.data?.message || err.message || "Không thể cập nhật hồ sơ.", "error");
