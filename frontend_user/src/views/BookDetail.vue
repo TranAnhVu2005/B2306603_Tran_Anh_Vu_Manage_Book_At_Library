@@ -15,13 +15,10 @@
         <p class="state-text">Đang tải thông tin sách...</p>
       </div>
 
-      <!-- Not found -->
-      <div v-else-if="!book" class="vg-shell reveal" data-reveal style="max-width: 480px; margin: 4rem auto; text-align: center;">
-        <div class="vg-core empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-muted);" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-          <h2 class="empty-title">Không tìm thấy cuốn sách này</h2>
-          <p class="empty-sub">Mã sách có thể không tồn tại hoặc đã bị xóa khỏi hệ thống.</p>
-        </div>
+      <ResourceNotFound v-else-if="notFound" title="Không tìm thấy cuốn sách này"
+        message="Mã sách không tồn tại hoặc ấn phẩm đã được gỡ khỏi danh mục." />
+      <div v-else-if="loadError" class="vg-shell reveal" role="alert" style="max-width: 640px; margin: 4rem auto; text-align: center;">
+        <div class="vg-core empty-state"><h2 class="empty-title">Không thể tải thông tin sách</h2><p class="empty-sub">{{ loadError }}</p><button class="ath-btn-primary" type="button" @click="fetchData">Thử tải lại</button></div>
       </div>
 
       <!-- Book detail -->
@@ -146,6 +143,7 @@
 <script>
 import BorrowModal from "../components/BorrowModal.vue";
 import ToastNotification from "../components/ToastNotification.vue";
+import ResourceNotFound from "../components/ResourceNotFound.vue";
 import sachService from "../services/sach.service";
 import nxbService from "../services/nhaxuatban.service";
 import theloaiService from "../services/theloai.service";
@@ -154,13 +152,15 @@ import authService from "../services/auth.service";
 
 export default {
   name: "BookDetail",
-  components: { BorrowModal, ToastNotification },
+  components: { BorrowModal, ToastNotification, ResourceNotFound },
   data() {
     return {
       book: null,
       publishers: [],
       genres: [],
       loading: false,
+      notFound: false,
+      loadError: "",
       showBorrowModal: false,
       checkingBorrowStatus: false,
       defaultCover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
@@ -198,6 +198,8 @@ export default {
     async fetchData() {
       this.loading = true;
       this.book = null;
+      this.notFound = false;
+      this.loadError = "";
       try {
         const id = this.$route.params.id;
         this.book = await sachService.get(id);
@@ -206,7 +208,8 @@ export default {
         this.genres = genres.status === "fulfilled" ? genres.value : [];
         if (publishers.status === "rejected") this.$refs.toast.show(publishers.reason.response?.data?.message || "Không thể tải danh mục nhà xuất bản.", "error");
       } catch (error) {
-        this.$refs.toast.show(error.response?.data?.message || "Không tìm thấy thông tin cuốn sách.", "error");
+        if (error.response?.status === 404) this.notFound = true;
+        else this.loadError = error.response?.data?.message || "Vui lòng kiểm tra kết nối và thử lại.";
       } finally {
         this.loading = false;
         this.$nextTick(() => this.initReveal());

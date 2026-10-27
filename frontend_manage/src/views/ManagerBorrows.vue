@@ -153,11 +153,11 @@
                     <span class="row-sub font-mono-code">{{ item.MaSach }} · {{
                       bookPrice(item.MaSach).toLocaleString('vi-VN') }} ₫</span>
                   </td>
-                  <td class="font-mono-code row-date">{{ item.TrangThai === 'DangMuon' ? item.NgayMuon :
-                    (item.NgayDangKy || item.NgayDuyet || '—') }}</td>
+                  <td class="font-mono-code row-date">{{ formatDateOnly(item.TrangThai === 'DangMuon' ? item.NgayMuon :
+                    (item.NgayDangKy || item.NgayDuyet)) }}</td>
                   <td>
-                    <span class="font-mono-code row-date" :class="isLate(item) ? 'overdue-text' : ''">{{ item.TrangThai
-                      === 'ChoNhan' ? item.HanNhan : item.NgayHenTra || '—' }}</span>
+                    <span class="font-mono-code row-date" :class="isLate(item) ? 'overdue-text' : ''">{{ formatDateOnly(item.TrangThai
+                      === 'ChoNhan' ? item.HanNhan : item.NgayHenTra) }}</span>
                     <span v-if="item.TrangThai === 'ChoNhan'" class="row-sub d-block">Hạn đến nhận</span>
                     <span v-if="isLate(item)" class="ath-badge ath-badge-out"
                       style="display: block; margin-top: 3px; font-size: 0.6rem;">Quá hạn!</span>
@@ -338,6 +338,7 @@ import ToastNotification from "../components/ToastNotification.vue";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
 import docGiaService from "../services/docgia.service";
+import { dateKey, formatDateOnly, todayKey } from "../utils/date.util";
 
 export default {
   name: "ManagerBorrows",
@@ -365,8 +366,8 @@ export default {
     pendingList() { return this.borrows.filter(b => ["ChoDuyet", "ChoNhan"].includes(b.TrangThai)); },
     borrowingList() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
     overdueList() {
-      const today = new Date().toISOString().split("T")[0];
-      return this.borrows.filter(b => b.TrangThai === "DangMuon" && b.NgayHenTra && today > b.NgayHenTra);
+      const today = todayKey();
+      return this.borrows.filter(b => b.TrangThai === "DangMuon" && b.NgayHenTra && today > dateKey(b.NgayHenTra));
     },
     completedList() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy", "QuaHanNhan"].includes(b.TrangThai)); },
     currentDisplayList() {
@@ -447,8 +448,9 @@ export default {
     },
     isLate(item) {
       if (item.TrangThai !== "DangMuon" || !item.NgayHenTra) return false;
-      return new Date().toISOString().split("T")[0] > item.NgayHenTra;
+      return todayKey() > dateKey(item.NgayHenTra);
     },
+    formatDateOnly,
     async handleApprove(item) {
       try {
         const res = await theoDoiService.duyet(item._id);

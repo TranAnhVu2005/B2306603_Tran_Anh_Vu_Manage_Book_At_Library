@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const AuditLogService = require("./audit-log.service");
 const ThongBaoService = require("./thongbao.service");
+const { dateFromCalendarKey, calendarKey, localCalendarKey, addCalendarDays } = require("../utils/date.util");
 
 const publicFields = {
     _id: 1,
@@ -37,24 +38,18 @@ class TheoDoiMuonSachService {
     }
 
     async notifyReader(maDocGia, type, title, message, reference) {
-        const reader = await this.DocGia.findOne({ MaDocGia: maDocGia }, { projection: { _id: 1 } });
-        if (!reader) return;
         await this.ThongBao.createSafely({
-            recipientId: String(reader._id), recipientType: "docgia", type, title, message, reference,
+            recipientCode: maDocGia, recipientType: "docgia", type, title, message, reference,
         });
     }
 
     dateKey(date = new Date()) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+        return date instanceof Date ? localCalendarKey(date) : calendarKey(date);
     }
 
     dateAfterDays(date, days) {
-        const result = new Date(date);
-        result.setDate(result.getDate() + days);
-        return this.dateKey(result);
+        const key = date instanceof Date ? this.dateKey(date) : calendarKey(date);
+        return addCalendarDays(key, days);
     }
 
     async migrateLegacyPendingRecords() {
@@ -65,14 +60,14 @@ class TheoDoiMuonSachService {
         for await (const record of cursor) {
             await this.TheoDoi.updateOne(
                 { _id: record._id, TrangThai: "ChoDuyet" },
-                { $set: { NgayDangKy: record.NgayDangKy || record.NgayMuon }, $unset: { NgayMuon: "", NgayHenTra: "" } }
+                { $set: { NgayDangKy: dateFromCalendarKey(record.NgayDangKy || record.NgayMuon) }, $unset: { NgayMuon: "", NgayHenTra: "" } }
             );
         }
     }
 
     // Hết hạn nhận sau hết ngày HanNhan; cập nhật trạng thái có điều kiện để worker nhiều instance không hoàn kho trùng.
     async expirePickupReservations() {
-        const today = this.dateKey();
+        const today = dateFromCalendarKey(this.dateKey());
         const expired = await this.TheoDoi.find(
             { TrangThai: "ChoNhan", HanNhan: { $lt: today } },
             { projection: { _id: 1, MaSach: 1, MaDocGia: 1, HanNhan: 1, MSNV: 1 } }
@@ -99,7 +94,7 @@ class TheoDoiMuonSachService {
                 Details: { from: "ChoNhan", to: "QuaHanNhan", HanNhan: record.HanNhan },
             });
             await this.notifyReader(record.MaDocGia, "PHIEU_QUA_HAN_NHAN", "Yêu cầu nhận sách đã hết hạn",
-                `Bạn chưa nhận “${sach?.TenSach || record.MaSach}” trước ${record.HanNhan}. Yêu cầu đã hết hiệu lực và sách được trả về kho.`, record.MaSach);
+                `Bạn chưa nhận “${sach?.TenSach || record.MaSach}” trước ${calendarKey(record.HanNhan)}. Yêu cầu đã hết hiệu lực và sách được trả về kho.`, record.MaSach);
         }
         return expired.length;
     }
@@ -174,7 +169,7 @@ class TheoDoiMuonSachService {
         const record = {
             MaDocGia: docGia.MaDocGia,
             MaSach: sach.MaSach,
-            NgayDangKy: today,
+            NgayDangKy: dateFromCalendarKey(today),
             NgayDuyet: null,
             HanNhan: null,
             NgayMuon: null,
@@ -243,7 +238,7 @@ class TheoDoiMuonSachService {
                 $set: {
                     TrangThai: "ChoNhan",
                     MSNV: String(msnv).trim(),
-                    NgayDuyet: todayStr,
+                    NgayDuyet: dateFromCalendarKey(todayStr),
                     HanNhan: pickupDeadline,
                     UpdatedAt: new Date()
                 }
@@ -265,12 +260,12 @@ class TheoDoiMuonSachService {
                 MaSach: record.MaSach, TenSach: sach.TenSach, MaDocGia: record.MaDocGia,
                 TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
                 actorType: "staff", actorId: msnv,
-                Details: { from: "ChoDuyet", to: "ChoNhan", NgayDuyet: todayStr, HanNhan: pickupDeadline },
+                Details: { from: "ChoDuyet", to: "ChoNhan", NgayDuyet: dateFromCalendarKey(todayStr), HanNhan: pickupDeadline },
             });
             await this.ThongBao.createSafely({
-                recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_DUYET_MUON",
+                recipientCode: record.MaDocGia, recipientType: "docgia", type: "PHIEU_DUYET_MUON",
                 title: "Yêu cầu mượn sách đã được duyệt",
-                message: `Yêu cầu mượn “${sach.TenSach}” đã được duyệt. Vui lòng đến nhận sách trước ${updatedRecord.HanNhan}. Thời hạn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao.`,
+                message: `Yêu cầu mượn “${sach.TenSach}” đã được duyệt. Vui lòng đến nhận sách trước ${calendarKey(updatedRecord.HanNhan)}. Thời hạn 14 ngày chỉ bắt đầu khi thủ thư xác nhận bàn giao.`,
                 reference: record.MaSach,
             });
         }
@@ -290,7 +285,7 @@ class TheoDoiMuonSachService {
 
         const today = new Date();
         const todayStr = this.dateKey(today);
-        if (record.HanNhan && record.HanNhan < todayStr) {
+        if (record.HanNhan && calendarKey(record.HanNhan) < todayStr) {
             await this.expirePickupReservations();
             const err = new Error("Hạn nhận sách đã hết. Yêu cầu được đóng và sách đã trả về kho.");
             err.statusCode = 409;
@@ -298,8 +293,8 @@ class TheoDoiMuonSachService {
         }
         const dueDateStr = this.dateAfterDays(today, 14);
         const result = await this.TheoDoi.findOneAndUpdate(
-            { _id: record._id, TrangThai: "ChoNhan", HanNhan: { $gte: todayStr } },
-            { $set: { TrangThai: "DangMuon", MSNV: String(msnv).trim(), NgayMuon: todayStr, NgayHenTra: dueDateStr, UpdatedAt: new Date() } },
+            { _id: record._id, TrangThai: "ChoNhan", HanNhan: { $gte: dateFromCalendarKey(todayStr) } },
+            { $set: { TrangThai: "DangMuon", MSNV: String(msnv).trim(), NgayMuon: dateFromCalendarKey(todayStr), NgayHenTra: dueDateStr, UpdatedAt: new Date() } },
             { returnDocument: "after" }
         );
         if (!result) {
@@ -317,12 +312,12 @@ class TheoDoiMuonSachService {
             MaSach: record.MaSach, TenSach: sach?.TenSach, MaDocGia: record.MaDocGia,
             TenDocGia: [reader?.HoLot, reader?.Ten].filter(Boolean).join(" "),
             actorType: "staff", actorId: msnv,
-            Details: { from: "ChoNhan", to: "DangMuon", NgayMuon: todayStr, NgayHenTra: dueDateStr },
+            Details: { from: "ChoNhan", to: "DangMuon", NgayMuon: dateFromCalendarKey(todayStr), NgayHenTra: dueDateStr },
         });
         await this.ThongBao.createSafely({
-            recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_GIAO_SACH",
+            recipientCode: record.MaDocGia, recipientType: "docgia", type: "PHIEU_GIAO_SACH",
             title: "Đã bàn giao sách",
-            message: `Thư viện đã xác nhận bàn giao “${sach?.TenSach || record.MaSach}”. Ngày mượn: ${todayStr}; hạn trả: ${dueDateStr}.`,
+            message: `Thư viện đã xác nhận bàn giao “${sach?.TenSach || record.MaSach}”. Ngày mượn: ${todayStr}; hạn trả: ${calendarKey(dueDateStr)}.`,
             reference: record.MaSach,
         });
         return await this.findById(String(record._id));
@@ -350,24 +345,23 @@ class TheoDoiMuonSachService {
         }
 
         const today = this.dateKey();
-        if (record.NgayHenTra <= today) {
+        const oldDueKey = calendarKey(record.NgayHenTra);
+        if (oldDueKey <= today) {
             const err = new Error("Chỉ có thể gia hạn trước ngày đến hạn trả.");
             err.statusCode = 409;
             throw err;
         }
-        const [year, month, day] = record.NgayHenTra.split("-").map(Number);
-        const oldDueDate = new Date(year, month - 1, day);
-        const extendedDueDate = this.dateAfterDays(oldDueDate, 7);
+        const extendedDueDate = this.dateAfterDays(oldDueKey, 7);
         const result = await this.TheoDoi.findOneAndUpdate(
             {
                 _id: record._id,
                 MaDocGia: String(maDocGia),
                 TrangThai: "DangMuon",
-                NgayHenTra: { $eq: record.NgayHenTra, $gt: today },
+                NgayHenTra: { $eq: record.NgayHenTra, $gt: dateFromCalendarKey(today) },
                 $or: [{ SoLanGiaHan: { $exists: false } }, { SoLanGiaHan: 0 }],
             },
             {
-                $set: { NgayHenTra: extendedDueDate, SoLanGiaHan: 1, NgayGiaHan: today, UpdatedAt: new Date() },
+                $set: { NgayHenTra: extendedDueDate, SoLanGiaHan: 1, NgayGiaHan: dateFromCalendarKey(today), UpdatedAt: new Date() },
             },
             { returnDocument: "after" }
         );
@@ -389,9 +383,9 @@ class TheoDoiMuonSachService {
             Details: { HanTraCu: record.NgayHenTra, HanTraMoi: extendedDueDate, SoNgayGiaHan: 7 },
         });
         await this.ThongBao.createSafely({
-            recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_GIA_HAN",
+            recipientCode: record.MaDocGia, recipientType: "docgia", type: "PHIEU_GIA_HAN",
             title: "Gia hạn mượn sách thành công",
-            message: `Hạn trả “${sach?.TenSach || record.MaSach}” đã được gia hạn thêm 7 ngày, đến ${extendedDueDate}.`,
+            message: `Hạn trả “${sach?.TenSach || record.MaSach}” đã được gia hạn thêm 7 ngày, đến ${calendarKey(extendedDueDate)}.`,
             reference: record.MaSach,
         });
         return await this.findById(String(record._id));
@@ -441,7 +435,7 @@ class TheoDoiMuonSachService {
                 actorType: "staff", actorId: msnv, Details: { from: "ChoDuyet", to: "TuChoi", reason: String(lyDo).trim() },
             });
             await this.ThongBao.createSafely({
-                recipientId: String(reader?._id || ""), recipientType: "docgia", type: "PHIEU_TU_CHOI_MUON",
+                recipientCode: record.MaDocGia, recipientType: "docgia", type: "PHIEU_TU_CHOI_MUON",
                 title: "Yêu cầu mượn sách chưa được duyệt",
                 message: `Yêu cầu mượn “${sach?.TenSach || record.MaSach}” bị từ chối. Lý do: ${String(lyDo).trim()}`,
                 reference: record.MaSach,
@@ -506,10 +500,10 @@ class TheoDoiMuonSachService {
             throw new Error(`Chỉ có thể xác nhận trả sách cho phiếu đang ở trạng thái 'DangMuon'. Phiếu này hiện là '${record.TrangThai}'.`);
         }
 
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = this.dateKey();
 
         // record.NgayHenTra nếu bằng null thì trả về false liền
-        const isLate = record.NgayHenTra && todayStr > record.NgayHenTra;
+        const isLate = record.NgayHenTra && todayStr > calendarKey(record.NgayHenTra);
 
         // Cộng hoàn 1 cuốn về kho
         const sach = await this.Sach.findOne({ MaSach: record.MaSach }, { projection: { TenSach: 1 } });
@@ -521,7 +515,7 @@ class TheoDoiMuonSachService {
             {
                 $set: {
                     TrangThai: "DaTra",
-                    NgayTra: todayStr,
+                    NgayTra: dateFromCalendarKey(todayStr),
                     GhiChu: isLate ? "Đã trả (Quá hạn mượn quy định)" : "Đã hoàn trả đúng hạn",
                     UpdatedAt: new Date()
                 }
@@ -590,7 +584,7 @@ class TheoDoiMuonSachService {
             {
                 $set: {
                     TrangThai: "MatSach",
-                    NgayTra: new Date().toISOString().split("T")[0],
+                    NgayTra: dateFromCalendarKey(this.dateKey()),
                     GiaTriBoiThuong: giaTriBoiThuong,
                     GhiChu: `${String(ghiChu).trim()} (Tiền bồi thường: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫)`,
                     UpdatedAt: new Date()

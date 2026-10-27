@@ -4,6 +4,7 @@ const MongoDB = require("./app/utils/mongodb.util");
 const TheLoaiService = require("./app/services/theloai.service");
 const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
 const TheoDoiMuonSachService = require("./app/services/theodoimuonsach.service");
+const { migrateLegacyNotificationRecipients } = require("./app/utils/notification-migration.util");
 
 async function startServer() {
     try {
@@ -26,9 +27,20 @@ async function startServer() {
             auditLogs.createIndex({ MSNV: 1, ThoiGian: -1 }),
         ]);
         const notifications = MongoDB.client.db().collection("thongbao");
+        const notificationMigration = await migrateLegacyNotificationRecipients(MongoDB.client.db());
+        if (notificationMigration.migrated) {
+            console.log(`-> Chuyển ${notificationMigration.migrated} thông báo sang tham chiếu MaNguoiNhan.`);
+        }
+        if (notificationMigration.unresolved) {
+            console.warn(`-> Có ${notificationMigration.unresolved} thông báo cũ chưa thể đổi sang mã do thiếu hồ sơ người nhận; dữ liệu cũ được giữ nguyên.`);
+        }
+        const legacyIndexes = await notifications.listIndexes().toArray();
+        for (const index of legacyIndexes) {
+            if (Object.hasOwn(index.key || {}, "NguoiNhanId")) await notifications.dropIndex(index.name);
+        }
         await Promise.all([
-            notifications.createIndex({ LoaiNguoiNhan: 1, NguoiNhanId: 1, ThoiGian: -1 }),
-            notifications.createIndex({ LoaiNguoiNhan: 1, NguoiNhanId: 1, DaDoc: 1 }),
+            notifications.createIndex({ LoaiNguoiNhan: 1, MaNguoiNhan: 1, ThoiGian: -1 }),
+            notifications.createIndex({ LoaiNguoiNhan: 1, MaNguoiNhan: 1, DaDoc: 1 }),
         ]);
 
         const borrowService = new TheoDoiMuonSachService(MongoDB.client);

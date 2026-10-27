@@ -250,11 +250,11 @@
                         <span class="font-mono-code text-muted d-block" style="font-size: 0.7rem;">{{ item.MaSach
                         }}</span>
                       </td>
-                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet || '—') }}</td>
+                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ formatDateOnly(item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet)) }}</td>
                       <td class="text-nowrap">
                         <span class="font-mono-code" style="font-size: 0.82rem;"
                           :class="isOverdue(item) ? 'overdue-text' : ''">
-                          {{ item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra || '—' }}
+                          {{ formatDateOnly(item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra) }}
                         </span>
                         <span v-if="item.TrangThai === 'ChoNhan'" class="d-block small text-muted">Hạn đến nhận</span>
                         <span v-if="isOverdue(item)" class="ath-badge ath-badge-out d-inline-flex ms-1"
@@ -430,6 +430,7 @@
 <script>
 import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
+import { dateKey, formatDateOnly, todayKey } from "../utils/date.util";
 import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
@@ -665,8 +666,9 @@ export default {
     },
     isOverdue(item) {
       if (item.TrangThai !== "DangMuon" || !item.NgayHenTra) return false;
-      return new Date().toISOString().split("T")[0] > item.NgayHenTra;
+      return todayKey() > dateKey(item.NgayHenTra);
     },
+    formatDateOnly,
     bookName(maSach) {
       return this.books.find((book) => book.MaSach === maSach)?.TenSach || maSach;
     }

@@ -29,6 +29,7 @@
               Bạn muốn đăng ký làm nhân viên?
               <router-link class="fw-bold text-dark" to="/staff-register">Gửi hồ sơ đăng ký</router-link>
             </p>
+            <p class="small text-center mt-2 mb-0 text-muted">Đã đăng ký? <router-link class="fw-bold text-dark" to="/staff-application-status">Tra cứu trạng thái hồ sơ</router-link></p>
           </div>
         </div>
       </div>

@@ -268,11 +268,11 @@
                         <span class="font-mono-code text-muted d-block" style="font-size: 0.7rem;">{{ item.MaSach
                           }}</span>
                       </td>
-                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet || '—') }}</td>
+                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ formatDateOnly(item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet)) }}</td>
                       <td class="text-nowrap">
                         <span class="font-mono-code" style="font-size: 0.82rem;"
                           :class="isOverdue(item) ? 'overdue-text' : ''">
-                          {{ item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra || '—' }}
+                          {{ formatDateOnly(item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra) }}
                         </span>
                         <span v-if="item.TrangThai === 'ChoNhan'" class="d-block small text-muted">Hạn đến nhận</span>
                         <span v-if="item.TrangThai === 'DangMuon' && item.SoLanGiaHan > 0" class="d-block small text-muted">Đã gia hạn 1 lần</span>
@@ -432,7 +432,7 @@
               <p class="borrow-cancel-book">{{ renewTarget ? bookName(renewTarget.MaSach) : '' }}</p>
             </div>
             <p class="borrow-cancel-description">
-              Hạn trả hiện tại: <strong>{{ renewTarget?.NgayHenTra }}</strong>. Sau khi gia hạn, hạn trả mới là
+              Hạn trả hiện tại: <strong>{{ formatDateOnly(renewTarget?.NgayHenTra) }}</strong>. Sau khi gia hạn, hạn trả mới là
               <strong>{{ renewalDuePreview() }}</strong>.
             </p>
             <p class="borrow-cancel-note">
@@ -478,8 +478,9 @@
             <div class="profile-avatar-upload-section mb-4 text-center">
               <div class="vg-avatar shadow-sm mx-auto mb-2 overflow-hidden position-relative"
                 style="width: 84px; height: 84px; font-size: 1.8rem;">
-                <img v-if="avatarPreview || profileAvatarUrl" :src="avatarPreview || profileAvatarUrl"
-                  alt="Avatar Preview" class="profile-avatar-img" />
+                <img v-if="(avatarPreview && !avatarPreviewError) || (!avatarPreview && profileAvatarUrl)"
+                  :src="avatarPreview && !avatarPreviewError ? avatarPreview : profileAvatarUrl"
+                  alt="Ảnh đại diện xem trước" class="profile-avatar-img" @error="onEditorAvatarError" />
                 <span v-else>{{ userInitials }}</span>
               </div>
               <div>
@@ -490,7 +491,7 @@
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                   Tải ảnh đại diện mới
-                  <input type="file" ref="avatarInput" accept="image/*" class="d-none" @change="onAvatarChange" />
+                  <input type="file" ref="avatarInput" accept="image/jpeg,image/png,image/webp" class="d-none" @change="onAvatarChange" />
                 </label>
               </div>
               <div v-if="selectedAvatarFile" class="small text-success mt-1 fw-semibold">
@@ -524,8 +525,10 @@
                 </label>
                 <label class="profile-form-field profile-form-field-wide">
                   <span>Số điện thoại đăng nhập</span>
-                  <input v-model.trim="profileForm.DienThoai" class="ath-input" type="tel" autocomplete="tel" required
+                  <input v-model.trim="profileForm.DienThoai" class="ath-input" type="tel" autocomplete="tel"
+                    :required="Boolean(readerInfo?.DienThoai)"
                     maxlength="20" />
+                  <small v-if="!readerInfo?.DienThoai" class="profile-field-hint">Tài khoản Google chưa có số điện thoại. Bạn có thể bổ sung sau; trường này không bắt buộc để lưu hồ sơ.</small>
                 </label>
                 <label class="profile-form-field profile-form-field-wide">
                   <span>Địa chỉ</span>
@@ -570,6 +573,7 @@
 <script>
 import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
+import { addCalendarDays, dateKey, formatDateOnly, todayKey } from "../utils/date.util";
 import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
@@ -597,6 +601,7 @@ export default {
       savingProfile: false,
       selectedAvatarFile: null,
       avatarPreview: null,
+      avatarPreviewError: false,
       avatarLoadError: false,
       previousBodyOverflow: "",
       profileForm: {
@@ -656,7 +661,9 @@ export default {
     },
     profileEditorNote() {
       return this.isReader
-        ? "Nếu đổi số điện thoại, số mới sẽ được dùng để đăng nhập. Vai trò và trạng thái thẻ không thể chỉnh sửa tại đây."
+        ? (this.readerInfo?.DienThoai
+          ? "Nếu đổi số điện thoại, số mới sẽ được dùng để đăng nhập. Vai trò và trạng thái thẻ không thể chỉnh sửa tại đây."
+          : "Bạn có thể lưu hồ sơ và ảnh đại diện khi chưa có số điện thoại. Bổ sung số điện thoại nếu muốn đăng nhập bằng số điện thoại/mật khẩu.")
         : "Mã nhân viên và chức vụ không thể chỉnh sửa tại đây.";
     }
   },
@@ -750,15 +757,37 @@ export default {
     onAvatarError() {
       this.avatarLoadError = true;
     },
+    onEditorAvatarError() {
+      if (this.avatarPreview) {
+        this.selectedAvatarFile = null;
+        this.avatarPreview = null;
+        this.avatarPreviewError = false;
+        if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
+        this.avatarPreviewError = true;
+        this.$refs.toast?.show("Không thể xem trước ảnh này. Hãy chọn ảnh JPEG, PNG hoặc WebP hợp lệ.", "error");
+      } else {
+        this.avatarLoadError = true;
+      }
+    },
     onAvatarChange(event) {
       const file = event.target.files[0];
       if (file) {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+          this.selectedAvatarFile = null;
+          this.avatarPreview = null;
+          this.avatarPreviewError = false;
+          event.target.value = "";
+          this.$refs.toast?.show("Ảnh phải ở định dạng JPEG, PNG hoặc WebP và không vượt quá 5 MB.", "error");
+          return;
+        }
         this.selectedAvatarFile = file;
         this.avatarPreview = URL.createObjectURL(file);
+        this.avatarPreviewError = false;
         this.avatarLoadError = false;
       } else {
         this.selectedAvatarFile = null;
         this.avatarPreview = null;
+        this.avatarPreviewError = false;
       }
     },
     openProfileEditor() {
@@ -769,6 +798,7 @@ export default {
       }
       this.selectedAvatarFile = null;
       this.avatarPreview = null;
+      this.avatarPreviewError = false;
       if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
 
       this.profileForm = this.isReader
@@ -822,9 +852,7 @@ export default {
     },
     canRenew(item) {
       if (!this.isReader || item?.TrangThai !== "DangMuon" || Number(item.SoLanGiaHan || 0) >= 1 || !item.NgayHenTra) return false;
-      const now = new Date();
-      const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
-      return item.NgayHenTra > today;
+      return dateKey(item.NgayHenTra) > todayKey();
     },
     openRenewBorrowModal(item) {
       if (!this.canRenew(item)) return;
@@ -840,11 +868,7 @@ export default {
       if (event.key === "Escape") this.closeRenewBorrowModal();
     },
     renewalDuePreview() {
-      if (!this.renewTarget?.NgayHenTra) return "";
-      const [year, month, day] = this.renewTarget.NgayHenTra.split("-").map(Number);
-      const date = new Date(year, month - 1, day);
-      date.setDate(date.getDate() + 7);
-      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+      return addCalendarDays(this.renewTarget?.NgayHenTra, 7);
     },
     async confirmRenewBorrow() {
       if (!this.renewTarget || this.renewingBorrow) return;
@@ -877,7 +901,7 @@ export default {
           if (this.profileForm.NgaySinh) formData.append("NgaySinh", this.profileForm.NgaySinh);
           formData.append("Phai", this.profileForm.Phai);
           if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
-          formData.append("DienThoai", this.profileForm.DienThoai);
+          if (this.profileForm.DienThoai) formData.append("DienThoai", this.profileForm.DienThoai);
         } else {
           formData.append("HoTenNV", this.profileForm.HoTenNV);
           if (this.profileForm.SoDienThoai) formData.append("SoDienThoai", this.profileForm.SoDienThoai);
@@ -911,8 +935,9 @@ export default {
     },
     isOverdue(item) {
       if (item.TrangThai !== "DangMuon" || !item.NgayHenTra) return false;
-      return new Date().toISOString().split("T")[0] > item.NgayHenTra;
+      return todayKey() > dateKey(item.NgayHenTra);
     },
+    formatDateOnly,
     bookName(maSach) {
       return this.books.find((book) => book.MaSach === maSach)?.TenSach || maSach;
     },
@@ -1591,6 +1616,14 @@ export default {
 .profile-form-field .ath-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(15, 44, 34, 0.12);
+}
+
+.profile-field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 
 .profile-editor-note {

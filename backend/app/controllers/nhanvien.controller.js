@@ -12,7 +12,7 @@ exports.create = async (req, res, next) => {
 
         const result = await service.create(req.body);
         await new ThongBaoService(MongoDB.client).createSafely({
-            recipientId: String(result._id),
+            recipientCode: result.MSNV,
             recipientType: "nhanvien",
             type: "TAO_TAI_KHOAN_NHAN_VIEN",
             title: "Tài khoản nhân viên đã được tạo",
@@ -147,7 +147,7 @@ async function updateStaffAccountStatus(req, res, next, status) {
             Details: { reason, from: locked ? "HoatDong" : "Khoa", to: status },
         });
         await new ThongBaoService(MongoDB.client).createSafely({
-            recipientId: String(result._id),
+            recipientCode: result.MSNV,
             recipientType: "nhanvien",
             type: locked ? "TAI_KHOAN_NHAN_VIEN_BI_KHOA" : "TAI_KHOAN_NHAN_VIEN_DUOC_MO_KHOA",
             title: locked ? "Tài khoản nhân viên đã bị khóa" : "Tài khoản nhân viên đã được mở khóa",

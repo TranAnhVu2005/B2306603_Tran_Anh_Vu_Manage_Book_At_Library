@@ -1,5 +1,6 @@
 const { ObjectId } = require("mongodb");
 const PasswordUtil = require("../utils/password.util");
+const { dateFromCalendarKey } = require("../utils/date.util");
 
 //Các trường được phép lấy ra, không thể nào đưa mật khẩu qua api được
 const publicFields = {
@@ -85,7 +86,9 @@ class DocGiaService {
         const data = {};
         if (payload.HoLot !== undefined) data.HoLot = String(payload.HoLot).trim();
         if (payload.Ten !== undefined) data.Ten = String(payload.Ten).trim();
-        if (payload.NgaySinh !== undefined) data.NgaySinh = String(payload.NgaySinh).trim();
+        if (payload.NgaySinh !== undefined) data.NgaySinh = payload.NgaySinh === "" || payload.NgaySinh === null
+            ? null
+            : dateFromCalendarKey(payload.NgaySinh);
         if (payload.Phai !== undefined) data.Phai = this.normalizePhai(payload.Phai);
         if (payload.DiaChi !== undefined) data.DiaChi = String(payload.DiaChi).trim();
         if (payload.DienThoai !== undefined) data.DienThoai = String(payload.DienThoai).trim();
@@ -310,7 +313,7 @@ class DocGiaService {
         }
 
         filter.deleted = { $ne: true };
-        const current = await this.DocGia.findOne(filter, { projection: { _id: 1, DienThoai: 1 } });
+        const current = await this.DocGia.findOne(filter, { projection: { _id: 1, DienThoai: 1, GoogleId: 1 } });
         if (!current) return null;
 
         if (data.HoLot !== undefined && !data.HoLot) {
@@ -318,6 +321,13 @@ class DocGiaService {
         }
         if (data.Ten !== undefined && !data.Ten) {
             throw new Error("Tên không được để trống.");
+        }
+        if (data.DienThoai !== undefined) {
+            const phoneRegex = /^(0[35789])([0-9]{8})$/;
+            if (!data.DienThoai && !current.DienThoai && current.GoogleId) {
+                // Google-only reader may save other profile fields without supplying a phone.
+                delete data.DienThoai;
+            }
         }
         if (data.DienThoai !== undefined) {
             const phoneRegex = /^(0[35789])([0-9]{8})$/;
@@ -369,7 +379,10 @@ class DocGiaService {
 
         const result = await this.DocGia.findOneAndUpdate(
             { _id: current._id, TrangThaiThe: "HoatDong", deleted: { $ne: true } },
-            { $set: { TrangThaiThe: "Khoa", UpdatedAt: new Date() } },
+            {
+                $set: { TrangThaiThe: "Khoa", UpdatedAt: new Date() },
+                $inc: { PhienBanToken: 1 },
+            },
             { returnDocument: "after" }
         );
         return result ? this.findById(id) : null;

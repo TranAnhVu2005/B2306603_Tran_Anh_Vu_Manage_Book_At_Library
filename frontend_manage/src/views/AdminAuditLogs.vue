@@ -277,6 +277,7 @@ export default {
         return value ? "Có" : "Không";
       }
       if (value === null || value === undefined || value === "") return "Chưa có";
+      if (/^(Ngay|Han)/.test(key) && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(String(value))) return String(value).slice(0, 10);
       if (typeof value === "string") return statusLabels[value] || value;
       if (Array.isArray(value)) return value.map(item => detailLabels[item] || this.humanizeKey(item)).join(", ");
       if (typeof value === "object") return "";

@@ -88,6 +88,9 @@ class AuthController {
             // 2. Kiểm tra tài khoản Độc giả
             const reader = await docGiaService.login(phone, password);
             if (reader) {
+                if (reader.TrangThaiThe === "Khoa") {
+                    return next(new ApiError(403, "Tài khoản độc giả của bạn đang bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."));
+                }
                 const userData = {
                     _id: String(reader._id),
                     MaDocGia: reader.MaDocGia,
@@ -132,6 +135,9 @@ class AuthController {
             const googleProfile = await GoogleAuthService.verifyIdToken(req.body.idToken);
             const docGiaService = new DocGiaService(MongoDB.client);
             const reader = await docGiaService.findOrCreateGoogleReader(googleProfile);
+            if (reader.TrangThaiThe === "Khoa") {
+                return next(new ApiError(403, "Tài khoản độc giả của bạn đang bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."));
+            }
             const data = {
                 _id: String(reader._id),
                 MaDocGia: reader.MaDocGia,

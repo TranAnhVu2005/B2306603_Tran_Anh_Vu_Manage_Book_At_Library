@@ -29,6 +29,12 @@ stateDiagram-v2
 
 ## 2. Ràng Buộc Điều Kiện Mượn Sách
 
+### Chuẩn hóa ngày và thời gian
+
+- Trường ngày trong MongoDB dùng BSON `Date`. Ngày nghiệp vụ không mang giờ được lưu tại 00:00 UTC; trường thời điểm phát sinh (ví dụ thời gian gửi hồ sơ, audit, thông báo) lưu instant đầy đủ.
+- Form gửi ngày theo `YYYY-MM-DD`; backend kiểm tra ngày hợp lệ rồi chuẩn hóa thành BSON Date. JSON response serialize Date thành ISO 8601 UTC; frontend lấy phần ngày lịch để hiển thị và so sánh theo múi giờ nghiệp vụ của thư viện `Asia/Ho_Chi_Minh`.
+- Trường ngày chưa phát sinh dùng `null`, không lưu chuỗi rỗng hoặc chuỗi ngày.
+
 1. **Trạng thái Thẻ Độc giả**:
    - `HoatDong`: Thẻ có thể đăng ký mượn nếu đáp ứng các điều kiện khác.
    - `Khoa`: Khóa khẩn cấp, ví dụ khi độc giả báo mất thẻ; hệ thống từ chối mượn cho đến khi Admin mở khóa.
@@ -85,6 +91,7 @@ stateDiagram-v2
 - Frontend gửi Google ID Token tới `POST /api/auth/google`; backend xác minh token với Client ID cấu hình, email phải được Google xác minh. Không tin email/tên/Google ID do client tự gửi riêng.
 - Chỉ tìm/liên kết/tạo hồ sơ trong `docgia` và chỉ cấp JWT `USER`; endpoint không xác thực hay cấp phiên nhân viên. Không tạo số điện thoại giả cho hồ sơ Google-only.
 - Khi email Google khớp duy nhất với một hồ sơ độc giả chưa liên kết, gắn `GoogleId`; nếu email/Google ID xung đột hoặc hồ sơ đã xóa mềm thì từ chối, không tạo hồ sơ trùng. Hồ sơ Google-only có thể bổ sung số điện thoại sau trong trang cá nhân.
+- Tài khoản có trạng thái `Khoa` không được tạo phiên mới bằng bất kỳ phương thức nào: đăng nhập số điện thoại/mật khẩu hoặc Google đều bị từ chối sau khi xác thực danh tính. Với đăng nhập mật khẩu, chỉ thông tin đúng mới nhận thông báo tài khoản bị khóa; thông tin sai vẫn trả lỗi chung để tránh tiết lộ trạng thái. `DanhSachDen` là chế tài mượn sách riêng, không phải trạng thái khóa đăng nhập.
 
 Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
 1. **Độc giả (`USER`)**:
@@ -103,13 +110,14 @@ Hệ thống thiết lập 3 vai trò người dùng phân cấp rõ ràng:
    - Tài khoản quản trị vẫn tách khỏi tài khoản độc giả; thao tác hồ sơ/mượn cá nhân cần đăng nhập phiên độc giả riêng nếu có.
    - Quản lý danh sách toàn bộ tài khoản người dùng và nhân viên.
    - Xét duyệt/từ chối hồ sơ ứng tuyển nhân viên. Chỉ khi được duyệt mới sinh hồ sơ nhân viên `STAFF`; hồ sơ độc giả không được chuyển đổi.
+       `yeucaunhanvien.NguoiDuyet` lưu `MSNV` của Admin xử lý; `yeucaunhanvien.MSNV` lưu mã nhân viên mới sau khi duyệt. Đây là hai tham chiếu logic khác nhau cùng trỏ đến `nhanvien.MSNV`; backend xác minh người duyệt từ tài khoản ADMIN trong JWT trước khi ghi.
    - Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`) và mở khóa (`Khoa` → `HoatDong`); không thay đổi `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, khi mở khóa thẻ chuyển thành `DanhSachDen`.
    - Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`); đặt `SoLanViPham = 0` để bắt đầu chu kỳ theo dõi mới theo quyết định có chủ đích của Admin. Nhật ký kiểm toán vẫn lưu các sự kiện vi phạm và quyết định xét gỡ trước đó.
    - Sau khi gỡ, JWT độc giả hiện tại vẫn hợp lệ; frontend đồng bộ hồ sơ qua `/api/auth/me` khi nhận thông báo thay đổi trạng thái và kiểm tra trạng thái mới nhất ngay trước khi mở luồng mượn. API mượn luôn đối chiếu MongoDB, không dùng trạng thái cache trong JWT/localStorage làm quyền quyết định.
    - Xóa mềm và khôi phục tài khoản độc giả/STAFF; không xóa cứng hồ sơ nghiệp vụ. Tài khoản ADMIN không thể bị xóa qua API.
    - Được khóa/mở khóa tài khoản thủ thư bằng `nhanvien.TrangThaiThe`; không khóa tài khoản Admin. Backend từ chối yêu cầu tự khóa, kể cả khi Admin gọi API trực tiếp.
-   - Khi khóa, tăng `PhienBanToken`; đăng nhập mới bị từ chối và middleware chặn JWT đã cấp trước đó. Mở khóa chỉ cho phép phiên đăng nhập mới, không kích hoạt token cũ trở lại. Ghi lý do kiểm toán và thông báo thủ thư.
-   - Nếu thủ thư nhập đúng số điện thoại và mật khẩu trong lúc tài khoản đang khóa, trả thông báo “Tài khoản thủ thư của bạn đang bị khóa...” để hướng dẫn liên hệ Admin; nếu thông tin xác thực sai, tiếp tục trả lỗi chung 401. Không cấp token khi tài khoản khóa.
+   - Khi khóa tài khoản STAFF hoặc thẻ độc giả, tăng `PhienBanToken` để thu hồi JWT đang hoạt động; đăng nhập mới cũng bị từ chối. Mở khóa chỉ cho phép tạo phiên đăng nhập mới, không kích hoạt token cũ trở lại. Ghi lý do kiểm toán và thông báo bên bị khóa.
+   - Nếu STAFF/độc giả nhập đúng thông tin xác thực khi bị khóa, trả HTTP 403 cùng thông báo trạng thái để hướng dẫn liên hệ Admin; thông tin sai vẫn trả lỗi chung HTTP 401. Độc giả đang `Khoa` cũng không được đăng nhập Google. `DanhSachDen` vẫn có thể đăng nhập để xem thông tin/thông báo nhưng không được mượn sách.
 
 ### Ma trận quyền theo chức năng (thực thi bắt buộc tại Backend)
 

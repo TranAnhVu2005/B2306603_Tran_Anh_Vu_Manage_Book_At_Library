@@ -4,7 +4,7 @@
 
 Hệ thống dùng MongoDB Native Driver với cơ sở dữ liệu `quanlymuonsach`. Theo code hiện tại, có **10 collection**: **6 collection nghiệp vụ** (`docgia`, `nhanvien`, `nhaxuatban`, `sach`, `theloai`, `theodoimuonsach`) và **4 collection hỗ trợ** (`yeucaunhanvien`, `nhatkykiemtoan`, `thongbao`, `jwt_revocations`).
 
-Trong các bảng mô tả dưới đây, `_id` là khóa chính nội bộ MongoDB. Các mã nghiệp vụ duy nhất như `MaDocGia`, `MaSach`, `MaNXB`, `MaTheLoai`, `MSNV` là khóa định danh thay thế/khóa duy nhất, không phải khóa chính MongoDB. Cột Khóa ngoại ghi các tham chiếu logic do backend quản lý; MongoDB không tự cưỡng chế foreign key như hệ quản trị quan hệ. Trường thời gian nghiệp vụ như `NgayMuon` hiện được lưu dạng chuỗi ngày `YYYY-MM-DD`; trường thời điểm tạo/cập nhật thường dùng BSON Date.
+Trong các bảng mô tả dưới đây, `_id` là khóa chính nội bộ MongoDB. Các mã nghiệp vụ duy nhất như `MaDocGia`, `MaSach`, `MaNXB`, `MaTheLoai`, `MSNV` là khóa định danh thay thế/khóa duy nhất, không phải khóa chính MongoDB. Cột tham chiếu ghi các liên kết logic do backend quản lý; MongoDB không tự cưỡng chế foreign key như hệ quản trị quan hệ. Tất cả thuộc tính ngày/thời gian trong MongoDB được lưu bằng BSON `Date`; các mốc ngày nghiệp vụ (ngày sinh, ngày đăng ký, ngày mượn, hạn nhận/trả, ngày trả) được chuẩn hóa về 00:00:00 UTC để giữ nguyên ngày lịch. Khi trả JSON, BSON `Date` được serialize thành chuỗi ISO 8601 UTC, ví dụ `2026-10-27T00:00:00.000Z`; giá trị `null` biểu thị mốc chưa phát sinh/không có dữ liệu.
 
 ## 2.2. Danh sách collection
 
@@ -33,7 +33,7 @@ Lưu thông tin cá nhân, thông tin đăng nhập và tình trạng thẻ thư
 | `MaDocGia` | String | Không; duy nhất | Không | Mã nghiệp vụ độc giả, ví dụ `DG-000001`; được phiếu mượn dùng để tham chiếu. |
 | `HoLot` | String | Không | Không | Họ và tên đệm của độc giả. |
 | `Ten` | String | Không | Không | Tên độc giả. |
-| `NgaySinh` | String | Không | Không | Ngày sinh theo định dạng ngày ứng dụng sử dụng, thông thường `YYYY-MM-DD`. |
+| `NgaySinh` | Date hoặc null | Không | Không | Ngày sinh; lưu BSON Date tại 00:00 UTC, có thể null nếu chưa cung cấp. |
 | `Phai` | Number | Không | Không | Giới tính: `1` Nam, `0` Nữ, `2` Khác. |
 | `DiaChi` | String | Không | Không | Địa chỉ độc giả. |
 | `DienThoai` | String | Không; duy nhất nếu có | Không | Số điện thoại đăng nhập/liên hệ; bắt buộc với tài khoản đăng ký bằng điện thoại, có thể chưa có với tài khoản Google-only. Không dùng `MaDocGia` làm thông tin đăng nhập. |
@@ -125,22 +125,21 @@ Lưu danh mục thể loại dùng chung để phân loại và lọc sách.
 
 ### 2.3.6. Theo dõi mượn sách (`theodoimuonsach`)
 
-Lưu phiếu mượn và các mốc trong vòng đời xử lý phiếu. Các trường ngày nghiệp vụ hiện được lưu dưới dạng chuỗi ngày `YYYY-MM-DD`.
+Lưu phiếu mượn và các mốc trong vòng đời xử lý phiếu. Các trường ngày nghiệp vụ được lưu bằng BSON Date tại 00:00 UTC; mốc chưa phát sinh là `null`.
 
 | Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
 |---|---|---|---|---|
 | `_id` | ObjectId | Có | Không | Định danh nội bộ của phiếu. |
 | `MaDocGia` | String | Không | Tham chiếu `docgia.MaDocGia` | Độc giả sở hữu phiếu mượn. |
 | `MaSach` | String | Không | Tham chiếu `sach.MaSach` | Đầu sách trong phiếu. |
-| `NgayDangKy` | String (`YYYY-MM-DD`) | Không | Không | Ngày độc giả gửi yêu cầu mượn. |
-| `NgayDuyet` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày nhân viên duyệt và giữ sách. |
-| `HanNhan` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày cuối độc giả được nhận sách sau khi duyệt. |
-| `NgayMuon` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày bàn giao sách thực tế tại quầy. |
+| `NgayDangKy` | Date | Không | Không | Ngày độc giả gửi yêu cầu mượn; BSON Date tại 00:00 UTC. |
+| `NgayDuyet` | Date hoặc null | Không | Không | Ngày nhân viên duyệt và giữ sách; null trước khi duyệt. |
+| `HanNhan` | Date hoặc null | Không | Không | Ngày cuối độc giả được nhận sách sau khi duyệt; null trước khi duyệt. |
 | `MSNV` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Nhân viên xử lý/duyệt/bàn giao phiếu, nếu có. |
-| `NgayHenTra` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Hạn trả tính từ ngày bàn giao; có thể được gia hạn. |
+| `NgayHenTra` | Date hoặc null | Không | Không | Hạn trả tính từ ngày bàn giao; có thể được gia hạn; null trước khi bàn giao. |
 | `SoLanGiaHan` | Number | Không | Không | Số lần gia hạn; giá trị khởi tạo `0`, tối đa `1` theo nghiệp vụ hiện tại. |
-| `NgayGiaHan` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày gia hạn, nếu phiếu đã được gia hạn. |
-| `NgayTra` | String (`YYYY-MM-DD`) hoặc null | Không | Không | Ngày trả thực tế hoặc ngày ghi nhận mất sách. |
+| `NgayGiaHan` | Date hoặc null | Không | Không | Ngày gia hạn, nếu phiếu đã được gia hạn. |
+| `NgayTra` | Date hoặc null | Không | Không | Ngày trả thực tế hoặc ngày ghi nhận mất sách. |
 | `TrangThai` | String | Không | Không | `ChoDuyet`, `ChoNhan`, `DangMuon`, `DaTra`, `MatSach`, `TuChoi`, `DaHuy` hoặc `QuaHanNhan`. |
 | `GiaTriBoiThuong` | Number | Không | Không | Tiền bồi thường ghi nhận khi mất sách; mặc định `0`. |
 | `GhiChu` | String | Không | Không | Ghi chú tình trạng sách hoặc lý do xử lý/từ chối. |
@@ -163,8 +162,8 @@ Lưu hồ sơ ứng tuyển trước khi tài khoản được tạo trong `nhan
 | `TrangThai` | String | Không | Không | `ChoDuyet`, `DangDuyet`, `DaDuyet` hoặc `TuChoi`. |
 | `ThoiGianGui` | Date | Không | Không | Thời điểm gửi hồ sơ. |
 | `ThoiGianXuLy` | Date hoặc null | Không | Không | Thời điểm xử lý hồ sơ. |
-| `NguoiDuyet` | String hoặc null | Không | Tham chiếu logic đến mã nhân viên xử lý | Mã Admin/người xử lý hồ sơ, nếu có. |
-| `MSNV` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Mã tài khoản nhân viên sinh ra khi hồ sơ được duyệt. |
+| `NguoiDuyet` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Mã số Admin đã nhận xử lý/duyệt/từ chối hồ sơ; đây là mã của người duyệt. |
+| `MSNV` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Mã số nhân viên mới được cấp cho ứng viên sau khi hồ sơ được duyệt; khác ý nghĩa với `NguoiDuyet`. |
 | `LyDoTuChoi` | String hoặc null | Không | Không | Lý do từ chối hồ sơ. |
 
 ### 2.4.2. Nhật ký kiểm toán (`nhatkykiemtoan`)
@@ -196,8 +195,8 @@ Lưu thông báo nghiệp vụ theo từng độc giả hoặc nhân viên nhậ
 | Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
 |---|---|---|---|---|
 | `_id` | ObjectId | Có | Không | Định danh nội bộ thông báo. |
-| `NguoiNhanId` | ObjectId | Không | Tham chiếu `_id` của `docgia` hoặc `nhanvien` | Định danh document người nhận. |
-| `LoaiNguoiNhan` | String | Không | Phân biệt collection được tham chiếu | `docgia` hoặc `nhanvien`. |
+| `MaNguoiNhan` | String | Không | Tham chiếu logic đến `docgia.MaDocGia` hoặc `nhanvien.MSNV` | Mã nghiệp vụ của người nhận; cùng với `LoaiNguoiNhan` xác định đúng collection. |
+| `LoaiNguoiNhan` | String | Không | Không | Phân biệt mã người nhận thuộc collection `docgia` hay `nhanvien`. |
 | `LoaiThongBao` | String | Không | Không | Mã loại thông báo. |
 | `TieuDe` | String | Không | Không | Tiêu đề thông báo. |
 | `NoiDung` | String | Không | Không | Nội dung thông báo. |
@@ -225,7 +224,8 @@ Lưu dấu vết token bị thu hồi, không lưu JWT gốc.
 | `sach` | `MaNXB` | `nhaxuatban` | `MaNXB` | Nhà xuất bản của sách. |
 | `sach` | `MaTheLoai` | `theloai` | `MaTheLoai` | Thể loại chính của sách. |
 | `nhanvien` | `MaYeuCauDangKy` | `yeucaunhanvien` | `_id` (chuỗi) | Hồ sơ đăng ký đã sinh tài khoản nhân viên, nếu có. |
+| `yeucaunhanvien` | `NguoiDuyet` | `nhanvien` | `MSNV` | Mã Admin xử lý/duyệt/từ chối hồ sơ; được lưu riêng với mã nhân viên được tạo. |
 | `yeucaunhanvien` | `MSNV` | `nhanvien` | `MSNV` | Tài khoản nhân viên được tạo khi hồ sơ được duyệt. |
-| `thongbao` | `NguoiNhanId` + `LoaiNguoiNhan` | `docgia` hoặc `nhanvien` | `_id` | Xác định hồ sơ nhận thông báo. |
+| `thongbao` | `MaNguoiNhan` + `LoaiNguoiNhan` | `docgia` hoặc `nhanvien` | `MaDocGia` hoặc `MSNV` | Xác định hồ sơ nhận thông báo bằng mã nghiệp vụ; loại người nhận phân biệt hai không gian mã. |
 
 Các quan hệ trên là tham chiếu logic do backend kiểm tra. `_id` vẫn là khóa chính của từng document; mã nghiệp vụ là mã duy nhất và được dùng để liên kết các collection nghiệp vụ.

@@ -1,6 +1,7 @@
 const MongoDB = require("./app/utils/mongodb.util");
 const config = require("./app/config");
 const PasswordUtil = require("./app/utils/password.util");
+const { dateFromCalendarKey } = require("./app/utils/date.util");
 
 /**
  * =========================================================================================
@@ -200,7 +201,7 @@ async function seedData() {
                 MaDocGia: "DG-000001",
                 HoLot: "Trần Minh",
                 Ten: "Triết",
-                NgaySinh: "2003-09-15",
+                NgaySinh: dateFromCalendarKey("2003-09-15"),
                 Phai: 1, // 1: Nam
                 DiaChi: "Xuân Khánh, Ninh Kiều, Cần Thơ",
                 DienThoai: "0912345678",
@@ -216,7 +217,7 @@ async function seedData() {
                 MaDocGia: "DG-000002",
                 HoLot: "Phạm Vi",
                 Ten: "Phạm",
-                NgaySinh: "2002-04-10",
+                NgaySinh: dateFromCalendarKey("2002-04-10"),
                 Phai: 1, // 1: Nam
                 DiaChi: "An Khánh, Ninh Kiều, Cần Thơ",
                 DienThoai: "0987654321",
@@ -232,7 +233,7 @@ async function seedData() {
                 MaDocGia: "DG-000003",
                 HoLot: "Nguyễn Hải",
                 Ten: "Yến",
-                NgaySinh: "2004-11-20",
+                NgaySinh: dateFromCalendarKey("2004-11-20"),
                 Phai: 0, // 0: Nữ
                 DiaChi: "Hưng Phú, Cái Răng, Cần Thơ",
                 DienThoai: "0939112233",
@@ -258,12 +259,12 @@ async function seedData() {
             {
                 MaDocGia: "DG-000001",
                 MaSach: "SACH-000004",
-                NgayDangKy: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
-                NgayDuyet: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
-                HanNhan: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-                NgayMuon: handoverDateStr,
+                NgayDangKy: dateFromCalendarKey(new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)),
+                NgayDuyet: dateFromCalendarKey(new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)),
+                HanNhan: dateFromCalendarKey(new Date(Date.now() + 86400000).toISOString().slice(0, 10)),
+                NgayMuon: dateFromCalendarKey(handoverDateStr),
                 MSNV: "NV-0002",
-                NgayHenTra: dueDate,
+                NgayHenTra: dateFromCalendarKey(dueDate),
                 SoLanGiaHan: 0,
                 NgayGiaHan: null,
                 NgayTra: null,
@@ -276,7 +277,7 @@ async function seedData() {
             {
                 MaDocGia: "DG-000003",
                 MaSach: "SACH-000001",
-                NgayDangKy: registrationDate,
+                NgayDangKy: dateFromCalendarKey(registrationDate),
                 NgayDuyet: null,
                 HanNhan: null,
                 NgayMuon: null,
@@ -294,15 +295,15 @@ async function seedData() {
             {
                 MaDocGia: "DG-000001",
                 MaSach: "SACH-000005",
-                NgayDangKy: "2026-09-10",
-                NgayDuyet: "2026-09-10",
-                HanNhan: "2026-09-13",
-                NgayMuon: "2026-09-10",
+                NgayDangKy: dateFromCalendarKey("2026-09-10"),
+                NgayDuyet: dateFromCalendarKey("2026-09-10"),
+                HanNhan: dateFromCalendarKey("2026-09-13"),
+                NgayMuon: dateFromCalendarKey("2026-09-10"),
                 MSNV: "NV-0002",
-                NgayHenTra: "2026-09-24",
+                NgayHenTra: dateFromCalendarKey("2026-09-24"),
                 SoLanGiaHan: 0,
                 NgayGiaHan: null,
-                NgayTra: "2026-09-22",
+                NgayTra: dateFromCalendarKey("2026-09-22"),
                 TrangThai: "DaTra",
                 GiaTriBoiThuong: 0,
                 GhiChu: "Đã hoàn trả đúng hạn, sách nguyên vẹn",

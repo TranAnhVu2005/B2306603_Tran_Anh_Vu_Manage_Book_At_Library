@@ -71,18 +71,33 @@ class YeuCauNhanVienService {
             .sort({ ThoiGianGui: 1, _id: 1 }).toArray();
     }
 
+    async resolveReviewer(actor) {
+        if (!actor?.id || !ObjectId.isValid(actor.id)) {
+            throw new Error("Không xác định được tài khoản quản trị viên đang xử lý hồ sơ.");
+        }
+        const reviewer = await this.NhanVien.findOne(
+            { _id: new ObjectId(actor.id), ChucVu: "ADMIN", deleted: { $ne: true } },
+            { projection: { MSNV: 1, HoTenNV: 1 } }
+        );
+        if (!reviewer?.MSNV || reviewer.MSNV !== actor.MSNV) {
+            throw new Error("Mã nhân viên người duyệt không hợp lệ hoặc tài khoản không còn quyền quản trị.");
+        }
+        return reviewer;
+    }
+
     async approve(id, actor) {
         if (!ObjectId.isValid(id)) return null;
+        const reviewer = await this.resolveReviewer(actor);
         let request = await this.YeuCau.findOneAndUpdate(
             { _id: new ObjectId(id), TrangThai: "ChoDuyet" },
-            { $set: { TrangThai: "DangDuyet", NguoiDuyet: actor.id, ThoiGianXuLy: new Date() } },
+            { $set: { TrangThai: "DangDuyet", NguoiDuyet: reviewer.MSNV, ThoiGianXuLy: new Date() } },
             { returnDocument: "after" }
         );
         if (!request) {
             const retryBefore = new Date(Date.now() - 5 * 60 * 1000);
             request = await this.YeuCau.findOneAndUpdate(
                 { _id: new ObjectId(id), TrangThai: "DangDuyet", ThoiGianXuLy: { $lt: retryBefore } },
-                { $set: { ThoiGianXuLy: new Date() } },
+                { $set: { NguoiDuyet: reviewer.MSNV, ThoiGianXuLy: new Date() } },
                 { returnDocument: "after" }
             );
             if (!request) return null;
@@ -103,12 +118,12 @@ class YeuCauNhanVienService {
             throw error;
         }
         await this.YeuCau.updateOne({ _id: request._id, TrangThai: "DangDuyet" }, {
-            $set: { TrangThai: "DaDuyet", MSNV: staff.MSNV, ThoiGianXuLy: new Date(), NguoiDuyet: actor.id },
+            $set: { TrangThai: "DaDuyet", MSNV: staff.MSNV, ThoiGianXuLy: new Date(), NguoiDuyet: reviewer.MSNV },
             $unset: { MatKhau: "" },
         });
         await new AuditLogService(this.client).record({
             action: "NHANVIEN_DUYET_DANG_KY", entityType: "yeucaunhanvien", entityId: request._id,
-            actorType: "staff", actorId: actor.id, actorName: actor.name,
+            actorType: "staff", actorId: reviewer.MSNV, actorName: reviewer.HoTenNV || actor.name,
             MSNV: staff.MSNV, TenNhanVien: staff.HoTenNV,
             Details: { HoTenNV: request.HoTenNV, SoDienThoai: request.SoDienThoai },
         });
@@ -117,17 +132,18 @@ class YeuCauNhanVienService {
 
     async reject(id, reason, actor) {
         if (!ObjectId.isValid(id)) return null;
+        const reviewer = await this.resolveReviewer(actor);
         const safeReason = String(reason || "").trim().slice(0, 500);
         if (!safeReason) throw new Error("Vui lòng ghi rõ lý do từ chối hồ sơ.");
         const request = await this.YeuCau.findOneAndUpdate(
             { _id: new ObjectId(id), TrangThai: "ChoDuyet" },
-            { $set: { TrangThai: "TuChoi", LyDoTuChoi: safeReason, NguoiDuyet: actor.id, ThoiGianXuLy: new Date() } },
+            { $set: { TrangThai: "TuChoi", LyDoTuChoi: safeReason, NguoiDuyet: reviewer.MSNV, ThoiGianXuLy: new Date() } },
             { returnDocument: "after", projection: publicFields }
         );
         if (!request) return null;
         await new AuditLogService(this.client).record({
             action: "NHANVIEN_TU_CHOI_DANG_KY", entityType: "yeucaunhanvien", entityId: request._id,
-            actorType: "staff", actorId: actor.id, actorName: actor.name,
+            actorType: "staff", actorId: reviewer.MSNV, actorName: reviewer.HoTenNV || actor.name,
             Details: { HoTenNV: request.HoTenNV, SoDienThoai: request.SoDienThoai, reason: safeReason },
         });
         return request;
@@ -142,6 +158,33 @@ class YeuCauNhanVienService {
         return request.TrangThai === "ChoDuyet"
             ? { status: "ChoDuyet", message: "Hồ sơ nhân viên đang chờ Quản trị viên duyệt. Bạn chưa thể đăng nhập." }
             : { status: "TuChoi", message: `Hồ sơ đăng ký chưa được duyệt. Lý do: ${request.LyDoTuChoi || "Vui lòng liên hệ Quản trị viên."}` };
+    }
+
+    async lookupStatus(phone, password) {
+        const normalizedPhone = String(phone || "").trim();
+        const request = await this.YeuCau.find({
+            SoDienThoai: normalizedPhone,
+            TrangThai: { $in: ["ChoDuyet", "DangDuyet", "TuChoi"] },
+        }, { projection: { ...publicFields, MatKhau: 1 } })
+            .sort({ ThoiGianGui: -1 }).limit(1).next();
+
+        if (request && request.MatKhau && await PasswordUtil.compare(String(password || ""), request.MatKhau)) {
+            const { _id, HoTenNV, SoDienThoai, TrangThai, ThoiGianGui, ThoiGianXuLy, LyDoTuChoi } = request;
+            return { _id, HoTenNV, SoDienThoai, TrangThai, ThoiGianGui, ThoiGianXuLy, LyDoTuChoi };
+        }
+
+        // Hồ sơ đã duyệt đã xóa hash mật khẩu ứng tuyển; xác thực bằng tài khoản STAFF vừa được tạo.
+        const staffAuth = await new NhanVienService(this.client).loginWithStatus(normalizedPhone, String(password || ""));
+        const staff = staffAuth.staff;
+        if (!staff || staffAuth.status === "locked" || !staff.MaYeuCauDangKy) return null;
+        const approved = await this.YeuCau.findOne({
+            _id: new ObjectId(staff.MaYeuCauDangKy),
+            SoDienThoai: normalizedPhone,
+            TrangThai: "DaDuyet",
+        }, { projection: publicFields });
+        if (!approved) return null;
+        const { _id, HoTenNV, SoDienThoai, TrangThai, ThoiGianGui, ThoiGianXuLy, MSNV } = approved;
+        return { _id, HoTenNV, SoDienThoai, TrangThai, ThoiGianGui, ThoiGianXuLy, MSNV };
     }
 }
 

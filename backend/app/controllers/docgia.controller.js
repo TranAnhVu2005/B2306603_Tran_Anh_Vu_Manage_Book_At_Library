@@ -5,9 +5,9 @@ const ThongBaoService = require("../services/thongbao.service");
 const AuditLogService = require("../services/audit-log.service");
 
 async function notifyReader(reader, type, title, message) {
-    if (!reader?._id) return;
+    if (!reader?.MaDocGia) return;
     await new ThongBaoService(MongoDB.client).createSafely({
-        recipientId: String(reader._id), recipientType: "docgia", type, title, message, reference: reader.MaDocGia,
+        recipientCode: reader.MaDocGia, recipientType: "docgia", type, title, message, reference: reader.MaDocGia,
     });
 }
 

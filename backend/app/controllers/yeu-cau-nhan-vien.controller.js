@@ -4,7 +4,8 @@ const YeuCauNhanVienService = require("../services/yeu-cau-nhan-vien.service");
 const ThongBaoService = require("../services/thongbao.service");
 
 const service = () => new YeuCauNhanVienService(MongoDB.client);
-const actorFrom = (req) => ({ id: req.user.username, name: req.user.name || "" });
+// Keep the JWT document id separate from the employee business code.
+const actorFrom = (req) => ({ id: req.user.id, MSNV: req.user.username, name: req.user.name || "" });
 
 exports.submit = async (req, res, next) => {
     try {
@@ -23,12 +24,24 @@ exports.findAll = async (req, res, next) => {
     }
 };
 
+exports.lookupStatus = async (req, res, next) => {
+    try {
+        const { SoDienThoai, MatKhau } = req.body;
+        if (!SoDienThoai || !MatKhau) return next(new ApiError(400, "Vui lòng nhập số điện thoại và mật khẩu đã đăng ký."));
+        const result = await service().lookupStatus(SoDienThoai, MatKhau);
+        if (!result) return next(new ApiError(401, "Thông tin xác thực không chính xác hoặc không tìm thấy hồ sơ."));
+        return res.json({ data: result });
+    } catch (error) {
+        return next(new ApiError(500, "Không thể tra cứu trạng thái hồ sơ lúc này."));
+    }
+};
+
 exports.approve = async (req, res, next) => {
     try {
         const staff = await service().approve(req.params.id, actorFrom(req));
         if (!staff) return next(new ApiError(409, "Hồ sơ không còn ở trạng thái chờ duyệt."));
         await new ThongBaoService(MongoDB.client).createSafely({
-            recipientId: String(staff._id), recipientType: "nhanvien", type: "HO_SO_NHAN_VIEN_DA_DUYET",
+            recipientCode: staff.MSNV, recipientType: "nhanvien", type: "HO_SO_NHAN_VIEN_DA_DUYET",
             title: "Hồ sơ nhân viên đã được duyệt",
             message: `Tài khoản nhân viên ${staff.MSNV} đã được kích hoạt. Bạn có thể đăng nhập bằng số điện thoại đã đăng ký.`,
             reference: staff.MSNV,

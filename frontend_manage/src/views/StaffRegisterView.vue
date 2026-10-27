@@ -11,6 +11,8 @@
             </div>
             <div v-if="submitted" class="alert alert-success" role="status">
               <strong>Đã gửi hồ sơ thành công.</strong> {{ submittedMessage }}
+              <p class="mt-2 mb-0">Bạn có thể quay lại tra cứu kết quả bằng thông tin đã đăng ký.</p>
+              <div class="mt-3"><router-link class="ath-btn-primary d-inline-flex text-decoration-none" to="/staff-application-status">Tra cứu trạng thái hồ sơ</router-link></div>
               <div class="mt-3"><router-link class="ath-btn-outline d-inline-flex text-decoration-none" to="/login">Quay lại đăng nhập</router-link></div>
             </div>
             <form v-else @submit.prevent="submit">
@@ -37,6 +39,7 @@
               <button class="ath-btn-primary w-100 py-2" type="submit" :disabled="loading">{{ loading ? "Đang gửi hồ sơ..." : "Gửi hồ sơ đăng ký" }}</button>
             </form>
             <p v-if="!submitted" class="small text-center mt-4 mb-0 text-muted">Đã có tài khoản? <router-link class="fw-bold text-dark" to="/login">Đăng nhập nhân viên</router-link></p>
+            <p v-if="!submitted" class="small text-center mt-2 mb-0 text-muted">Đã gửi hồ sơ? <router-link class="fw-bold text-dark" to="/staff-application-status">Tra cứu trạng thái</router-link></p>
           </div>
         </div>
       </div>

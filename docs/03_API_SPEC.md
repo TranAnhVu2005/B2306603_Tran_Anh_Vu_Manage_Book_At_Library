@@ -4,6 +4,7 @@
 * **Format**: JSON (`Content-Type: application/json`)
 * **Kiến trúc**: Phân lớp chuẩn mực (Routes -> Controllers -> Services -> MongoDB Native Driver).
 * **Vai trò chuẩn**: JWT và phân quyền backend dùng `USER`, `STAFF`, `ADMIN`. Hồ sơ độc giả lưu `VaiTro: USER`; hồ sơ nhân viên lưu `ChucVu: STAFF | ADMIN`. `MANAGER`/`THUTHU` chỉ là giá trị legacy được migration khi khởi động, không còn được cấp cho phiên mới.
+* **Ngày/giờ**: Các trường ngày nhập từ form nhận `YYYY-MM-DD` và được backend lưu thành BSON `Date` tại 00:00 UTC. Các trường ngày/thời gian trong JSON response được serialize theo ISO 8601 UTC (ví dụ `2026-10-27T00:00:00.000Z`); frontend chỉ lấy phần ngày lịch khi hiển thị ngày nghiệp vụ và so sánh theo múi giờ thư viện `Asia/Ho_Chi_Minh`. Mốc chưa có giá trị trả `null`.
 
 ## Origin và kết nối hai frontend
 
@@ -40,7 +41,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ## 1. Phân Hệ Xác Thực & Tài Khoản (`/api/auth`)
 
 ### 📌 `POST /api/auth/login` (Đăng nhập hệ thống)
-* **Mô tả**: Độc giả đăng nhập bằng số điện thoại đã đăng ký và mật khẩu; STAFF/ADMIN cũng đăng nhập bằng số điện thoại tại cổng nhân viên. Độc giả còn có thể dùng Google tại endpoint riêng bên dưới. `MaDocGia` và `MSNV` chỉ là mã hồ sơ/nghiệp vụ, không được dùng để đăng nhập. Số điện thoại được kiểm tra không trùng giữa độc giả, nhân viên và hồ sơ đăng ký nhân viên. Tài khoản bị khóa chỉ nhận thông báo trạng thái riêng khi số điện thoại và mật khẩu chính xác; thông tin sai vẫn nhận lỗi chung.
+* **Mô tả**: Độc giả đăng nhập bằng số điện thoại đã đăng ký và mật khẩu; STAFF/ADMIN cũng đăng nhập bằng số điện thoại tại cổng nhân viên. Độc giả còn có thể dùng Google tại endpoint riêng bên dưới. `MaDocGia` và `MSNV` chỉ là mã hồ sơ/nghiệp vụ, không được dùng để đăng nhập. Số điện thoại được kiểm tra không trùng giữa độc giả, nhân viên và hồ sơ đăng ký nhân viên. Nếu tài khoản có trạng thái `Khoa`, thông tin xác thực hợp lệ nhận HTTP 403 với thông báo tài khoản bị khóa và không được cấp JWT; thông tin sai vẫn nhận lỗi chung HTTP 401. Quy tắc này áp dụng cho độc giả và STAFF/ADMIN.
 * **Request Body**:
   ```json
   {
@@ -52,9 +53,9 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 ### 📌 `POST /api/auth/google` (Đăng nhập độc giả bằng Google)
 * **Quyền truy cập**: Public, có rate limit; chỉ dùng đăng nhập độc giả.
 * **Request Body**: `{ "idToken": "<Google Identity Services ID Token>" }`; endpoint chỉ chấp nhận trường `idToken`.
-* **Xử lý**: Backend xác minh ID Token bằng `GOOGLE_CLIENT_ID`, gồm chữ ký, issuer, audience, hạn dùng và email đã xác minh. Hồ sơ được tìm bằng `GoogleId`; hồ sơ độc giả cũ chỉ được liên kết theo email đã xác minh nếu email khớp duy nhất và chưa liên kết với Google ID khác. Nếu chưa có hồ sơ phù hợp, tạo hồ sơ `USER` mới; không tạo số điện thoại hoặc mật khẩu giả. Hồ sơ đã xóa mềm không được đăng nhập.
+* **Xử lý**: Backend xác minh ID Token bằng `GOOGLE_CLIENT_ID`, gồm chữ ký, issuer, audience, hạn dùng và email đã xác minh. Hồ sơ được tìm bằng `GoogleId`; hồ sơ độc giả cũ chỉ được liên kết theo email đã xác minh nếu email khớp duy nhất và chưa liên kết với Google ID khác. Nếu chưa có hồ sơ phù hợp, tạo hồ sơ `USER` mới; không tạo số điện thoại hoặc mật khẩu giả. Hồ sơ đã xóa mềm không được đăng nhập. Nếu độc giả có `TrangThaiThe = "Khoa"`, trả HTTP 403 và không cấp JWT.
 * **Response (200 OK)**: `{ message, token, data }`; JWT có `type: reader`, `role: USER`; `data` không có `MatKhau`, `GoogleId`, ID Token hay secret.
-* **Lỗi**: HTTP 400 với ID Token thiếu/sai kiểu hoặc trường không cho phép; HTTP 401 với token không hợp lệ; HTTP 403 với hồ sơ đã xóa mềm; HTTP 409 khi email/định danh xung đột; HTTP 503 khi chưa cấu hình Client ID.
+* **Lỗi**: HTTP 400 với ID Token thiếu/sai kiểu hoặc trường không cho phép; HTTP 401 với token không hợp lệ; HTTP 403 với hồ sơ đã xóa mềm hoặc tài khoản độc giả đang `Khoa`; HTTP 409 khi email/định danh xung đột; HTTP 503 khi chưa cấu hình Client ID.
 
 ### 📌 `POST /api/auth/staff-login` (Đăng nhập cổng nhân viên)
 * **Quyền truy cập**: Public, rate limit.
@@ -88,7 +89,7 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
     "MatKhau": "123456"
   }
   ```
-* **Response (201 Created)**: Tạo thẻ thành công, mã tự sinh dạng `DG-000001`, mật khẩu được băm Bcrypt.
+* **Response (201 Created)**: Tạo thẻ thành công, mã tự sinh dạng `DG-000001`, mật khẩu được băm Bcrypt. `NgaySinh` khi trả trong response có dạng ISO 8601 UTC, ví dụ `2003-09-15T00:00:00.000Z`.
 
 ### 📌 `POST /api/yeu-cau-nhan-vien` (Gửi hồ sơ đăng ký nhân viên)
 * **Quyền truy cập**: Public, có rate limit; chỉ nhận `HoTenNV`, `SoDienThoai`, `DiaChi`, `MatKhau` scalar. Mật khẩu tối thiểu 8 ký tự và được Bcrypt trước khi lưu.
@@ -96,9 +97,10 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 * **Response (201 Created)**: `{ message, data }`; dữ liệu chỉ gồm id, họ tên, số điện thoại, địa chỉ, trạng thái và thời gian gửi; không có mật khẩu.
 
 ### API duyệt hồ sơ nhân viên
+* `POST /api/yeu-cau-nhan-vien/status`: [Công khai, có giới hạn tốc độ] Nhận `SoDienThoai`, `MatKhau` đã đăng ký; xác thực ứng viên rồi trả trạng thái, thời điểm gửi/xử lý, lý do từ chối (nếu có), và `MSNV` nếu đã duyệt. Không trả mật khẩu/hash và không cấp JWT. Thông tin không hợp lệ trả lỗi chung HTTP 401.
 * `GET /api/yeu-cau-nhan-vien`: [ADMIN] Liệt kê hồ sơ chờ duyệt; không trả hash mật khẩu.
-* `PUT /api/yeu-cau-nhan-vien/:id/approve`: [ADMIN] Duyệt một hồ sơ đang chờ, tạo tài khoản `nhanvien` chức vụ `STAFF`, đánh dấu `DaDuyet`, xóa hash khỏi hồ sơ và thông báo cho nhân viên mới.
-* `PUT /api/yeu-cau-nhan-vien/:id/reject`: [ADMIN] Nhận `{ "LyDoTuChoi": "..." }`, lưu trạng thái `TuChoi` và lý do. Ứng viên đăng nhập bằng đúng số điện thoại/mật khẩu đã đăng ký sẽ thấy trạng thái/lý do nhưng không nhận JWT.
+* `PUT /api/yeu-cau-nhan-vien/:id/approve`: [ADMIN] Duyệt một hồ sơ đang chờ, tạo tài khoản `nhanvien` chức vụ `STAFF`, đánh dấu `DaDuyet`, xóa hash khỏi hồ sơ và thông báo cho nhân viên mới. Hồ sơ lưu `NguoiDuyet` là `MSNV` của Admin thực hiện và `MSNV` là mã nhân viên mới được cấp; cả hai tham chiếu logic đến `nhanvien.MSNV` nhưng có ý nghĩa khác nhau.
+* `PUT /api/yeu-cau-nhan-vien/:id/reject`: [ADMIN] Nhận `{ "LyDoTuChoi": "..." }`, lưu trạng thái `TuChoi`, lý do và `NguoiDuyet` là `MSNV` của Admin; `MSNV` của ứng viên không được cấp. Ứng viên đăng nhập bằng đúng số điện thoại/mật khẩu đã đăng ký sẽ thấy trạng thái/lý do nhưng không nhận JWT.
 * Cả duyệt và từ chối ghi sự kiện append-only vào `nhatkykiemtoan`; API này không cho sửa/xóa hồ sơ đã xét duyệt.
 
 Đăng nhập Google chỉ dành cho độc giả qua `POST /api/auth/google`; STAFF/ADMIN vẫn dùng số điện thoại và mật khẩu tại cổng quản lý. Tài khoản Google-only có thể chưa có `DienThoai`/`MatKhau`; độc giả có thể bổ sung số điện thoại qua cập nhật hồ sơ trước khi cần liên hệ thư viện.
@@ -155,15 +157,15 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
 
 ## Hộp thư thông báo (`/api/thongbao`)
 
-- `GET /api/thongbao?limit=10`: [USER/STAFF/ADMIN đã đăng nhập] Lấy tối đa 50 thông báo mới nhất và tổng số chưa đọc. Phạm vi recipient id/type được xác định từ JWT; mỗi phiên chỉ đọc hộp thư của chính tài khoản hiện tại.
+- `GET /api/thongbao?limit=10`: [USER/STAFF/ADMIN đã đăng nhập] Lấy tối đa 50 thông báo mới nhất và tổng số chưa đọc. Backend lấy mã `MaDocGia`/`MSNV` và loại người nhận từ JWT; mỗi phiên chỉ đọc hộp thư của chính tài khoản hiện tại.
 - `PUT /api/thongbao/:id/read`: [Người nhận đã đăng nhập] Đánh dấu một thông báo của chính mình là đã đọc; trả 404 nếu id không tồn tại hoặc thuộc người khác.
 - `PUT /api/thongbao/read-all`: [Người nhận đã đăng nhập] Đánh dấu tất cả thông báo của tài khoản hiện tại đã đọc.
 - API không nhận nội dung/người nhận từ client và không cung cấp xóa thông báo. Backend tạo thông báo cho thay đổi trạng thái thẻ độc giả, duyệt/từ chối/trả/báo mất phiếu mượn, lúc Admin tạo nhân viên và khi hồ sơ ứng tuyển được duyệt.
-- Response GET: `{ "data": [{ "_id", "LoaiNguoiNhan", "NguoiNhanId", "LoaiThongBao", "TieuDe", "NoiDung", "MaThamChieu", "DaDoc", "ThoiGian" }], "unreadCount": 2 }`. Đây là schema riêng của collection kỹ thuật, không thuộc 5 entity CDM.
+- Response GET: `{ "data": [{ "_id", "LoaiNguoiNhan", "MaNguoiNhan", "LoaiThongBao", "TieuDe", "NoiDung", "MaThamChieu", "DaDoc", "ThoiGian" }], "unreadCount": 2 }`. `MaNguoiNhan` là `MaDocGia` khi `LoaiNguoiNhan=docgia` hoặc `MSNV` khi `LoaiNguoiNhan=nhanvien`; không dùng ObjectId hồ sơ làm tham chiếu người nhận. Đây là schema riêng của collection hỗ trợ.
 * `GET /api/docgia/:id`: Xem hồ sơ độc giả theo `_id`, `MaDocGia` hoặc `DienThoai`; hồ sơ đã xóa mềm trả 404.
 * `GET /api/docgia?includeDeleted=true`: [ADMIN] Xem cả hồ sơ đã xóa mềm; metadata `deleted`, `DeletedAt`, `DeletedBy` chỉ trả trên hồ sơ đã xóa.
 * `POST /api/docgia`: Tạo hồ sơ độc giả mới.
-* `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm. Số điện thoại phải đúng định dạng và chưa được tài khoản khác sử dụng.
+* `PUT /api/docgia/:id`: [Độc giả đã đăng nhập] Cập nhật hồ sơ của chính mình; xác thực JWT và chỉ cho phép sửa `HoLot`, `Ten`, `NgaySinh`, `Phai`, `DiaChi`, `DienThoai`; ảnh đại diện được gửi dưới dạng multipart file `AnhDaiDien`. Tài khoản Google chưa có `DienThoai` được phép bỏ qua trường này khi cập nhật hồ sơ/ảnh; số điện thoại được bổ sung hoặc thay đổi phải đúng định dạng và chưa được tài khoản khác sử dụng. Nếu hồ sơ đã có số điện thoại thì không được xóa số đó. Không cho phép sửa mã độc giả, mật khẩu, vai trò, trạng thái thẻ hoặc số lần vi phạm.
 * `PUT /api/docgia/:id/lock`: [Super Admin] Khóa khẩn cấp thẻ đang hoạt động (`HoatDong` → `Khoa`), không thay đổi `SoLanViPham`.
 * `PUT /api/docgia/:id/unblock`: [Super Admin] Chỉ mở khóa thẻ trạng thái `Khoa`; giữ nguyên `SoLanViPham`. Nếu đã đạt 3 lần vi phạm, trạng thái sau mở khóa là `DanhSachDen`.
 * `PUT /api/docgia/:id/reinstate`: [Super Admin] Xét gỡ khỏi Danh sách đen bằng thao tác riêng (`DanhSachDen` → `HoatDong`) và đặt `SoLanViPham = 0` cho chu kỳ tiếp theo; ghi sự kiện `DOCGIA_GO_DANH_SACH_DEN` với giá trị trước/sau vào `nhatkykiemtoan`. Không dùng thay cho mở khóa khẩn cấp.

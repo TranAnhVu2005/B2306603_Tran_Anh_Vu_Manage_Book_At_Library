@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import authService from "@/services/auth.service";
+import StaffApplicationStatus from "@/views/StaffApplicationStatus.vue";
 
 const routes = [
   { path: "/", redirect: "/login" },
@@ -8,6 +9,7 @@ const routes = [
   { path: "/catalog/books/:id", name: "manager.catalog.book", component: () => import("@/views/ManagerBookDetail.vue") },
   { path: "/login", name: "login", component: () => import("@/views/StaffLoginView.vue") },
   { path: "/staff-register", name: "staff-register", component: () => import("@/views/StaffRegisterView.vue") },
+  { path: "/staff-application-status", name: "staff-application-status", component: StaffApplicationStatus },
   { path: "/profile", name: "profile", component: () => import("@/views/ProfileView.vue"), meta: { role: "staff" } },
   { path: "/manager/borrows", name: "manager.borrows", component: () => import("@/views/ManagerBorrows.vue"), meta: { role: "staff" } },
   { path: "/manager/books", name: "manager.books", component: () => import("@/views/ManagerBooks.vue"), meta: { role: "staff" } },

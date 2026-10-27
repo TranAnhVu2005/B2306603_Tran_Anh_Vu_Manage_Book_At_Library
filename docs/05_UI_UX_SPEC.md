@@ -102,6 +102,7 @@ Quy chuẩn thực thi: [NEOBRUTALISM.md](../NEOBRUTALISM.md)
    * Trang có tiêu đề rõ ràng **Hồ sơ cá nhân**; phần thông tin thẻ và chỉnh sửa hồ sơ được phân biệt trực quan với phần sách đang mượn/lịch sử.
    * Thông tin thẻ: Mã độc giả, Họ tên, Trạng thái thẻ (Hoạt động / Tạm khóa / Danh sách đen).
    * Cho phép độc giả chỉnh sửa họ tên, ngày sinh, giới tính, địa chỉ và số điện thoại đăng nhập của chính mình; không cho sửa vai trò, trạng thái thẻ hoặc số lần vi phạm.
+   * Với tài khoản Google chưa có số điện thoại, trường số điện thoại không bắt buộc khi lưu hồ sơ hoặc ảnh đại diện; giao diện giải thích rằng có thể bổ sung số sau. Nếu tài khoản đã có số, giữ trường bắt buộc để tránh vô tình làm mất thông tin đăng nhập. Ảnh tải lên phải là JPEG/PNG/WebP, tối đa 5 MB; ảnh xem trước lỗi phải hiện fallback thay vì chữ alt bị cắt trong avatar.
    * Sau khi cập nhật thành công, hồ sơ và dữ liệu user lưu phiên phải đồng bộ; báo lỗi API ngay trong toast nếu cập nhật thất bại.
    * Bảng hoạt động mượn hiển thị trạng thái đang mượn, chờ duyệt, chờ nhận và lịch sử, gồm `DaHuy`/`QuaHanNhan`; hiển thị riêng ngày đăng ký, hạn nhận, ngày bàn giao và hạn trả theo trạng thái.
    * Trong tab chờ xử lý, độc giả có thể hủy phiếu `ChoDuyet`/`ChoNhan` trước khi nhận. Dialog nêu rõ phiếu đã duyệt sẽ trả sách giữ về kho; thành công chuyển phiếu sang lịch sử `DaHuy`.
@@ -151,7 +152,8 @@ Admin sử dụng toàn bộ điều hướng và nghiệp vụ thủ thư, cộ
    * Nhật ký chỉ đọc; giao diện không có thao tác sửa/xóa log.
 3. **Quản lý tài khoản (`/admin/users`)**:
    * Hiển thị độc giả và nhân viên đã được tạo trong cùng một danh sách; bộ lọc thẻ chỉ áp dụng cho độc giả.
-   * Không có thao tác thăng cấp/hạ cấp độc giả. Quản trị viên xử lý hồ sơ ứng tuyển tại `/admin/staff-applications`; duyệt tạo tài khoản thủ thư, từ chối yêu cầu lý do và ghi nhật ký.
+   * Không có thao tác thăng cấp/hạ cấp độc giả. Quản trị viên xử lý hồ sơ ứng tuyển tại `/admin/staff-applications`; duyệt tạo tài khoản thủ thư, từ chối yêu cầu lý do và ghi nhật ký. Ứng viên chưa có phiên tra cứu kết quả tại `/staff-application-status` bằng số điện thoại và mật khẩu đăng ký; màn hình hiển thị trạng thái, thời điểm xử lý/lý do từ chối, mã nhân viên nếu đã duyệt và liên kết thao tác tiếp theo. Có liên kết tra cứu từ cả trang đăng ký và đăng nhập nhân viên. Route tra cứu phải mở trực tiếp và không rơi vào trang 404.
+   * Nếu API chi tiết trả HTTP 404, hiển thị trang 404 tài nguyên với đường dẫn quay lại tra cứu; lỗi mạng/server phải hiển thị lỗi tải và nút thử lại, không giả thành tài nguyên không tồn tại. Áp dụng cho chi tiết sách trên cả hai cổng.
    * Mã, tên, số điện thoại và vai trò/chức vụ hiển thị theo đúng loại hồ sơ; các cột thẻ/vi phạm không áp dụng cho nhân viên, không hiển thị mật khẩu.
 4. **Xóa mềm sách (`/manager/books`)**:
    * Nút xóa chuyển sách sang `deleted=true`; sách biến mất khỏi tra cứu/mượn mới nhưng giữ nguyên dữ liệu và lịch sử.

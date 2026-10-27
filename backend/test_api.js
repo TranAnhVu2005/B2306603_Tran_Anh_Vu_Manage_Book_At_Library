@@ -1,4 +1,6 @@
 const http = require("http");
+const path = require("path");
+const fs = require("fs/promises");
 const app = require("./app");
 const config = require("./app/config");
 const MongoDB = require("./app/utils/mongodb.util");
@@ -10,12 +12,21 @@ const TheLoaiService = require("./app/services/theloai.service");
 const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
 const { ObjectId } = require("mongodb");
 const { resetAuthRateLimitsForTests } = require("./app/middleware/security.middleware");
+const GoogleAuthService = require("./app/services/google-auth.service");
+const { migrateLegacyNotificationRecipients } = require("./app/utils/notification-migration.util");
+const { dateFromCalendarKey, calendarKey, localCalendarKey } = require("./app/utils/date.util");
 
 let server = null;
 let testPort = null;
 
 function hasOnlyFields(value, allowedFields) {
     return value && Object.keys(value).every(field => allowedFields.includes(field));
+}
+
+function expectedDateAfter(value, days) {
+    const date = dateFromCalendarKey(value instanceof Date ? localCalendarKey(value) : calendarKey(value));
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
 }
 
 function request(method, path, body = null, headers = {}) {
@@ -58,6 +69,41 @@ function request(method, path, body = null, headers = {}) {
     });
 }
 
+function requestMultipart(method, requestPath, fields, file, headers = {}) {
+    resetAuthRateLimitsForTests();
+    return new Promise((resolve, reject) => {
+        const boundary = `----CodexTest${Date.now()}${Math.random().toString(16).slice(2)}`;
+        const chunks = [];
+        for (const [name, value] of Object.entries(fields)) {
+            chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
+        }
+        if (file) {
+            chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${file.fieldName}"; filename="${file.filename}"\r\nContent-Type: ${file.contentType}\r\n\r\n`));
+            chunks.push(file.buffer);
+            chunks.push(Buffer.from("\r\n"));
+        }
+        chunks.push(Buffer.from(`--${boundary}--\r\n`));
+        const body = Buffer.concat(chunks);
+        const options = {
+            hostname: "127.0.0.1",
+            port: testPort,
+            path: requestPath,
+            method,
+            headers: { "Content-Type": `multipart/form-data; boundary=${boundary}`, "Content-Length": body.length, ...headers },
+        };
+        const req = http.request(options, (res) => {
+            let responseBody = "";
+            res.on("data", chunk => responseBody += chunk);
+            res.on("end", () => {
+                try { resolve({ status: res.statusCode, data: JSON.parse(responseBody) }); }
+                catch { resolve({ status: res.statusCode, data: responseBody }); }
+            });
+        });
+        req.on("error", reject);
+        req.end(body);
+    });
+}
+
 async function runTests() {
     console.log("=========================================================================");
     console.log("BẮT ĐẦU CHẠY BỘ KIỂM THỬ BACKEND API TOÀN DIỆN (docs/06_TESTING.md)");
@@ -66,6 +112,7 @@ async function runTests() {
     // Khởi động kết nối MongoDB và máy chủ kiểm thử nếu chưa chạy
     await MongoDB.connect(config.db.uri);
     await migrateLegacyRoles(MongoDB.client.db());
+    await migrateLegacyNotificationRecipients(MongoDB.client.db());
     await new TheLoaiService(MongoDB.client).ensureDefaults();
     server = await new Promise((resolve, reject) => {
         const s = app.listen(0, "127.0.0.1", () => {
@@ -81,6 +128,9 @@ async function runTests() {
     let temporaryReaderObjectId = null;
     let temporaryReaderPhone = null;
     let temporaryReaderToken = null;
+    let temporaryGoogleReaderObjectId = null;
+    let temporaryGoogleReaderToken = null;
+    let temporaryGoogleAvatarPath = null;
     let temporaryOtherReaderId = null;
     let temporaryOtherReaderObjectId = null;
     let temporaryOtherReaderToken = null;
@@ -185,6 +235,8 @@ async function runTests() {
         }
         temporaryReaderId = reader.MaDocGia;
         temporaryReaderPhone = reader.DienThoai;
+        const storedReader = await readers.findOne({ _id: reader._id }, { projection: { NgaySinh: 1 } });
+        if (!(storedReader?.NgaySinh instanceof Date)) throw new Error("NgaySinh phải được lưu dưới dạng BSON Date.");
 
         const res = await request("POST", "/api/auth/login", {
             phone: reader.DienThoai,
@@ -222,12 +274,26 @@ async function runTests() {
     await assert("TC-NOTIFICATION-01: Người dùng chỉ xem và đánh dấu đã đọc thông báo của chính mình", async () => {
         const notifications = new ThongBaoService(MongoDB.client);
         const created = await notifications.create({
-            recipientId: temporaryReaderObjectId,
+            recipientCode: temporaryReaderId,
             recipientType: "docgia",
             type: "KIEM_THU",
             title: "Thông báo kiểm thử",
             message: "Nội dung dành riêng cho độc giả kiểm thử.",
         });
+        const storedNotification = await MongoDB.client.db().collection("thongbao").findOne({ _id: created._id });
+        if (storedNotification?.MaNguoiNhan !== temporaryReaderId || "NguoiNhanId" in storedNotification) {
+            throw new Error("Thông báo mới phải lưu mã độc giả vào MaNguoiNhan, không lưu ObjectId.");
+        }
+        const legacyNotification = await MongoDB.client.db().collection("thongbao").insertOne({
+            NguoiNhanId: new ObjectId(temporaryReaderObjectId), LoaiNguoiNhan: "docgia",
+            LoaiThongBao: "KIEM_THU_MIGRATION", TieuDe: "Thông báo cũ", NoiDung: "Kiểm tra migration.",
+            DaDoc: false, ThoiGian: new Date(),
+        });
+        await migrateLegacyNotificationRecipients(MongoDB.client.db());
+        const migratedNotification = await MongoDB.client.db().collection("thongbao").findOne({ _id: legacyNotification.insertedId });
+        if (migratedNotification?.MaNguoiNhan !== temporaryReaderId || "NguoiNhanId" in migratedNotification) {
+            throw new Error("Migration thông báo cũ không đổi ObjectId sang mã độc giả.");
+        }
         temporaryNotificationId = String(created._id);
         const unauthorized = await request("GET", "/api/thongbao");
         const own = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
@@ -236,7 +302,9 @@ async function runTests() {
         const markOwn = await request("PUT", `/api/thongbao/${temporaryNotificationId}/read`, null, { Authorization: `Bearer ${temporaryReaderToken}` });
         if (
             unauthorized.status !== 401 ||
-            own.status !== 200 || own.data.unreadCount < 1 || !own.data.data.some((item) => item._id === temporaryNotificationId) ||
+            own.status !== 200 || own.data.unreadCount < 2 ||
+            !own.data.data.some((item) => item._id === temporaryNotificationId && item.MaNguoiNhan === temporaryReaderId) ||
+            !own.data.data.some((item) => item._id === String(legacyNotification.insertedId) && item.MaNguoiNhan === temporaryReaderId) ||
             staff.status !== 200 || staff.data.data.some((item) => item._id === temporaryNotificationId) ||
             otherRecipient.status !== 404 || markOwn.status !== 200
         ) {
@@ -334,6 +402,46 @@ async function runTests() {
         });
         if (oldPasswordLogin.status !== 200 || injectedPasswordLogin.status !== 401) {
             throw new Error("Thông tin mật khẩu bị thay đổi ngoài ý muốn khi cập nhật hồ sơ.");
+        }
+
+        const googleReader = await new DocGiaService(MongoDB.client).findOrCreateGoogleReader({
+            googleId: `test-google-${Date.now()}`,
+            email: `test-google-${Date.now()}@example.invalid`,
+            fullName: "Độc giả Google",
+        });
+        temporaryGoogleReaderObjectId = String(googleReader._id);
+        temporaryGoogleReaderToken = JwtUtil.sign({
+            id: temporaryGoogleReaderObjectId,
+            username: googleReader.MaDocGia,
+            role: "USER",
+            type: "reader",
+        });
+        const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5n8AAAAASUVORK5CYII=", "base64");
+        const googleProfileUpdate = await requestMultipart(
+            "PUT",
+            `/api/docgia/${temporaryGoogleReaderObjectId}`,
+            { HoLot: "Độc giả", Ten: "Google đã cập nhật", Phai: "2" },
+            { fieldName: "AnhDaiDien", filename: "avatar.png", contentType: "image/png", buffer: tinyPng },
+            { Authorization: `Bearer ${temporaryGoogleReaderToken}` },
+        );
+        temporaryGoogleAvatarPath = googleProfileUpdate.data?.data?.AnhDaiDien;
+        if (
+            googleProfileUpdate.status !== 200 ||
+            googleProfileUpdate.data.data.Ten !== "Google đã cập nhật" ||
+            googleProfileUpdate.data.data.DienThoai ||
+            !temporaryGoogleAvatarPath?.startsWith("/uploads/avatars/")
+        ) {
+            throw new Error(`Hồ sơ Google chưa có số không lưu được thông tin/ảnh đại diện, nhận HTTP ${googleProfileUpdate.status}`);
+        }
+
+        const phoneRemoval = await request(
+            "PUT",
+            `/api/docgia/${temporaryReaderObjectId}`,
+            { DienThoai: "" },
+            { Authorization: `Bearer ${temporaryReaderToken}` },
+        );
+        if (phoneRemoval.status !== 400) {
+            throw new Error(`Tài khoản có số điện thoại không được phép xóa số đăng nhập, nhận HTTP ${phoneRemoval.status}`);
         }
     });
 
@@ -722,6 +830,10 @@ async function runTests() {
             throw new Error(`Kỳ vọng HTTP 201 & ChoDuyet, nhận status=${res.status}, response=${JSON.stringify(res.data)}`);
         }
         borrowId = res.data.data._id;
+        const storedBorrow = await MongoDB.client.db().collection("theodoimuonsach").findOne({ _id: new ObjectId(borrowId) });
+        if (!(storedBorrow?.NgayDangKy instanceof Date) || storedBorrow.NgayDuyet !== null || storedBorrow.NgayMuon !== null) {
+            throw new Error("Ngày phiếu mượn phải là BSON Date; mốc chưa phát sinh phải là null.");
+        }
     });
 
     await assert("TC-CANCEL-01: Hủy phiếu chờ duyệt giải phóng hạn mức mượn", async () => {
@@ -775,8 +887,8 @@ async function runTests() {
         cancellationBorrowIds.push(borrowId);
 
         const fixtureBorrowResult = await MongoDB.client.db().collection("theodoimuonsach").insertMany([
-            { MaDocGia: temporaryReaderId, MaSach: "FIXTURE-A", TrangThai: "DangMuon", NgayMuon: "2026-01-01", CreatedAt: new Date() },
-            { MaDocGia: temporaryReaderId, MaSach: "FIXTURE-B", TrangThai: "DangMuon", NgayMuon: "2026-01-01", CreatedAt: new Date() },
+            { MaDocGia: temporaryReaderId, MaSach: "FIXTURE-A", TrangThai: "DangMuon", NgayMuon: dateFromCalendarKey("2026-01-01"), CreatedAt: new Date() },
+            { MaDocGia: temporaryReaderId, MaSach: "FIXTURE-B", TrangThai: "DangMuon", NgayMuon: dateFromCalendarKey("2026-01-01"), CreatedAt: new Date() },
         ]);
         const fixtureBorrowIds = Object.values(fixtureBorrowResult.insertedIds);
         try {
@@ -859,7 +971,7 @@ async function runTests() {
         const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
         const inserted = await MongoDB.client.db().collection("theodoimuonsach").insertOne({
             MaDocGia: temporaryReaderId, MaSach: cancellationBookCode,
-            NgayDangKy: dateKey(expiredAt), NgayDuyet: dateKey(expiredAt), HanNhan: dateKey(expiredAt),
+            NgayDangKy: dateFromCalendarKey(dateKey(expiredAt)), NgayDuyet: dateFromCalendarKey(dateKey(expiredAt)), HanNhan: dateFromCalendarKey(dateKey(expiredAt)),
             NgayMuon: null, NgayHenTra: null, NgayTra: null, MSNV: temporaryStaffCode,
             TrangThai: "ChoNhan", GiaTriBoiThuong: 0, GhiChu: "Fixture kiểm thử hạn nhận", CreatedAt: new Date(),
         });
@@ -944,10 +1056,10 @@ async function runTests() {
         ) {
             throw new Error(`Kỳ vọng HTTP 200 & ChoNhan, không bắt đầu hạn mượn trước bàn giao; nhận status=${res.status}`);
         }
-        const pickupDate = new Date();
-        pickupDate.setDate(pickupDate.getDate() + 3);
-        const expectedPickupDate = `${pickupDate.getFullYear()}-${String(pickupDate.getMonth() + 1).padStart(2, "0")}-${String(pickupDate.getDate()).padStart(2, "0")}`;
-        if (res.data.data.HanNhan !== expectedPickupDate) throw new Error(`HanNhan phải bằng ngày duyệt + 3; kỳ vọng=${expectedPickupDate}, thực tế=${res.data.data.HanNhan}`);
+        const expectedPickupDate = expectedDateAfter(new Date(), 3);
+        if (calendarKey(res.data.data.HanNhan) !== expectedPickupDate) throw new Error(`HanNhan phải bằng ngày duyệt + 3; kỳ vọng=${expectedPickupDate}, thực tế=${res.data.data.HanNhan}`);
+        const storedApprovedBorrow = await MongoDB.client.db().collection("theodoimuonsach").findOne({ _id: new ObjectId(borrowId) });
+        if (!(storedApprovedBorrow?.NgayDuyet instanceof Date) || !(storedApprovedBorrow?.HanNhan instanceof Date)) throw new Error("Ngày duyệt và hạn nhận phải được lưu dưới dạng BSON Date.");
         const readerInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
         if (readerInbox.status !== 200 || !readerInbox.data.data.some((item) => item.LoaiThongBao === "PHIEU_DUYET_MUON")) {
             throw new Error("Độc giả không nhận được thông báo phiếu mượn đã duyệt.");
@@ -965,10 +1077,10 @@ async function runTests() {
         if (handover.status !== 200 || handover.data.data.TrangThai !== "DangMuon" || !handover.data.data.NgayMuon || !handover.data.data.NgayHenTra) {
             throw new Error(`Bàn giao phải chuyển DangMuon và ghi mốc ngày, nhận HTTP ${handover.status}`);
         }
-        const borrowDate = new Date(`${handover.data.data.NgayMuon}T00:00:00`);
-        borrowDate.setDate(borrowDate.getDate() + 14);
-        const expectedDueDate = `${borrowDate.getFullYear()}-${String(borrowDate.getMonth() + 1).padStart(2, "0")}-${String(borrowDate.getDate()).padStart(2, "0")}`;
-        if (handover.data.data.NgayHenTra !== expectedDueDate) throw new Error(`Hạn trả phải là ngày bàn giao + 14; kỳ vọng=${expectedDueDate}, thực tế=${handover.data.data.NgayHenTra}`);
+        const expectedDueDate = expectedDateAfter(handover.data.data.NgayMuon, 14);
+        if (calendarKey(handover.data.data.NgayHenTra) !== expectedDueDate) throw new Error(`Hạn trả phải là ngày bàn giao + 14; kỳ vọng=${expectedDueDate}, thực tế=${handover.data.data.NgayHenTra}`);
+        const storedHandover = await MongoDB.client.db().collection("theodoimuonsach").findOne({ _id: new ObjectId(borrowId) });
+        if (!(storedHandover?.NgayMuon instanceof Date) || !(storedHandover?.NgayHenTra instanceof Date)) throw new Error("Ngày bàn giao và hạn trả phải được lưu dưới dạng BSON Date.");
         const handedOverInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
         if (handedOverInbox.status !== 200 || !handedOverInbox.data.data.some((item) => item.LoaiThongBao === "PHIEU_GIAO_SACH")) {
             throw new Error("Độc giả chưa nhận được thông báo xác nhận bàn giao sách.");
@@ -990,7 +1102,7 @@ async function runTests() {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-        await borrows.updateOne({ _id: new ObjectId(borrowId) }, { $set: { NgayHenTra: yesterdayKey } });
+        await borrows.updateOne({ _id: new ObjectId(borrowId) }, { $set: { NgayHenTra: dateFromCalendarKey(yesterdayKey) } });
         const overdueAttempt = await request("PUT", path, null, { Authorization: `Bearer ${temporaryReaderToken}` });
         await borrows.updateOne({ _id: new ObjectId(borrowId) }, { $set: { NgayHenTra: before.NgayHenTra } });
         if (overdueAttempt.status !== 409) throw new Error(`Phiếu đã đến hạn không được gia hạn, nhận HTTP ${overdueAttempt.status}`);
@@ -1003,13 +1115,12 @@ async function runTests() {
             throw new Error(`Hai request đồng thời phải chỉ gia hạn thành công một lần, nhận HTTP ${concurrentAttempts.map((item) => item.status).join("/")}`);
         }
         const response = concurrentAttempts.find((item) => item.status === 200);
-        const [year, month, day] = before.NgayHenTra.split("-").map(Number);
-        const expected = new Date(year, month - 1, day);
-        expected.setDate(expected.getDate() + 7);
-        const expectedDate = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, "0")}-${String(expected.getDate()).padStart(2, "0")}`;
-        if (response.status !== 200 || response.data.data.NgayHenTra !== expectedDate || response.data.data.SoLanGiaHan !== 1 || !response.data.data.NgayGiaHan) {
+        const expectedDate = expectedDateAfter(before.NgayHenTra, 7);
+        if (response.status !== 200 || calendarKey(response.data.data.NgayHenTra) !== expectedDate || response.data.data.SoLanGiaHan !== 1 || !response.data.data.NgayGiaHan) {
             throw new Error(`Gia hạn phải cộng 7 ngày và ghi nhận một lần, HTTP=${response.status}, data=${JSON.stringify(response.data?.data)}`);
         }
+        const storedRenewal = await borrows.findOne({ _id: new ObjectId(borrowId) });
+        if (!(storedRenewal?.NgayHenTra instanceof Date) || !(storedRenewal?.NgayGiaHan instanceof Date)) throw new Error("Ngày gia hạn và hạn trả mới phải được lưu dưới dạng BSON Date.");
         const repeated = await request("PUT", path, null, { Authorization: `Bearer ${temporaryReaderToken}` });
         if (repeated.status !== 409) throw new Error(`Không được gia hạn lần thứ hai, nhận HTTP ${repeated.status}`);
 
@@ -1105,6 +1216,11 @@ async function runTests() {
         if (blockedLogin.status !== 403 || blockedLogin.data.token || !blockedLogin.data.message.includes("chờ")) {
             throw new Error(`Hồ sơ chờ duyệt không bị chặn đúng, status=${blockedLogin.status}`);
         }
+        const pendingStatus = await request("POST", "/api/yeu-cau-nhan-vien/status", { SoDienThoai: phone, MatKhau: "applicant_test_password" });
+        const invalidStatus = await request("POST", "/api/yeu-cau-nhan-vien/status", { SoDienThoai: phone, MatKhau: "wrong_password" });
+        if (pendingStatus.status !== 200 || pendingStatus.data.data.TrangThai !== "ChoDuyet" || pendingStatus.data.token || invalidStatus.status !== 401) {
+            throw new Error(`Tra cứu hồ sơ chờ/sai mật khẩu chưa đúng, status=${pendingStatus.status}/${invalidStatus.status}`);
+        }
         const headers = { Authorization: `Bearer ${temporaryAdminToken}` };
         const anonymousList = await request("GET", "/api/yeu-cau-nhan-vien");
         const managerList = await request("GET", "/api/yeu-cau-nhan-vien", null, { Authorization: `Bearer ${temporaryStaffToken}` });
@@ -1118,12 +1234,30 @@ async function runTests() {
         }
         const approved = await request("PUT", `/api/yeu-cau-nhan-vien/${application._id}/approve`, {}, headers);
         if (approved.data?.data?._id) testStaffObjectIds.push(String(approved.data.data._id));
+        if (approved.data?.data?.MSNV) testStaffCodes.push(approved.data.data.MSNV);
         if (approved.status !== 200 || approved.data.data.ChucVu !== "STAFF" || !approved.data.data.MSNV || "MatKhau" in approved.data.data) {
             throw new Error(`Duyệt hồ sơ không tạo đúng tài khoản thủ thư, status=${approved.status}`);
+        }
+        const approvedApplication = await MongoDB.client.db().collection("yeucaunhanvien")
+            .findOne({ _id: new (require("mongodb").ObjectId)(application._id) });
+        const reviewerAccount = await MongoDB.client.db().collection("nhanvien")
+            .findOne({ MSNV: approvedApplication?.NguoiDuyet }, { projection: { _id: 1, ChucVu: 1 } });
+        const applicantAccount = await MongoDB.client.db().collection("nhanvien")
+            .findOne({ MSNV: approvedApplication?.MSNV }, { projection: { _id: 1, ChucVu: 1 } });
+        if (approvedApplication?.NguoiDuyet !== temporaryAdminId ||
+            approvedApplication?.MSNV !== approved.data.data.MSNV ||
+            !reviewerAccount || reviewerAccount.ChucVu !== "ADMIN" ||
+            !applicantAccount || applicantAccount.ChucVu !== "STAFF" ||
+            String(reviewerAccount._id) === String(applicantAccount._id)) {
+            throw new Error("Hồ sơ không lưu đúng hai tham chiếu MSNV riêng biệt: người duyệt và nhân viên được tạo.");
         }
         const activeLogin = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_test_password" });
         if (activeLogin.status !== 200 || activeLogin.data.data.MSNV !== approved.data.data.MSNV) {
             throw new Error(`Nhân viên được duyệt không đăng nhập được, status=${activeLogin.status}`);
+        }
+        const approvedStatus = await request("POST", "/api/yeu-cau-nhan-vien/status", { SoDienThoai: phone, MatKhau: "applicant_test_password" });
+        if (approvedStatus.status !== 200 || approvedStatus.data.data.TrangThai !== "DaDuyet" || approvedStatus.data.data.MSNV !== approved.data.data.MSNV || approvedStatus.data.token) {
+            throw new Error(`Không tra cứu được hồ sơ đã duyệt, status=${approvedStatus.status}`);
         }
         const stillReader = await MongoDB.client.db().collection("docgia").findOne({ MaDocGia: temporaryReaderId }, { projection: { VaiTro: 1 } });
         if (stillReader?.VaiTro !== "USER") throw new Error("Hồ sơ độc giả bị thay đổi khi tạo nhân viên mới.");
@@ -1133,7 +1267,7 @@ async function runTests() {
         });
         if (auditCount < 2) throw new Error("Thiếu nhật ký gửi/duyệt hồ sơ nhân viên.");
         await MongoDB.client.db().collection("thongbao").deleteMany({
-            NguoiNhanId: new (require("mongodb").ObjectId)(approved.data.data._id),
+            MaNguoiNhan: approved.data.data.MSNV,
             LoaiNguoiNhan: "nhanvien",
         });
         await MongoDB.client.db().collection("nhanvien").deleteOne({ _id: new (require("mongodb").ObjectId)(approved.data.data._id), MSNV: approved.data.data.MSNV });
@@ -1149,10 +1283,17 @@ async function runTests() {
         if (submitted.status !== 201) throw new Error(`Không gửi được hồ sơ kiểm thử, status=${submitted.status}`);
         const headers = { Authorization: `Bearer ${temporaryAdminToken}` };
         const rejected = await request("PUT", `/api/yeu-cau-nhan-vien/${submitted.data.data._id}/reject`, { LyDoTuChoi: "Thiếu thông tin xác minh." }, headers);
+        const rejectedStatus = await request("POST", "/api/yeu-cau-nhan-vien/status", { SoDienThoai: phone, MatKhau: "applicant_test_password" });
         const login = await request("POST", "/api/auth/staff-login", { phone: phone, password: "applicant_test_password" });
         const saved = await MongoDB.client.db().collection("yeucaunhanvien").findOne({ _id: new (require("mongodb").ObjectId)(submitted.data.data._id) });
         if (rejected.status !== 200 || login.status !== 403 || !login.data.message.includes("Thiếu thông tin") || saved?.TrangThai !== "TuChoi") {
             throw new Error(`Từ chối hồ sơ chưa đúng, reject/login=${rejected.status}/${login.status}`);
+        }
+        if (saved?.NguoiDuyet !== temporaryAdminId || saved?.MSNV != null) {
+            throw new Error("Hồ sơ từ chối phải tham chiếu MSNV của Admin duyệt và chưa có MSNV nhân viên được cấp.");
+        }
+        if (rejectedStatus.status !== 200 || rejectedStatus.data.data.TrangThai !== "TuChoi" || rejectedStatus.data.data.LyDoTuChoi !== "Thiếu thông tin xác minh.") {
+            throw new Error(`Tra cứu không trả trạng thái/lý do từ chối, status=${rejectedStatus.status}`);
         }
         const resubmitted = await request("POST", "/api/yeu-cau-nhan-vien", {
             HoTenNV: "Ứng viên bị từ chối", SoDienThoai: phone, DiaChi: "Cần Thơ", MatKhau: "applicant_new_password",
@@ -1267,9 +1408,41 @@ async function runTests() {
         if (lock.status !== 200 || lock.data.data.TrangThaiThe !== "Khoa" || lock.data.data.SoLanViPham !== 2) {
             throw new Error(`Kỳ vọng khóa thẻ và giữ SoLanViPham=2, nhận status=${lock.status}`);
         }
-        let readerInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
-        if (!readerInbox.data.data.some((item) => item.LoaiThongBao === "THE_KHOA")) {
-            throw new Error("Độc giả không nhận được thông báo khóa thẻ.");
+        const revokedReaderSession = await request("GET", "/api/auth/me", null, {
+            Authorization: `Bearer ${temporaryReaderToken}`,
+        });
+        const lockedReaderLogin = await request("POST", "/api/auth/login", {
+            phone: temporaryReaderPhone,
+            password: "reader_test_password",
+        });
+        const wrongPasswordWhileReaderLocked = await request("POST", "/api/auth/login", {
+            phone: temporaryReaderPhone,
+            password: "wrong_reader_password",
+        });
+        if (
+            revokedReaderSession.status !== 401 ||
+            lockedReaderLogin.status !== 403 || !lockedReaderLogin.data.message.includes("đang bị khóa") || lockedReaderLogin.data.token ||
+            wrongPasswordWhileReaderLocked.status !== 401 || wrongPasswordWhileReaderLocked.data.message.includes("khóa")
+        ) {
+            throw new Error(`Độc giả bị khóa phải mất phiên và không đăng nhập được; mật khẩu sai vẫn nhận lỗi chung. Nhận me/login/wrong=${revokedReaderSession.status}/${lockedReaderLogin.status}/${wrongPasswordWhileReaderLocked.status}`);
+        }
+
+        const googleId = `locked-reader-${Date.now()}`;
+        const googleEmail = `${googleId}@example.test`;
+        await readers.updateOne(
+            { MaDocGia: temporaryReaderId },
+            { $set: { GoogleId: googleId, Email: googleEmail } }
+        );
+        const originalGoogleVerifier = GoogleAuthService.verifyIdToken;
+        let lockedGoogleLogin;
+        try {
+            GoogleAuthService.verifyIdToken = async () => ({ googleId, email: googleEmail, fullName: "Độc giả kiểm thử" });
+            lockedGoogleLogin = await request("POST", "/api/auth/google", { idToken: "test-verified-google-token" });
+        } finally {
+            GoogleAuthService.verifyIdToken = originalGoogleVerifier;
+        }
+        if (lockedGoogleLogin.status !== 403 || !lockedGoogleLogin.data.message.includes("đang bị khóa") || lockedGoogleLogin.data.token) {
+            throw new Error(`Độc giả bị khóa không được đăng nhập bằng Google hoặc nhận JWT; nhận HTTP ${lockedGoogleLogin.status}`);
         }
 
         const unlock = await request(
@@ -1281,7 +1454,15 @@ async function runTests() {
         if (unlock.status !== 200 || unlock.data.data.TrangThaiThe !== "HoatDong" || unlock.data.data.SoLanViPham !== 2) {
             throw new Error(`Kỳ vọng mở khóa khẩn cấp và giữ SoLanViPham=2, nhận status=${unlock.status}`);
         }
-        readerInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
+        const readerFreshLogin = await request("POST", "/api/auth/login", {
+            phone: temporaryReaderPhone,
+            password: "reader_test_password",
+        });
+        if (readerFreshLogin.status !== 200 || !readerFreshLogin.data.token) {
+            throw new Error(`Độc giả phải đăng nhập lại thành công sau khi được mở khóa, nhận HTTP ${readerFreshLogin.status}`);
+        }
+        temporaryReaderToken = readerFreshLogin.data.token;
+        const readerInbox = await request("GET", "/api/thongbao", null, { Authorization: `Bearer ${temporaryReaderToken}` });
         if (!readerInbox.data.data.some((item) => item.LoaiThongBao === "THE_MO_KHOA")) {
             throw new Error("Độc giả không nhận được thông báo mở khóa thẻ.");
         }
@@ -1312,6 +1493,12 @@ async function runTests() {
     const borrowIds = [borrowId, lossBorrowId, ...cancellationBorrowIds].filter(Boolean).filter(ObjectId.isValid).map(id => new ObjectId(id));
     if (borrowIds.length) await db.collection("theodoimuonsach").deleteMany({ _id: { $in: borrowIds } });
     if (temporaryReaderId) await db.collection("docgia").deleteOne({ MaDocGia: temporaryReaderId });
+    if (temporaryGoogleReaderObjectId && ObjectId.isValid(temporaryGoogleReaderObjectId)) {
+        await db.collection("docgia").deleteOne({ _id: new ObjectId(temporaryGoogleReaderObjectId) });
+    }
+    if (temporaryGoogleAvatarPath) {
+        await fs.unlink(path.join(__dirname, "public", temporaryGoogleAvatarPath.replace(/^\/+/, ""))).catch(() => {});
+    }
     if (temporaryOtherReaderObjectId && ObjectId.isValid(temporaryOtherReaderObjectId)) {
         await db.collection("docgia").deleteOne({ _id: new ObjectId(temporaryOtherReaderObjectId) });
     }
@@ -1321,12 +1508,12 @@ async function runTests() {
     const applicationIds = testApplicationIds.filter(ObjectId.isValid).map(id => new ObjectId(id));
     if (applicationIds.length) await db.collection("yeucaunhanvien").deleteMany({ _id: { $in: applicationIds } });
     if (temporaryReaderObjectId && ObjectId.isValid(temporaryReaderObjectId)) {
-        await db.collection("thongbao").deleteMany({ NguoiNhanId: new ObjectId(temporaryReaderObjectId) });
+        await db.collection("thongbao").deleteMany({ MaNguoiNhan: temporaryReaderId });
     }
     if (temporaryOtherReaderObjectId && ObjectId.isValid(temporaryOtherReaderObjectId)) {
-        await db.collection("thongbao").deleteMany({ NguoiNhanId: new ObjectId(temporaryOtherReaderObjectId) });
+        await db.collection("thongbao").deleteMany({ MaNguoiNhan: temporaryOtherReaderId });
     }
-    if (staffObjectIds.length) await db.collection("thongbao").deleteMany({ NguoiNhanId: { $in: staffObjectIds } });
+    if (testStaffCodes.length) await db.collection("thongbao").deleteMany({ MaNguoiNhan: { $in: testStaffCodes } });
     await db.collection("thongbao").deleteMany({ TieuDe: "Thông báo kiểm thử" });
 
     // API xóa sách chỉ soft-delete; loại fixture khỏi DB sau khi kết thúc kiểm thử.
@@ -1352,7 +1539,7 @@ async function runTests() {
     ];
     await db.collection("nhatkykiemtoan").deleteMany({ $or: testAuditConditions });
     if (temporaryReaderObjectId) {
-        await db.collection("thongbao").deleteMany({ NguoiNhanId: new (require("mongodb").ObjectId)(temporaryReaderObjectId) });
+        await db.collection("thongbao").deleteMany({ MaNguoiNhan: temporaryReaderId });
     }
 
     console.log("\n=========================================================================");

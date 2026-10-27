@@ -44,6 +44,10 @@ class AuthService {
         return (await this.staffApplicationApi.post("/", data)).data;
     }
 
+    async lookupStaffApplication(data) {
+        return (await this.staffApplicationApi.post("/status", data)).data;
+    }
+
     /**
      * Đăng xuất: xóa token và thông tin user khỏi localStorage.
      */
