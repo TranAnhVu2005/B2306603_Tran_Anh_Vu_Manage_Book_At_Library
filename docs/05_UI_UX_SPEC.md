@@ -202,5 +202,6 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 - Cả hai cổng hiển thị nút chuông nhỏ trong header khi có phiên đăng nhập; huy hiệu đỏ thể hiện số chưa đọc (giới hạn hiển thị `99+`). Khách chưa đăng nhập không thấy nút.
 - Mở chuông sẽ hiển thị panel có tiêu đề, nội dung, thời gian và phân biệt chưa đọc; hỗ trợ đánh dấu từng tin hoặc tất cả đã đọc. Nội dung dài được cuộn trong panel, không làm tràn toàn trang.
 - Dùng nền giấy, mực đậm, nhấn violet cho trạng thái chưa đọc, viền/bóng theo Neo-brutalism. Trên màn hình 320px panel nằm trong viewport.
+- Trên viewport dưới 768px, panel được định vị cố định theo vị trí chuông và giới hạn trong lề an toàn 12px ở hai bên; chiều rộng tối đa 360px, chiều cao không vượt vùng nhìn thấy. Khi đổi kích thước hoặc cuộn trang, panel tính lại vị trí để không bị cắt khỏi viewport. Desktop giữ panel neo cạnh nút chuông.
 - Hộp thư lưu trên server và được đồng bộ khi mở, focus lại tab và mỗi 30 giây.
 - Khi nhận thông báo khóa/mở khóa hoặc gỡ Danh sách đen, cổng độc giả đồng bộ hồ sơ hiện tại qua `/api/auth/me`; trước khi mở Borrow Modal cũng tải trạng thái mới nhất để không chặn nhầm theo localStorage cũ. Backend vẫn là nơi quyết định cuối cùng khi tạo phiếu.

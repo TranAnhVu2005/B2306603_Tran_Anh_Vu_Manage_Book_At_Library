@@ -164,7 +164,7 @@ Các kiểm thử tạo tài khoản nhân viên, quản trị viên, độc gi�
 | API-NOTI-07 | Admin khóa/mở khóa độc giả | Độc giả nhận đúng hai thông báo trạng thái |
 | API-AUTH-STAFF-01 | Nhân viên đăng nhập bằng số điện thoại | Số điện thoại hợp lệ đăng nhập được; MSNV và mật khẩu sai bị từ chối; tạo nhân viên thiếu/trùng số điện thoại bị từ chối |
 | UI-NOTI-01 | Header khi đã đăng nhập ở hai cổng | Chuông, badge, panel và thao tác đọc hiển thị đúng; guest không thấy chuông |
-| UI-NOTI-02 | Panel tại viewport 320/375/768/1024/1440px | Không tràn ngang trang; nội dung dài cuộn bên trong panel |
+| UI-NOTI-02 | Mở panel tại viewport 320/375/768/1024/1440px; đổi kích thước và cuộn khi panel đang mở | Panel luôn nằm trọn trong viewport ở mobile, bám theo chuông khi đổi kích thước/cuộn; desktop neo cạnh chuông; nội dung dài cuộn bên trong panel và không gây tràn ngang trang |
 | UI-AUTH-STAFF-01 | Mở màn đăng nhập cổng quản lý | Nhãn yêu cầu số điện thoại; input tel; đăng nhập bằng số đã đăng ký |
 | UI-AUTH-STAFF-02 | Khách mở `/catalog` và `/catalog/books/:id` tại cổng quản lý | Danh mục/chi tiết tải công khai cùng origin, không bị chuyển tới login; API đọc không cần JWT và không xuất hiện thao tác mượn |
 | UI-AUTH-STAFF-03 | Mở `/login`, `/staff-register` trên desktop/mobile và đăng nhập từ URL nghiệp vụ | Header có lối đăng ký nhân viên dễ tìm ở desktop và menu mobile; form login vẫn có link đăng ký; redirect chỉ nhận đường dẫn nội bộ hợp lệ, giữ đúng trang nghiệp vụ/catalog sau đăng nhập; người đã có phiên staff vào login được chuyển tới khu vực nghiệp vụ |

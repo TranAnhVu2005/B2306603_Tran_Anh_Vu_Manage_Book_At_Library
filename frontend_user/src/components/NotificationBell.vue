@@ -1,10 +1,10 @@
 <template>
   <div class="notification-wrap" ref="root">
-    <button class="notification-trigger" type="button" aria-label="Thông báo" :aria-expanded="isOpen" @click="toggle">
+    <button ref="trigger" class="notification-trigger" type="button" aria-label="Thông báo" :aria-expanded="isOpen" @click="toggle">
       <i class="fas fa-bell" aria-hidden="true"></i>
       <span v-if="unreadCount" class="notification-count">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
     </button>
-    <section v-if="isOpen" class="notification-panel" aria-label="Thông báo của bạn">
+    <section v-if="isOpen" class="notification-panel" :style="panelStyle" aria-label="Thông báo của bạn">
       <header class="notification-heading">
         <strong>Thông báo</strong>
         <button v-if="unreadCount" type="button" class="mark-all" @click="markAllRead">Đánh dấu đã đọc</button>
@@ -31,17 +31,21 @@ import authService from "../services/auth.service";
 
 export default {
   name: "NotificationBell",
-  data: () => ({ items: [], unreadCount: 0, isOpen: false, loading: false, error: false, timer: null, syncingUser: false }),
+  data: () => ({ items: [], unreadCount: 0, isOpen: false, loading: false, error: false, timer: null, syncingUser: false, panelStyle: null }),
   created() {
     this.refresh();
     this.timer = window.setInterval(this.refresh, 30000);
     document.addEventListener("click", this.onOutsideClick);
     window.addEventListener("focus", this.refresh);
+    window.addEventListener("resize", this.positionPanel);
+    window.addEventListener("scroll", this.positionPanel, true);
   },
   beforeUnmount() {
     window.clearInterval(this.timer);
     document.removeEventListener("click", this.onOutsideClick);
     window.removeEventListener("focus", this.refresh);
+    window.removeEventListener("resize", this.positionPanel);
+    window.removeEventListener("scroll", this.positionPanel, true);
   },
   methods: {
     async refresh() {
@@ -85,10 +89,32 @@ export default {
       event.stopPropagation();
       this.isOpen = !this.isOpen;
       if (this.isOpen) {
+        await this.$nextTick();
+        this.positionPanel();
         this.loading = true;
         await this.refresh();
         this.loading = false;
+      } else {
+        this.panelStyle = null;
       }
+    },
+    positionPanel() {
+      if (!this.isOpen || !this.$refs.trigger || window.innerWidth > 767) {
+        this.panelStyle = null;
+        return;
+      }
+      const trigger = this.$refs.trigger.getBoundingClientRect();
+      const width = Math.min(360, Math.max(0, window.innerWidth - 24));
+      const left = Math.max(12, Math.min(trigger.right - width, window.innerWidth - width - 12));
+      const top = Math.max(12, Math.min(trigger.bottom + 10, window.innerHeight - 160));
+      this.panelStyle = {
+        position: "fixed",
+        top: `${top}px`,
+        left: `${left}px`,
+        right: "auto",
+        width: `${width}px`,
+        maxHeight: `${Math.max(160, Math.min(440, window.innerHeight - top - 12))}px`,
+      };
     },
     async markRead(item) {
       if (item.DaDoc) return;
@@ -134,5 +160,5 @@ export default {
 .notification-copy time,.notification-empty,.notification-error { color: #716d64; font-size: 11px; }
 .notification-empty,.notification-error { margin: 0; padding: 18px; text-align: center; }
 .notification-error { color: #a11b14; }
-@media(max-width:359.98px) { .notification-panel { right: -48px; } }
+@media(max-width:767.98px) { .notification-panel { box-sizing: border-box; width: min(360px, calc(100vw - 24px)); } }
 </style>
