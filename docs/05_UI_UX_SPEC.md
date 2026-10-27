@@ -201,7 +201,7 @@ Các component cần xây dựng/cập nhật theo neo-brutalism:
 ## 7. Chọn và tải ảnh đại diện
 - Hồ sơ độc giả và nhân viên chỉ nhận JPEG, PNG hoặc WebP, tối đa 5 MiB; `accept` của input là gợi ý cho hộp thoại chọn tệp, không thay thế kiểm tra nội dung.
 - Hai cổng kiểm tra chữ ký byte của ảnh, chuẩn hóa MIME theo nội dung thay vì tin `File.type`, và giải mã trước khi hiển thị preview. Tệp hỏng/sai định dạng/quá giới hạn phải bị từ chối với thông báo cụ thể; không được gửi lên API.
-- Preview dùng Object URL và phải được thu hồi khi thay ảnh, đóng form hoặc rời trang. API/backend tiếp tục xác minh độc lập trước khi chuyển ảnh lên Cloudinary; chỉ gửi multipart, không đưa Cloudinary secret ra frontend.
+- Preview được tạo thành ảnh PNG nhỏ tối đa 256 px từ ảnh đã giải mã, tránh phụ thuộc vào việc thẻ `img` giải mã lại file/blob gốc; file gốc đã chuẩn hóa vẫn được gửi qua multipart. Nếu cần fallback Object URL để giải mã, phải thu hồi URL ngay sau khi giải mã. API/backend tiếp tục xác minh độc lập trước khi chuyển ảnh lên Cloudinary; không đưa Cloudinary secret ra frontend.
 # Hộp thư thông báo
 
 - Cả hai cổng hiển thị nút chuông nhỏ trong header khi có phiên đăng nhập; huy hiệu đỏ thể hiện số chưa đọc (giới hạn hiển thị `99+`). Khách chưa đăng nhập không thấy nút.

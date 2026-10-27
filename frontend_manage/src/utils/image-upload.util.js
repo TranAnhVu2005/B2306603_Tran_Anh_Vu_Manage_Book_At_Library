@@ -30,24 +30,45 @@ export async function prepareImageUpload(file) {
     lastModified: file.lastModified,
   });
 
-  if (typeof createImageBitmap === "function") {
-    let bitmap;
-    try {
+  let bitmap;
+  try {
+    if (typeof createImageBitmap === "function") {
       bitmap = await createImageBitmap(normalizedFile);
-      if (!bitmap.width || !bitmap.height || bitmap.width * bitmap.height > 40_000_000) {
-        throw new Error("Kích thước ảnh không hợp lệ hoặc vượt quá giới hạn xử lý.");
-      }
-    } catch (error) {
-      if (error.message === "Kích thước ảnh không hợp lệ hoặc vượt quá giới hạn xử lý.") throw error;
-      throw new Error("Trình duyệt không thể giải mã ảnh này. Hãy lưu lại ảnh dưới dạng JPEG, PNG hoặc WebP rồi thử lại.");
-    } finally {
-      bitmap?.close();
+    } else {
+      bitmap = await loadImageFallback(normalizedFile);
     }
-  }
+    if (!bitmap.width || !bitmap.height || bitmap.width * bitmap.height > 40_000_000) {
+      throw new Error("Kích thước ảnh không hợp lệ hoặc vượt quá giới hạn xử lý.");
+    }
 
-  return normalizedFile;
+    const scale = Math.min(1, 256 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Không thể tạo ảnh xem trước trên trình duyệt này.");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return { file: normalizedFile, previewUrl: canvas.toDataURL("image/png") };
+  } catch (error) {
+    if (error.message === "Kích thước ảnh không hợp lệ hoặc vượt quá giới hạn xử lý.") throw error;
+    throw new Error("Không thể giải mã ảnh. Hãy lưu lại ảnh dưới dạng JPEG, PNG hoặc WebP rồi thử lại.");
+  } finally {
+    bitmap?.close?.();
+  }
 }
 
-export function revokeObjectUrl(url) {
-  if (typeof url === "string" && url.startsWith("blob:")) URL.revokeObjectURL(url);
+function loadImageFallback(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Không thể giải mã ảnh."));
+    };
+    image.src = objectUrl;
+  });
 }

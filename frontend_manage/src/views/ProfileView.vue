@@ -435,7 +435,7 @@ import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
-import { prepareImageUpload, revokeObjectUrl } from "../utils/image-upload.util";
+import { prepareImageUpload } from "../utils/image-upload.util";
 
 export default {
   name: "ProfileView",
@@ -591,7 +591,6 @@ export default {
       }
     },
     releaseAvatarPreview() {
-      revokeObjectUrl(this.avatarPreview);
       this.avatarPreview = null;
     },
     async onAvatarChange(event) {
@@ -600,11 +599,11 @@ export default {
       if (!file) return;
 
       try {
-        const normalizedFile = await prepareImageUpload(file);
+        const { file: normalizedFile, previewUrl } = await prepareImageUpload(file);
         if (version !== this.avatarSelectionVersion) return;
         this.releaseAvatarPreview();
         this.selectedAvatarFile = normalizedFile;
-        this.avatarPreview = URL.createObjectURL(normalizedFile);
+        this.avatarPreview = previewUrl;
         this.avatarLoadError = false;
       } catch (error) {
         if (version !== this.avatarSelectionVersion) return;
