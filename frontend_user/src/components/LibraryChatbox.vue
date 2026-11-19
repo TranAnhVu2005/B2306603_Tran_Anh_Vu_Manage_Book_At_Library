@@ -39,9 +39,7 @@
         <div class="neo-chat-brand">
           <span class="neo-chat-avatar" aria-hidden="true">AI</span>
           <div class="neo-chat-title-wrap">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <h2 class="neo-chat-title">Trợ lý Thư viện CTU</h2>
-            </div>
+            <h2 class="neo-chat-title">Trợ lý Thư viện CTU</h2>
             <p class="neo-chat-subtitle">Tư vấn chọn sách, thể loại, tóm tắt nội dung &amp; quy định</p>
           </div>
         </div>
