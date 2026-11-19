@@ -256,7 +256,7 @@
                       <th>Hạn nhận / trả</th>
                       <th>Trạng thái</th>
                       <th class="pe-4">Ghi chú / Bồi thường</th>
-                      <th v-if="isReader && ['pending', 'active'].includes(activeTab)" class="pe-4 borrow-actions-heading">Thao tác</th>
+                      <th v-if="isReader" class="pe-4 borrow-actions-heading">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -291,14 +291,48 @@
                           chối</span>
                         <span v-else-if="item.TrangThai === 'DaHuy'" class="ath-badge ath-badge-neutral">Đã hủy</span>
                         <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn nhận</span>
+
+                        <!-- Trạng thái đền bù PayOS nếu phiếu Mất sách -->
+                        <div v-if="item.TrangThai === 'MatSach' && compensationFor(item._id)" class="mt-1">
+                          <span
+                            v-if="compensationFor(item._id).TrangThaiDuyet === 'DaDuyet'"
+                            class="payos-status-pill is-approved"
+                          >
+                            Đã duyệt đền bù
+                          </span>
+                          <span
+                            v-else-if="compensationFor(item._id).TrangThaiDuyet === 'ChoDuyet'"
+                            class="payos-status-pill is-waiting"
+                          >
+                            Chờ Admin duyệt đền bù
+                          </span>
+                          <span
+                            v-else-if="compensationFor(item._id).TrangThaiDuyet === 'TuChoi'"
+                            class="payos-status-pill is-rejected"
+                          >
+                            Từ chối đền bù
+                          </span>
+                          <span
+                            v-else
+                            class="payos-status-pill is-pending-pay"
+                          >
+                            Chờ chuyển khoản PayOS
+                          </span>
+                        </div>
                       </td>
                       <td class="pe-4" style="font-size: 0.82rem; color: var(--ink-muted);">
                         <span>{{ item.GhiChu || '—' }}</span>
                         <template v-if="item.GiaTriBoiThuong > 0">
                           <div class="boi-thuong fw-bold">
-                            {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
+                            Đền bù: {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
                           </div>
                         </template>
+                        <div
+                          v-if="compensationFor(item._id)?.LyDoTuChoi && compensationFor(item._id)?.TrangThaiDuyet === 'TuChoi'"
+                          class="text-danger small fw-semibold mt-1"
+                        >
+                          Lý do từ chối: {{ compensationFor(item._id).LyDoTuChoi }}
+                        </div>
                       </td>
                       <td v-if="activeTab === 'pending'" class="pe-4 borrow-actions-cell">
                         <button type="button" class="borrow-cancel-button" @click="openCancelBorrowModal(item)">
@@ -306,12 +340,52 @@
                         </button>
                       </td>
                       <td v-else-if="isReader && activeTab === 'active'" class="pe-4 borrow-actions-cell">
-                        <button v-if="canRenew(item)" type="button" class="borrow-renew-button" @click="openRenewBorrowModal(item)">
-                          Gia hạn 7 ngày
-                        </button>
-                        <span v-else class="borrow-renew-status">
-                          {{ item.SoLanGiaHan > 0 ? 'Đã gia hạn' : 'Không thể gia hạn' }}
-                        </span>
+                        <div class="d-flex flex-column align-items-end gap-2">
+                          <button v-if="canRenew(item)" type="button" class="borrow-renew-button" @click="openRenewBorrowModal(item)">
+                            Gia hạn 7 ngày
+                          </button>
+                          <span v-else class="borrow-renew-status">
+                            {{ item.SoLanGiaHan > 0 ? 'Đã gia hạn' : 'Không thể gia hạn' }}
+                          </span>
+                          <button type="button" class="borrow-loss-payos-button" @click="openLossPayosModal(item)">
+                            Báo mất &amp; Đền bù
+                          </button>
+                        </div>
+                      </td>
+                      <td v-else-if="isReader && activeTab === 'history'" class="pe-4 borrow-actions-cell">
+                        <template v-if="item.TrangThai === 'MatSach'">
+                          <span
+                            v-if="compensationFor(item._id)?.TrangThaiDuyet === 'DaDuyet'"
+                            class="borrow-renew-status text-success fw-bold"
+                          >
+                            Hoàn tất (#{{ compensationFor(item._id).OrderCode }})
+                          </span>
+                          <button
+                            v-else-if="compensationFor(item._id)?.TrangThaiDuyet === 'ChoDuyet'"
+                            type="button"
+                            class="borrow-payos-view-button"
+                            @click="openLossPayosModal(item)"
+                          >
+                            Xem GD chờ duyệt
+                          </button>
+                          <button
+                            v-else-if="compensationFor(item._id)?.TrangThaiDuyet === 'TuChoi'"
+                            type="button"
+                            class="borrow-loss-payos-button"
+                            @click="openLossPayosModal(item, true)"
+                          >
+                            Đền bù lại (PayOS)
+                          </button>
+                          <button
+                            v-else
+                            type="button"
+                            class="borrow-loss-payos-button"
+                            @click="openLossPayosModal(item)"
+                          >
+                            {{ compensationFor(item._id) ? "Quét QR PayOS" : "Đền bù qua PayOS" }}
+                          </button>
+                        </template>
+                        <span v-else class="borrow-renew-status">—</span>
                       </td>
                     </tr>
                   </tbody>
@@ -455,6 +529,195 @@
       </div>
     </div>
 
+    <!-- Modal Báo mất sách & Chuyển khoản đền bù trực tuyến qua PayOS -->
+    <div v-if="showLossPayosModal" class="ath-modal-overlay" @click.self="closeLossPayosModal">
+      <div class="ath-modal-content borrow-cancel-modal payos-loss-modal" role="dialog" aria-modal="true"
+        aria-labelledby="loss-payos-title">
+        <div class="ath-modal-inner">
+          <div class="modal-head borrow-cancel-head">
+            <div class="borrow-cancel-heading">
+              <span class="borrow-cancel-symbol" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                  <line x1="2" x2="22" y1="10" y2="10" />
+                </svg>
+              </span>
+              <div>
+                <span class="vg-section-label">BÁO MẤT &amp; ĐỀN BÙ TRỰC TUYẾN (PAYOS)</span>
+                <h2 id="loss-payos-title" class="modal-title">
+                  {{ activePayosTx ? "Chuyển khoản đền bù qua PayOS" : "Báo mất sách &amp; Khởi tạo đền bù" }}
+                </h2>
+              </div>
+            </div>
+            <button type="button" class="modal-close" @click="closeLossPayosModal" :disabled="creatingPayos || confirmingPayos"
+              aria-label="Đóng">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          <div class="borrow-cancel-body">
+            <!-- Thông tin sách -->
+            <div class="borrow-cancel-book-card">
+              <span class="borrow-cancel-book-label">SÁCH ĐỀN BÙ · {{ lossTarget?.MaSach }}</span>
+              <p class="borrow-cancel-book">{{ lossTarget ? bookName(lossTarget.MaSach) : '' }}</p>
+              <div class="payos-amount-line mt-1">
+                Mức bồi thường (100% đơn giá sách):
+                <strong class="text-danger">{{ bookCompensationAmount(lossTarget).toLocaleString("vi-VN") }} ₫</strong>
+              </div>
+            </div>
+
+            <!-- Bước 1: Nhập lý do báo mất và tạo mã PayOS -->
+            <template v-if="!activePayosTx || forceNewPayos">
+              <div class="payos-form-group">
+                <label class="payos-form-label" for="loss-reason-input">Lý do / Ghi chú báo mất sách</label>
+                <textarea
+                  id="loss-reason-input"
+                  v-model.trim="lossReason"
+                  class="ath-input payos-textarea"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Nhập lý do làm mất sách (ví dụ: Làm thất lạc sách cá nhân, xin chuyển khoản đền bù trực tuyến)..."
+                ></textarea>
+              </div>
+              <p class="borrow-cancel-note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" />
+                </svg>
+                <span>
+                  Bạn không cần đến trực tiếp thư viện. Sau khi xác nhận, hệ thống sẽ tạo mã <strong>VietQR / PayOS</strong> để bạn chuyển khoản và gửi chờ Quản trị viên duyệt.
+                </span>
+              </p>
+            </template>
+
+            <!-- Bước 2: Đã có mã thanh toán PayOS -->
+            <template v-else>
+              <!-- Banner trạng thái duyệt -->
+              <div
+                class="payos-review-banner"
+                :class="{
+                  'is-approved': activePayosTx.TrangThaiDuyet === 'DaDuyet',
+                  'is-waiting': activePayosTx.TrangThaiDuyet === 'ChoDuyet',
+                  'is-rejected': activePayosTx.TrangThaiDuyet === 'TuChoi',
+                }"
+              >
+                <strong v-if="activePayosTx.TrangThaiDuyet === 'DaDuyet'">
+                  Quản trị viên đã duyệt hoàn tất khoản đền bù này.
+                </strong>
+                <strong v-else-if="activePayosTx.TrangThaiDuyet === 'ChoDuyet'">
+                  Đã gửi xác nhận chuyển khoản — Đang đợi Quản trị viên kiểm tra và duyệt.
+                </strong>
+                <strong v-else-if="activePayosTx.TrangThaiDuyet === 'TuChoi'">
+                  Yêu cầu trước bị từ chối: {{ activePayosTx.LyDoTuChoi || "Vui lòng kiểm tra lại giao dịch." }}
+                </strong>
+                <strong v-else>
+                  Quét mã QR bên dưới hoặc mở trang PayOS để chuyển khoản, sau đó bấm "Tôi đã chuyển khoản".
+                </strong>
+              </div>
+
+              <!-- Khung QR & Thông tin chuyển khoản -->
+              <div class="payos-qr-grid">
+                <div v-if="currentQrImageUrl" class="payos-qr-box">
+                  <img
+                    :src="currentQrImageUrl"
+                    alt="Mã VietQR thanh toán đền bù PayOS"
+                    class="payos-qr-img"
+                    @error="onPayosQrError"
+                  />
+                  <span class="payos-qr-caption">Quét bằng App Ngân hàng bất kỳ</span>
+                </div>
+
+                <div class="payos-bank-details">
+                  <div class="payos-detail-row">
+                    <span class="payos-detail-label">Mã đơn PayOS</span>
+                    <span class="payos-detail-value font-mono-code">#{{ activePayosTx.OrderCode }}</span>
+                  </div>
+                  <div class="payos-detail-row">
+                    <span class="payos-detail-label">Số tiền</span>
+                    <span class="payos-detail-value fw-bold text-danger">
+                      {{ Number(activePayosTx.SoTien || 0).toLocaleString("vi-VN") }} ₫
+                    </span>
+                  </div>
+                  <div v-if="activePayosTx.AccountName" class="payos-detail-row">
+                    <span class="payos-detail-label">Chủ tài khoản</span>
+                    <span class="payos-detail-value">{{ activePayosTx.AccountName }}</span>
+                  </div>
+                  <div v-if="activePayosTx.AccountNumber" class="payos-detail-row">
+                    <span class="payos-detail-label">Số tài khoản</span>
+                    <span class="payos-detail-value font-mono-code">{{ activePayosTx.AccountNumber }}</span>
+                  </div>
+                  <div class="payos-detail-row">
+                    <span class="payos-detail-label">Nội dung CK</span>
+                    <span class="payos-detail-value font-mono-code payos-code-highlight">
+                      {{ activePayosTx.NoiDungChuyenKhoan }}
+                    </span>
+                  </div>
+                  <div class="payos-detail-row">
+                    <span class="payos-detail-label">Cổng PayOS</span>
+                    <span class="payos-detail-value">
+                      {{ activePayosTx.TrangThaiPayOS === "PAID" ? "Đã nhận thanh toán (PAID)" : "Đang chờ chuyển khoản" }}
+                    </span>
+                  </div>
+
+                  <a
+                    v-if="activePayosTx.CheckoutUrl"
+                    :href="activePayosTx.CheckoutUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="payos-checkout-link text-decoration-none mt-2"
+                  >
+                    Mở trang cổng thanh toán PayOS ↗
+                  </a>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="profile-editor-actions borrow-cancel-actions">
+            <button
+              class="ath-btn-outline"
+              type="button"
+              :disabled="creatingPayos || confirmingPayos"
+              @click="closeLossPayosModal"
+            >
+              Đóng
+            </button>
+
+            <button
+              v-if="!activePayosTx || forceNewPayos"
+              class="borrow-renew-confirm"
+              type="button"
+              :disabled="creatingPayos || !lossReason.trim()"
+              @click="createPayosCompensation"
+            >
+              {{ creatingPayos ? "Đang tạo mã PayOS..." : "Xác nhận báo mất & Tạo mã PayOS" }}
+            </button>
+
+            <button
+              v-else-if="activePayosTx.TrangThaiDuyet === 'ChoChuyenKhoan'"
+              class="borrow-renew-confirm"
+              type="button"
+              :disabled="confirmingPayos"
+              @click="confirmPayosTransfer"
+            >
+              {{ confirmingPayos ? "Đang gửi xác nhận..." : "Tôi đã chuyển khoản — Gửi chờ duyệt" }}
+            </button>
+
+            <button
+              v-else-if="activePayosTx.TrangThaiDuyet === 'TuChoi'"
+              class="borrow-renew-confirm"
+              type="button"
+              @click="forceNewPayos = true"
+            >
+              Tạo mã PayOS mới
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Profile editor modal -->
     <div v-if="showEditProfileModal" class="ath-modal-overlay" @click.self="closeProfileEditor">
       <div class="ath-modal-content profile-editor-modal shadow-lg" role="dialog" aria-modal="true"
@@ -578,6 +841,7 @@ import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
+import payosService from "../services/payos.service";
 import { prepareImageUpload } from "../utils/image-upload.util";
 
 export default {
@@ -590,6 +854,7 @@ export default {
       staffInfo: null,
       borrows: [],
       books: [],
+      compensations: [],
       loading: false,
       activeTab: "active",
       showCancelBorrowModal: false,
@@ -598,6 +863,15 @@ export default {
       showRenewBorrowModal: false,
       renewTarget: null,
       renewingBorrow: false,
+      showLossPayosModal: false,
+      lossTarget: null,
+      lossReason: "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS",
+      activePayosTx: null,
+      forceNewPayos: false,
+      creatingPayos: false,
+      confirmingPayos: false,
+      payosQrFallbackUsed: false,
+      payosPollTimer: null,
       showEditProfileModal: false,
       savingProfile: false,
       selectedAvatarFile: null,
@@ -661,6 +935,13 @@ export default {
       if (this.activeTab === "pending") return this.pendingBorrows;
       return this.historyBorrows;
     },
+    currentQrImageUrl() {
+      if (!this.activePayosTx) return "";
+      if (this.payosQrFallbackUsed && this.activePayosTx.QrFallbackImageUrl) {
+        return this.activePayosTx.QrFallbackImageUrl;
+      }
+      return this.activePayosTx.VietQrImageUrl || this.activePayosTx.QrFallbackImageUrl || "";
+    },
     profileEditorNote() {
       return this.isReader
         ? (this.readerInfo?.DienThoai
@@ -700,14 +981,29 @@ export default {
         document.removeEventListener("keydown", this.handleRenewBorrowKeydown);
       }
     },
+    showLossPayosModal(isOpen) {
+      if (isOpen) {
+        this.previousBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.addEventListener("keydown", this.handleLossPayosKeydown);
+      } else {
+        this.stopPayosPolling();
+        document.body.style.overflow = this.previousBodyOverflow;
+        document.removeEventListener("keydown", this.handleLossPayosKeydown);
+      }
+    },
   },
   created() {
     this.currentUser = authService.getUser();
     if (this.currentUser) this.fetchData();
   },
-  mounted() { this.initReveal(); },
+  mounted() {
+    this.initReveal();
+    this.handlePayosReturnQuery();
+  },
   beforeUnmount() {
     if (this.revealObserver) this.revealObserver.disconnect();
+    this.stopPayosPolling();
     this.releaseAvatarPreview();
     if (this.showEditProfileModal) {
       document.body.style.overflow = this.previousBodyOverflow;
@@ -720,6 +1016,10 @@ export default {
     if (this.showRenewBorrowModal) {
       document.body.style.overflow = this.previousBodyOverflow;
       document.removeEventListener("keydown", this.handleRenewBorrowKeydown);
+    }
+    if (this.showLossPayosModal) {
+      document.body.style.overflow = this.previousBodyOverflow;
+      document.removeEventListener("keydown", this.handleLossPayosKeydown);
     }
   },
   methods: {
@@ -740,13 +1040,15 @@ export default {
         this.currentUser = user;
 
         if (authService.isReader(user)) {
-          const [borrows, books] = await Promise.all([
+          const [borrows, books, txRes] = await Promise.all([
             theoDoiService.getAll({ maDocGia: user.MaDocGia }),
             sachService.getAll(),
+            payosService.getTransactions({ latestPerBorrow: true }).catch(() => ({ data: [] })),
           ]);
           this.readerInfo = user;
           this.borrows = borrows;
           this.books = books;
+          this.compensations = Array.isArray(txRes?.data) ? txRes.data : [];
         } else {
           this.staffInfo = user;
         }
@@ -755,6 +1057,182 @@ export default {
       } finally {
         this.loading = false;
         this.$nextTick(() => this.initReveal());
+      }
+    },
+    compensationFor(borrowId) {
+      return this.compensations.find((tx) => tx.MaPhieuMuon === String(borrowId)) || null;
+    },
+    bookCompensationAmount(borrowItem) {
+      if (!borrowItem) return 0;
+      if (Number(borrowItem.GiaTriBoiThuong || 0) > 0) return Number(borrowItem.GiaTriBoiThuong);
+      const book = this.books.find((b) => b.MaSach === borrowItem.MaSach);
+      return Number(book?.DonGia || 0);
+    },
+    async handlePayosReturnQuery() {
+      const payosState = this.$route?.query?.payos;
+      const orderCode = this.$route?.query?.orderCode;
+      if (!payosState) return;
+
+      this.activeTab = "history";
+      if (payosState === "paid" && orderCode) {
+        try {
+          const res = await payosService.syncOrder(orderCode);
+          await this.fetchData();
+          this.$refs.toast?.show(
+            res?.message || "Đã đồng bộ thanh toán PayOS! Yêu cầu đền bù đang chờ Quản trị viên duyệt."
+          );
+        } catch (err) {
+          this.$refs.toast?.show(
+            err.response?.data?.message || "Đã nhận phản hồi từ PayOS. Vui lòng kiểm tra trạng thái trong lịch sử.",
+            "error"
+          );
+        }
+      } else if (payosState === "cancelled") {
+        this.$refs.toast?.show("Bạn đã đóng phiên thanh toán trên PayOS. Bạn có thể mở lại mã QR bất cứ lúc nào.");
+      }
+
+      this.$router.replace({ path: "/profile" }).catch(() => {});
+    },
+    async openLossPayosModal(item, forceNew = false) {
+      if (!item) return;
+      this.lossTarget = item;
+      this.forceNewPayos = Boolean(forceNew);
+      this.payosQrFallbackUsed = false;
+      this.lossReason = "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS";
+
+      const existing = this.compensationFor(item._id);
+      this.activePayosTx = forceNew ? null : existing;
+      this.showLossPayosModal = true;
+
+      if (!forceNew && item.TrangThai === "MatSach") {
+        try {
+          const res = await payosService.getByBorrowId(item._id);
+          if (res?.data) {
+            this.activePayosTx = res.data;
+            this.upsertCompensation(res.data);
+            if (res.data.TrangThaiDuyet === "ChoChuyenKhoan") {
+              this.startPayosPolling(item._id);
+            }
+          }
+        } catch {
+          // Chưa có giao dịch thì giữ form tạo mới
+        }
+      }
+    },
+    closeLossPayosModal() {
+      if (this.creatingPayos || this.confirmingPayos) return;
+      this.stopPayosPolling();
+      this.showLossPayosModal = false;
+      this.lossTarget = null;
+      this.activePayosTx = null;
+      this.forceNewPayos = false;
+    },
+    handleLossPayosKeydown(event) {
+      if (event.key === "Escape") this.closeLossPayosModal();
+    },
+    onPayosQrError() {
+      if (!this.payosQrFallbackUsed && this.activePayosTx?.QrFallbackImageUrl) {
+        this.payosQrFallbackUsed = true;
+      }
+    },
+    upsertCompensation(tx) {
+      if (!tx || !tx.MaPhieuMuon) return;
+      const idx = this.compensations.findIndex((item) => item.MaPhieuMuon === tx.MaPhieuMuon);
+      if (idx >= 0) {
+        this.compensations.splice(idx, 1, tx);
+      } else {
+        this.compensations.unshift(tx);
+      }
+    },
+    startPayosPolling(borrowId) {
+      this.stopPayosPolling();
+      this.payosPollTimer = setInterval(async () => {
+        if (!this.showLossPayosModal || !borrowId) {
+          this.stopPayosPolling();
+          return;
+        }
+        try {
+          const res = await payosService.getByBorrowId(borrowId);
+          if (res?.data) {
+            this.activePayosTx = res.data;
+            this.upsertCompensation(res.data);
+            if (res.data.TrangThaiPayOS === "PAID" || res.data.TrangThaiDuyet !== "ChoChuyenKhoan") {
+              this.stopPayosPolling();
+              await this.fetchData();
+              this.$refs.toast?.show("PayOS đã ghi nhận thanh toán! Yêu cầu đã chuyển sang chờ Quản trị viên duyệt.");
+            }
+          }
+        } catch {
+          // Bỏ qua lỗi mạng tạm thời khi polling
+        }
+      }, 5000);
+    },
+    stopPayosPolling() {
+      if (this.payosPollTimer) {
+        clearInterval(this.payosPollTimer);
+        this.payosPollTimer = null;
+      }
+    },
+    async createPayosCompensation() {
+      if (!this.lossTarget || this.creatingPayos) return;
+      const reason = this.lossReason.trim();
+      if (!reason) {
+        this.$refs.toast?.show("Vui lòng nhập lý do báo mất sách.", "error");
+        return;
+      }
+
+      this.creatingPayos = true;
+      try {
+        const res = await payosService.createPayment({
+          borrowId: this.lossTarget._id,
+          ghiChu: reason,
+          forceNew: this.forceNewPayos,
+        });
+        if (res?.data) {
+          this.activePayosTx = res.data;
+          this.forceNewPayos = false;
+          this.payosQrFallbackUsed = false;
+          this.upsertCompensation(res.data);
+          await this.fetchData();
+          this.activeTab = "history";
+          if (res.data.TrangThaiDuyet === "ChoChuyenKhoan") {
+            this.startPayosPolling(this.lossTarget._id);
+          }
+        }
+        this.$refs.toast?.show(
+          res?.message || "Đã tạo mã thanh toán PayOS. Vui lòng quét mã QR để chuyển khoản đền bù."
+        );
+      } catch (err) {
+        this.$refs.toast?.show(
+          err.response?.data?.message || err.message || "Không thể khởi tạo mã thanh toán PayOS.",
+          "error"
+        );
+      } finally {
+        this.creatingPayos = false;
+      }
+    },
+    async confirmPayosTransfer() {
+      if (!this.lossTarget || this.confirmingPayos) return;
+      this.confirmingPayos = true;
+      try {
+        const res = await payosService.confirmTransfer(this.lossTarget._id, this.lossReason);
+        if (res?.data) {
+          this.activePayosTx = res.data;
+          this.upsertCompensation(res.data);
+        }
+        this.stopPayosPolling();
+        await this.fetchData();
+        this.activeTab = "history";
+        this.$refs.toast?.show(
+          res?.message || "Đã xác nhận chuyển khoản đền bù! Yêu cầu đang chờ Quản trị viên xét duyệt."
+        );
+      } catch (err) {
+        this.$refs.toast?.show(
+          err.response?.data?.message || err.message || "Không thể gửi xác nhận chuyển khoản.",
+          "error"
+        );
+      } finally {
+        this.confirmingPayos = false;
       }
     },
     onAvatarError() {
@@ -1046,6 +1524,218 @@ export default {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.borrow-loss-payos-button,
+.borrow-payos-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.4rem 0.7rem;
+  border: 2px solid var(--ink-primary, #111);
+  border-radius: 0.55rem;
+  box-shadow: 3px 3px 0 var(--ink-primary, #111);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.borrow-loss-payos-button {
+  background: #fff3d6;
+  color: #9a3b13;
+}
+
+.borrow-payos-view-button {
+  background: #eeeaff;
+  color: #30217f;
+}
+
+.borrow-loss-payos-button:hover:not(:disabled),
+.borrow-payos-view-button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink-primary, #111);
+}
+
+.payos-status-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  border: 1.5px solid #111111;
+  border-radius: 5px;
+}
+
+.payos-status-pill.is-approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.payos-status-pill.is-waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.payos-status-pill.is-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payos-status-pill.is-pending-pay {
+  background: #e0e7ff;
+  color: #1e3a8a;
+}
+
+.payos-loss-modal {
+  max-width: 610px;
+}
+
+.payos-amount-line {
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+}
+
+.payos-form-group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.payos-form-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.payos-textarea {
+  resize: vertical;
+  min-height: 76px;
+}
+
+.payos-review-banner {
+  padding: 0.7rem 0.85rem;
+  border: 2px solid #111111;
+  border-radius: 0.65rem;
+  background: #fff8df;
+  color: #111111;
+  font-size: 0.84rem;
+  box-shadow: 2px 2px 0 #111111;
+}
+
+.payos-review-banner.is-approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.payos-review-banner.is-waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.payos-review-banner.is-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payos-qr-grid {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.payos-qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.65rem;
+  background: #ffffff;
+  border: 2px solid #111111;
+  border-radius: 0.75rem;
+  box-shadow: 3px 3px 0 #111111;
+}
+
+.payos-qr-img {
+  width: 100%;
+  max-width: 168px;
+  height: auto;
+  border-radius: 0.4rem;
+}
+
+.payos-qr-caption {
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  text-align: center;
+}
+
+.payos-bank-details {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  background: #ffffff;
+  border: 2px solid #111111;
+  border-radius: 0.75rem;
+  box-shadow: 3px 3px 0 #111111;
+}
+
+.payos-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed #d1d5db;
+  font-size: 0.82rem;
+}
+
+.payos-detail-label {
+  color: var(--ink-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.payos-detail-value {
+  color: var(--ink-primary);
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.payos-code-highlight {
+  padding: 1px 6px;
+  background: #fdc800;
+  border: 1.5px solid #111111;
+  border-radius: 4px;
+}
+
+.payos-checkout-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  background: #432dd7;
+  color: #ffffff;
+  border: 2px solid #111111;
+  border-radius: 0.55rem;
+  box-shadow: 2px 2px 0 #111111;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.payos-checkout-link:hover {
+  background: #331fb8;
+  color: #ffffff;
+}
+
+@media (max-width: 575.98px) {
+  .payos-qr-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .borrow-cancel-button:hover:not(:disabled),

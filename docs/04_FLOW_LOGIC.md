@@ -71,16 +71,19 @@ stateDiagram-v2
 
 ---
 
-## 4. Quy Trình Báo Mất Sách & Thanh Toán Bồi Thường
+## 4. Quy Trình Báo Mất Sách & Thanh Toán Bồi Thường Trực Tuyến Qua PayOS
 
-1. Độc giả báo mất sách hoặc thủ thư kiểm kê phát hiện mất:
-   - Thủ thư chuyển trạng thái phiếu sang `MatSach`.
+1. **Độc giả tự báo mất trên website hoặc thủ thư kiểm kê phát hiện mất**:
+   - Độc giả có thể bấm **"Báo mất & Đền bù"** ngay tại tab **Đang mượn** trong `/profile` (`PUT /api/theodoimuonsach/:id/bao-mat-doc-gia` hoặc `POST /api/payment/payos/create`), hoặc thủ thư bấm **Báo mất** tại quầy (`PUT /api/theodoimuonsach/:id/bao-mat`).
+   - Phiếu mượn chuyển sang `MatSach`.
    - **Không cộng hoàn trả kho** `SoQuyen` (sách bị mất thật sự).
    - Tự động gán tiền bồi hoàn: `GiaTriBoiThuong = Sach.DonGia`.
    - Tăng số lần vi phạm của độc giả lên 1: `SoLanViPham = SoLanViPham + 1`. Nếu đạt 3 lần, thẻ độc giả bị đưa vào `DanhSachDen`.
-2. **Thanh toán bồi hoàn qua MoMo (chưa triển khai)**:
-   - Tài liệu nghiệp vụ dự kiến tạo đường dẫn MoMo QR Code / App Deeplink và xác thực Webhook IPN.
-   - Backend hiện chưa có payment route/service/controller; không hiển thị đây là luồng đã hoạt động cho tới khi được triển khai và kiểm thử.
+2. **Thanh toán bồi hoàn qua PayOS & Chờ Quản trị viên duyệt**:
+   - Độc giả khởi tạo phiên thanh toán đền bù qua `POST /api/payment/payos/create`. Backend ký HMAC-SHA256 với `PAYOS_CHECKSUM_KEY` và gọi PayOS Merchant API v2 để tạo mã VietQR cùng đường dẫn `CheckoutUrl`.
+   - Bản ghi giao dịch được lưu trong collection hỗ trợ `giaodichboithuong` với `TrangThaiDuyet = "ChoChuyenKhoan"`.
+   - Sau khi độc giả quét mã QR chuyển khoản và bấm **"Tôi đã chuyển khoản — Gửi chờ duyệt"** (hoặc hệ thống đồng bộ `PAID` từ PayOS API/Webhook), giao dịch chuyển sang `TrangThaiDuyet = "ChoDuyet"` và gửi thông báo tới Quản trị viên / Thủ thư.
+   - Tại cổng quản lý (`/manager/borrows`), Quản trị viên / Thủ thư kiểm tra mã đơn PayOS, trạng thái thanh toán rồi chọn **Duyệt đền bù** (`DaDuyet`) hoặc **Từ chối đền bù** (`TuChoi` kèm lý do). Khi duyệt hoặc từ chối, hệ thống ghi `nhatkykiemtoan` và gửi thông báo tới hộp thư độc giả.
 
 ---
 

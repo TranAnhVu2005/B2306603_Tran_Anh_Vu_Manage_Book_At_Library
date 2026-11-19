@@ -1,11 +1,13 @@
 <script>
   import AppHeader from './components/AppHeader.vue';
   import AppFooter from './components/AppFooter.vue';
+  import LibraryChatbox from './components/LibraryChatbox.vue';
 
   export default {
     components: {
       AppHeader,
       AppFooter,
+      LibraryChatbox,
     },
   };
 </script>
@@ -17,6 +19,7 @@
       <router-view />
     </main>
     <AppFooter />
+    <LibraryChatbox bookDetailPrefix="/catalog/books" />
   </div>
 </template>
 

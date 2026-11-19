@@ -622,6 +622,101 @@ class TheoDoiMuonSachService {
         return updatedRecord;
     }
 
+    // Độc giả tự báo mất sách trực tuyến trên website để tiến hành đền bù qua PayOS
+    async baoMatDocGia(id, ghiChu, maDocGia) {
+        if (!ObjectId.isValid(id)) return null;
+        const record = await this.TheoDoi.findOne({ _id: new ObjectId(id) });
+        if (!record) return null;
+
+        if (record.MaDocGia !== String(maDocGia)) {
+            const err = new Error("Bạn không có quyền báo mất cho phiếu mượn của độc giả khác.");
+            err.statusCode = 403;
+            throw err;
+        }
+
+        if (record.TrangThai === "MatSach") {
+            return await this.findById(String(record._id));
+        }
+
+        if (record.TrangThai !== "DangMuon") {
+            const err = new Error("Chỉ có thể báo mất sách khi phiếu đang ở trạng thái 'DangMuon'.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const noteText = ghiChu && String(ghiChu).trim()
+            ? String(ghiChu).trim().slice(0, 500)
+            : "Độc giả báo mất sách trực tuyến";
+
+        const sach = await this.Sach.findOne({ MaSach: record.MaSach });
+        const giaTriBoiThuong = sach ? Number(sach.DonGia || 0) : 0;
+
+        const result = await this.TheoDoi.findOneAndUpdate(
+            { _id: record._id, MaDocGia: String(maDocGia), TrangThai: "DangMuon" },
+            {
+                $set: {
+                    TrangThai: "MatSach",
+                    NgayTra: dateFromCalendarKey(this.dateKey()),
+                    GiaTriBoiThuong: giaTriBoiThuong,
+                    GhiChu: `${noteText} (Báo mất trực tuyến - Tiền bồi thường: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫)`,
+                    UpdatedAt: new Date(),
+                },
+            },
+            { returnDocument: "after" }
+        );
+
+        if (!result) {
+            const err = new Error("Phiếu mượn vừa thay đổi trạng thái. Vui lòng tải lại danh sách.");
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const docGia = await this.DocGia.findOne({ MaDocGia: record.MaDocGia });
+        let newStatus = docGia?.TrangThaiThe || "HoatDong";
+        if (docGia) {
+            const newViPham = (docGia.SoLanViPham || 0) + 1;
+            newStatus = newViPham >= 3 ? "DanhSachDen" : docGia.TrangThaiThe;
+            await this.DocGia.updateOne(
+                { MaDocGia: record.MaDocGia },
+                { $set: { SoLanViPham: newViPham, TrangThaiThe: newStatus, UpdatedAt: new Date() } }
+            );
+        }
+
+        const updatedRecord = await this.findById(String(record._id));
+        if (updatedRecord) {
+            const readerName = [docGia?.HoLot, docGia?.Ten].filter(Boolean).join(" ") || record.MaDocGia;
+            await this.AuditLog.record({
+                action: "BOOK_REPORTED_LOST",
+                entityType: "borrow",
+                entityId: String(record._id),
+                MaSach: record.MaSach,
+                TenSach: sach?.TenSach,
+                MaDocGia: record.MaDocGia,
+                TenDocGia: readerName,
+                actorType: "reader",
+                actorId: String(maDocGia),
+                Details: { from: "DangMuon", to: "MatSach", compensation: giaTriBoiThuong, reason: noteText },
+            });
+            await this.notifyReader(
+                record.MaDocGia,
+                "PHIEU_BAO_MAT_SACH",
+                "Đã ghi nhận báo mất sách trực tuyến",
+                `Bạn đã báo mất cuốn “${sach?.TenSach || record.MaSach}”. Mức đền bù: ${giaTriBoiThuong.toLocaleString("vi-VN")} ₫. Vui lòng hoàn tất chuyển khoản qua PayOS để quản trị viên xét duyệt.`,
+                record.MaSach
+            );
+            if (newStatus === "DanhSachDen" && docGia?.TrangThaiThe !== "DanhSachDen") {
+                await this.notifyReader(
+                    record.MaDocGia,
+                    "THE_VAO_DANH_SACH_DEN",
+                    "Thẻ đã vào Danh sách đen",
+                    "Thẻ của bạn đã đạt ngưỡng 3 lần vi phạm. Hệ thống tạm dừng đăng ký mượn mới; vui lòng hoàn tất đền bù và liên hệ quản trị viên để được xét gỡ.",
+                    record.MaDocGia
+                );
+            }
+        }
+        return updatedRecord;
+    }
+
     // Tìm theo mã độc giả, mã sách và trạng thái - Completed
     async find(filter = {}) {
         await this.expirePickupReservations();

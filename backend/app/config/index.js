@@ -41,7 +41,15 @@ const config = {
     google: {
         clientId: process.env.GOOGLE_CLIENT_ID,
     },
-
+    gemini: {
+        apiKey: process.env.GEMINI_API_KEY?.trim() || "",
+        apiUrl: process.env.GEMINI_API_URL?.trim() || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    },
+    payos: {
+        clientId: process.env.PAYOS_CLIENT_ID?.trim() || "",
+        apiKey: process.env.PAYOS_API_KEY?.trim() || "",
+        checksumKey: process.env.PAYOS_CHECKSUM_KEY?.trim() || "",
+    },
 };
 
 module.exports = config;

@@ -12,6 +12,10 @@ const actionNames = {
     BORROW_EXTENDED: "PHIEU_GIA_HAN", BOOK_RETURNED: "PHIEU_TRA_SACH", BOOK_REPORTED_LOST: "PHIEU_BAO_MAT_SACH",
     BORROW_CANCELLED: "PHIEU_HUY_DANG_KY",
     BORROW_RECORD_DELETED: "PHIEU_XOA",
+    PAYOS_COMPENSATION_CREATED: "PHIEU_TAO_MA_PAYOS",
+    PAYOS_COMPENSATION_SUBMITTED: "PHIEU_XAC_NHAN_CK_PAYOS",
+    PAYOS_COMPENSATION_APPROVED: "PHIEU_DUYET_DEN_BU",
+    PAYOS_COMPENSATION_REJECTED: "PHIEU_TU_CHOI_DEN_BU",
     NHANVIEN_DANG_KY: "NHANVIEN_DANG_KY",
     NHANVIEN_DUYET_DANG_KY: "NHANVIEN_DUYET_DANG_KY",
     NHANVIEN_TU_CHOI_DANG_KY: "NHANVIEN_TU_CHOI_DANG_KY",
@@ -23,7 +27,7 @@ const actionNames = {
     STAFF_SOFT_DELETED: "NHANVIEN_XOA_MEM",
     STAFF_RESTORED: "NHANVIEN_KHOI_PHUC",
 };
-const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong", HanTraCu: "HanTraCu", HanTraMoi: "HanTraMoi", SoNgayGiaHan: "SoNgayGiaHan" };
+const detailNames = { from: "Tu", to: "Den", changes: "ThayDoi", createdFields: "TruongDuocTao", reason: "LyDo", overdue: "QuaHan", compensation: "GiaTriBoiThuong", HanTraCu: "HanTraCu", HanTraMoi: "HanTraMoi", SoNgayGiaHan: "SoNgayGiaHan", OrderCode: "MaDonPayOS", TrangThaiDuyet: "TrangThaiDuyet", TrangThaiPayOS: "TrangThaiPayOS", GhiChuDocGia: "GhiChuDocGia" };
 const translateDetails = (value) => {
     if (Array.isArray(value)) return value.map(translateDetails);
     if (!value || typeof value !== "object" || value instanceof Date) return value;

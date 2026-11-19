@@ -16,7 +16,10 @@ Hệ thống được thiết kế theo tiêu chuẩn thực tế của một th
 - **Quy trình lưu thông khép kín & Kỷ luật tự động**: Hạn mượn chuẩn 14 ngày, kiểm soát hạn mức mượn tối đa 3 cuốn; tự động theo dõi số lần vi phạm (`SoLanViPham`) khi trả trễ hoặc báo mất sách; đưa thẻ vào `DanhSachDen` khi vi phạm đạt 3 lần.
 - **Bảo mật và an toàn dữ liệu**: Bảo vệ mật khẩu bằng Bcrypt; kiểm soát quyền theo chức năng ở backend; xác thực và quản lý phiên; kiểm tra dữ liệu chống NoSQL injection; giảm thiểu XSS, CSRF/XSRF, XXE và SSRF phù hợp với kiến trúc MongoDB/JSON hiện tại. Các biện pháp này là yêu cầu cần triển khai và xác minh, không được xem là hoàn tất chỉ từ mô tả tài liệu.
 - **Truy cứu hoạt động**: Lưu log append-only cho thao tác sách và vòng đời mượn-trả; Admin được lọc theo sách, độc giả, nhân viên và thời gian. Xóa sách dùng soft delete để giữ lịch sử và dữ liệu gốc.
-- **Đăng nhập**: Độc giả có thể dùng số điện thoại/mật khẩu hoặc tài khoản Google; STAFF và ADMIN dùng số điện thoại/mật khẩu. Mã nghiệp vụ chỉ dùng nhận diện hồ sơ và nghiệp vụ. Backend xác minh Google ID Token và chỉ cấp phiên `USER`; MoMo vẫn là định hướng chưa triển khai.
+- **Đăng nhập**: Độc giả có thể dùng số điện thoại/mật khẩu hoặc tài khoản Google; STAFF và ADMIN dùng số điện thoại/mật khẩu. Mã nghiệp vụ chỉ dùng nhận diện hồ sơ và nghiệp vụ. Backend xác minh Google ID Token và chỉ cấp phiên `USER`.
+- **Trợ lý AI Thư viện (Gemini Chatbox) & Thanh toán đền bù trực tuyến qua PayOS**:
+  - **Trợ lý AI Thư viện**: Tích hợp Gemini API kèm kho tri thức trực tiếp từ MongoDB; tư vấn chọn sách, phân tích thể loại, mô tả nội dung sách, hướng dẫn quy định mượn-trả và tra cứu trạng thái phiếu mượn theo phiên đăng nhập.
+  - **Báo mất & Đền bù qua PayOS**: Độc giả làm mất sách có thể tự báo mất trực tuyến trên website, nhận mã VietQR / link thanh toán PayOS để chuyển khoản đền bù (`DonGia`) và gửi yêu cầu chờ Quản trị viên / Thủ thư xét duyệt mà không cần đến quầy trực tiếp.
 - **Phân quyền 3 cấp bậc rõ ràng**: **Độc giả (USER)**, **Nhân viên thủ thư (STAFF)**, và **Quản trị viên hệ thống (ADMIN)**.
 
 ### Môi trường triển khai

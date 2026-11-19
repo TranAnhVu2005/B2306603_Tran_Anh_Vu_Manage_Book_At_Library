@@ -35,4 +35,7 @@ router.route("/:id/tra-sach")
 router.route("/:id/bao-mat")
     .put(authenticate, authorizeStaff("STAFF", "ADMIN"), allowFields("ghiChu"), controller.baoMat);
 
+router.route("/:id/bao-mat-doc-gia")
+    .put(authenticate, authorizeReader, allowFields("ghiChu"), controller.baoMatDocGia);
+
 module.exports = router;

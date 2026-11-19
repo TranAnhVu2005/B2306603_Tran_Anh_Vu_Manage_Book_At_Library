@@ -41,6 +41,10 @@ class TheoDoiMuonService {
         return (await this.api.put(`/${id}/bao-mat`, { ghiChu })).data;
     }
 
+    async baoMatDocGia(id, ghiChu) {
+        return (await this.api.put(`/${id}/bao-mat-doc-gia`, { ghiChu })).data;
+    }
+
     async delete(id) {
         return (await this.api.delete(`/${id}`)).data;
     }

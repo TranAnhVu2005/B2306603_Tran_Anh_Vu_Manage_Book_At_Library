@@ -123,6 +123,21 @@ exports.baoMat = async (req, res, next) => {
     }
 };
 
+exports.baoMatDocGia = async (req, res, next) => {
+    try {
+        const service = new TheoDoiMuonSachService(MongoDB.client);
+        const { ghiChu } = req.body || {};
+        const result = await service.baoMatDocGia(req.params.id, ghiChu, req.user?.username);
+        if (!result) return next(new ApiError(404, "Không tìm thấy phiếu mượn."));
+        return res.json({
+            message: "Đã ghi nhận báo mất sách trực tuyến. Bạn có thể chuyển khoản đền bù qua PayOS để chờ quản trị viên duyệt.",
+            data: result,
+        });
+    } catch (error) {
+        return next(new ApiError(error.statusCode || 400, error.message));
+    }
+};
+
 // Tìm tất cả các theo dõi mượn sách - Completed
 exports.findAll = async (req, res, next) => {
     try {

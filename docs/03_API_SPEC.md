@@ -229,7 +229,8 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
   - Cập nhật: `TrangThai: "DaTra"`, `NgayTra = hiện tại`.
   - Nếu `NgayTra > NgayHenTra`: Tự động tăng `SoLanViPham` của độc giả. Nếu đạt 3 lần, tự động chuyển sang `DanhSachDen`.
 
-### 📌 `PUT /api/theodoimuonsach/:id/bao-mat` (Xử lý mất sách)
+### 📌 `PUT /api/theodoimuonsach/:id/bao-mat` (Thủ thư xử lý mất sách)
+* **Quyền truy cập**: `STAFF` hoặc `ADMIN`.
 * **Request Body**: `{ "ghiChu": "Làm mất sách vật lý" }`
 * **Xử lý**:
   - Chuyển `TrangThai: "MatSach"`.
@@ -237,27 +238,43 @@ Các yêu cầu trên là mục tiêu triển khai, không mô tả rằng hệ 
   - **Không cộng hoàn trả kho** `SoQuyen`.
   - Tăng `SoLanViPham` của độc giả lên 1. Nếu đạt 3 lần, đưa thẻ vào `DanhSachDen`.
 
+### 📌 `PUT /api/theodoimuonsach/:id/bao-mat-doc-gia` (Độc giả tự báo mất sách trực tuyến)
+* **Quyền truy cập**: Độc giả (`USER`) đã đăng nhập; chỉ áp dụng cho phiếu của chính mình đang ở `DangMuon`.
+* **Request Body**: `{ "ghiChu": "Làm mất sách cá nhân, xin đền bù qua PayOS" }`
+* **Xử lý**:
+  - Chuyển `TrangThai: "MatSach"`, `NgayTra = hiện tại`, gán `GiaTriBoiThuong = Sach.DonGia`, không hoàn kho `SoQuyen`.
+  - Tăng `SoLanViPham` thêm 1 (nếu đạt 3 lần chuyển `DanhSachDen`), ghi `nhatkykiemtoan` (`PHIEU_BAO_MAT_SACH`) với tác nhân `docgia` và gửi thông báo.
+
 ---
 
 ## 6. Nhật Ký Kiểm Toán (`/api/nhatkykiemtoan`)
 
 * `GET /api/nhatkykiemtoan`: [Admin] Endpoint chỉ đọc; hỗ trợ lọc `HanhDong`, `LoaiDoiTuong`, `MaSach`, `MaDocGia`, `MSNV`, `from`, `to`, `limit`, `skip`; tối đa 300 bản ghi/trang.
 * Response: `{ "items": [ ... ], "total": 123, "limit": 50, "skip": 0 }`. Mỗi item dùng `HanhDong`, `LoaiDoiTuong`, `MaDoiTuong`, thông tin tác nhân, snapshot sách/độc giả/nhân viên, `ChiTiet` và `ThoiGian`.
-* Sự kiện ghi: thêm/sửa/xóa mềm/khôi phục sách; độc giả gửi yêu cầu mượn; nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất; Admin xóa phiếu lưu trữ.
+* Sự kiện ghi: thêm/sửa/xóa mềm/khôi phục sách; độc giả gửi yêu cầu mượn; nhân viên duyệt/giao, từ chối, xác nhận trả, ghi nhận mất; độc giả báo mất/tạo mã đền bù PayOS/xác nhận chuyển khoản; quản trị viên/thủ thư duyệt hoặc từ chối đền bù; Admin xóa phiếu lưu trữ.
 * Nhật ký append-only, không có API cập nhật/xóa; không ghi token/mật khẩu. Chỉ ADMIN được đọc; USER/STAFF bị từ chối.
 
 ---
 
-## 7. Thanh toán trực tuyến MoMo (đặc tả tương lai, chưa triển khai)
+## 7. Thanh Toán Đền Bù Mất Sách Qua PayOS (`/api/payment/payos`)
 
-Các route dưới đây là yêu cầu nghiệp vụ dự kiến; hiện backend không mount `/api/payment` và chưa có service/controller MoMo. Không gọi đây là API hoạt động cho tới khi triển khai.
+Tích hợp cổng thanh toán **PayOS Merchant API v2** (`https://api-merchant.payos.vn/v2/payment-requests`), ký số HMAC-SHA256 bằng `PAYOS_CHECKSUM_KEY` tại backend. Tuyệt đối không lộ `PAYOS_API_KEY` hoặc `PAYOS_CHECKSUM_KEY` ra frontend.
 
-### 📌 `POST /api/payment/momo/create` (Khởi tạo phiên thanh toán bồi thường)
-* **Request Body**: `{ "borrowId": "670...", "amount": 85000, "orderInfo": "Bồi hoàn mất sách" }`
-* **Response (200 OK)**: Trả về `data.payUrl` để độc giả thanh toán qua ví MoMo. Các tên trường trong dữ liệu tích hợp MoMo giữ theo giao thức của cổng thanh toán.
+* `POST /api/payment/payos/create`: [USER] Nhận `{ "borrowId": "...", "ghiChu": "...", "forceNew": false }`. Chỉ chủ phiếu được thực hiện. Nếu phiếu đang `DangMuon`, tự động báo mất (`MatSach`, tính `GiaTriBoiThuong = Sach.DonGia`) rồi tạo link thanh toán & mã VietQR trên PayOS, lưu vào `giaodichboithuong` với `TrangThaiDuyet = "ChoChuyenKhoan"`, ghi audit `PHIEU_TAO_MA_PAYOS`.
+* `GET /api/payment/payos/borrow/:borrowId`: [USER sở hữu phiếu hoặc STAFF/ADMIN] Lấy giao dịch đền bù mới nhất của phiếu mượn; nếu `TrangThaiPayOS = "PENDING"`, backend tự động đồng bộ trạng thái từ PayOS API.
+* `PUT /api/payment/payos/borrow/:borrowId/confirm`: [USER sở hữu phiếu] Độc giả xác nhận đã chuyển khoản đền bù; backend đồng bộ trạng thái PayOS, chuyển `TrangThaiDuyet` sang `"ChoDuyet"`, ghi audit `PHIEU_XAC_NHAN_CK_PAYOS` và gửi thông báo tới Quản trị viên / Thủ thư.
+* `POST /api/payment/payos/order/:orderCode/sync`: [USER] Đồng bộ trạng thái khi độc giả quay về từ `returnUrl` của trang thanh toán PayOS (`/profile?payos=paid&orderCode=...`).
+* `POST /api/payment/payos/webhook`: [Public Webhook từ PayOS] Xác minh chữ ký HMAC-SHA256 của PayOS; khi `code === "00"`, cập nhật `TrangThaiPayOS = "PAID"`, `XacMinhTuDong = true`, chuyển `TrangThaiDuyet = "ChoDuyet"` và thông báo cho Quản trị viên.
+* `GET /api/payment/payos/transactions`: [USER xem của mình / STAFF, ADMIN xem toàn bộ] Hỗ trợ `?latestPerBorrow=true&trangThaiDuyet=ChoDuyet`.
+* `PUT /api/payment/payos/transactions/:id/approve`: [STAFF/ADMIN] Duyệt xác nhận hoàn tất đền bù mất sách (`TrangThaiDuyet = "DaDuyet"`), lưu `NguoiDuyet = MSNV`, ghi audit `PHIEU_DUYET_DEN_BU` và thông báo cho độc giả.
+* `PUT /api/payment/payos/transactions/:id/reject`: [STAFF/ADMIN] Từ chối yêu cầu đền bù kèm `{ "lyDo": "..." }` (tối đa 500 ký tự), cập nhật `TrangThaiDuyet = "TuChoi"`, ghi audit `PHIEU_TU_CHOI_DEN_BU` và thông báo cho độc giả.
 
-### 📌 `POST /api/payment/momo/ipn` (Webhook IPN MoMo Callback)
-* **Mô tả**: Máy chủ MoMo thông báo trạng thái thanh toán, hệ thống tự động xác thực chữ ký HMAC-SHA256 và cập nhật trạng thái đã thanh toán cho phiếu mượn.
+---
 
-### 📌 `GET /api/payment/momo/status/:orderId`
-* **Mô tả**: Truy vấn tình trạng giao dịch thanh toán MoMo theo mã đơn hàng.
+## 8. Trợ Lý Thư Viện AI — Gemini Chatbox (`/api/chatbot`)
+
+* `POST /api/chatbot/ask`: [Public + `optionalAuth`] Nhận `{ "message": "...", "history": [{ "role": "user" | "assistant", "text": "..." }] }`.
+* **Xử lý**:
+  - Truy vấn thời gian thực danh mục sách đang hoạt động (`sach`), danh mục thể loại (`theloai`), nhà xuất bản (`nhaxuatban`) và thông tin phiên hiện tại (hồ sơ độc giả, các phiếu mượn, giao dịch đền bù PayOS nếu là `USER`; hoặc thống kê vận hành nếu là `STAFF`/`ADMIN`).
+  - Gọi cố định Gemini API HTTPS (`GEMINI_API_URL` thuộc `generativelanguage.googleapis.com` với `GEMINI_API_KEY`); có cơ chế tri thức nội bộ dự phòng (Local Library Knowledge Engine) khi kết nối ngoài gián đoạn để luôn tư vấn chính xác sách, thể loại, mô tả nội dung và quy định website.
+  - Trả về `{ "message": "...", "data": { "reply": "...", "source": "gemini" | "library_knowledge_engine", "suggestedBooks": [...], "timestamp": "..." } }`.

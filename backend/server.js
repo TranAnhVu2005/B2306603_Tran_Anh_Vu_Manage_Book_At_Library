@@ -43,6 +43,14 @@ async function startServer() {
             notifications.createIndex({ LoaiNguoiNhan: 1, MaNguoiNhan: 1, DaDoc: 1 }),
         ]);
 
+        const payosTransactions = MongoDB.client.db().collection("giaodichboithuong");
+        await Promise.all([
+            payosTransactions.createIndex({ OrderCode: 1 }, { unique: true }),
+            payosTransactions.createIndex({ MaPhieuMuon: 1, ThoiGianTao: -1 }),
+            payosTransactions.createIndex({ MaDocGia: 1, ThoiGianTao: -1 }),
+            payosTransactions.createIndex({ TrangThaiDuyet: 1, ThoiGianTao: -1 }),
+        ]);
+
         const borrowService = new TheoDoiMuonSachService(MongoDB.client);
         await borrowService.migrateLegacyPendingRecords();
         await borrowService.expirePickupReservations();

@@ -85,6 +85,15 @@
                 </svg>
                 Lịch sử <span class="tc">{{ completedList.length }}</span>
               </button>
+              <button class="vg-tab" :class="{ 'is-active': activeTab === 'compensation' }"
+                @click="activeTab = 'compensation'; onlyOverdue = false" type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  aria-hidden="true">
+                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                  <line x1="2" x2="22" y1="10" y2="10" />
+                </svg>
+                Đền bù PayOS <span class="tc">{{ compensationBorrowList.length }}</span>
+              </button>
             </div>
 
             <div class="filter-row">
@@ -173,11 +182,56 @@
                     <span v-else-if="item.TrangThai === 'TuChoi'" class="ath-badge ath-badge-rejected">Từ chối</span>
                     <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn
                       nhận</span>
+                    <span v-else-if="item.TrangThai === 'DaHuy'" class="ath-badge ath-badge-neutral">Đã hủy</span>
+
+                    <!-- Trạng thái giao dịch đền bù PayOS -->
+                    <div v-if="compensationFor(item._id)" class="mt-1">
+                      <span
+                        v-if="compensationFor(item._id).TrangThaiDuyet === 'DaDuyet'"
+                        class="payos-admin-pill is-approved"
+                      >
+                        Đã duyệt đền bù PayOS
+                      </span>
+                      <span
+                        v-else-if="compensationFor(item._id).TrangThaiDuyet === 'ChoDuyet'"
+                        class="payos-admin-pill is-waiting"
+                      >
+                        Chờ duyệt đền bù PayOS
+                      </span>
+                      <span
+                        v-else-if="compensationFor(item._id).TrangThaiDuyet === 'TuChoi'"
+                        class="payos-admin-pill is-rejected"
+                      >
+                        Đã từ chối đền bù
+                      </span>
+                      <span
+                        v-else
+                        class="payos-admin-pill is-pending-pay"
+                      >
+                        Chờ độc giả CK PayOS
+                      </span>
+                    </div>
                   </td>
                   <td class="row-sub">
                     {{ item.GhiChu || '—' }}
-                    <div v-if="item.GiaTriBoiThuong > 0" class="boi-thuong">{{
-                      item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫</div>
+                    <div v-if="item.GiaTriBoiThuong > 0" class="boi-thuong">
+                      Đền bù: {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
+                    </div>
+                    <div v-if="compensationFor(item._id)" class="payos-tx-meta">
+                      <div class="font-mono-code">
+                        Mã đơn PayOS: <strong>#{{ compensationFor(item._id).OrderCode }}</strong> ·
+                        ND: <strong>{{ compensationFor(item._id).NoiDungChuyenKhoan }}</strong>
+                      </div>
+                      <div>
+                        Cổng PayOS:
+                        <strong :class="compensationFor(item._id).TrangThaiPayOS === 'PAID' ? 'text-success' : 'text-warning'">
+                          {{ compensationFor(item._id).TrangThaiPayOS === 'PAID' ? 'Đã xác nhận PAID' : 'Chờ đối soát / Độc giả báo đã CK' }}
+                        </strong>
+                      </div>
+                      <div v-if="compensationFor(item._id).NguoiDuyet" class="font-mono-code">
+                        Người duyệt đền bù: {{ compensationFor(item._id).NguoiDuyet }}
+                      </div>
+                    </div>
                     <div v-if="item.MSNV" class="font-mono-code"
                       style="font-size: 0.7rem; color: var(--ink-muted); margin-top: 2px;">Nhân viên xử lý: {{ item.MSNV
                       }}
@@ -226,6 +280,29 @@
                             <circle cx="12" cy="17" r="1" fill="currentColor" />
                           </svg>
                           Báo mất
+                        </button>
+                      </template>
+                      <template v-else-if="item.TrangThai === 'MatSach' && compensationFor(item._id) && ['ChoDuyet', 'ChoChuyenKhoan'].includes(compensationFor(item._id).TrangThaiDuyet)">
+                        <button
+                          class="ath-action-btn ath-action-btn-success"
+                          type="button"
+                          @click="openApprovePayosModal(item)"
+                        >
+                          Duyệt đền bù
+                        </button>
+                        <button
+                          class="ath-action-btn ath-action-btn-danger"
+                          type="button"
+                          @click="openRejectPayosModal(item)"
+                        >
+                          Từ chối đền bù
+                        </button>
+                        <button
+                          class="ath-action-btn"
+                          type="button"
+                          @click="handleSyncPayos(item)"
+                        >
+                          Kiểm tra PayOS
                         </button>
                       </template>
                       <template v-else>
@@ -328,6 +405,91 @@
         </div>
       </div>
 
+      <!-- ===== PAYOS APPROVE MODAL ===== -->
+      <div v-if="showApprovePayosModal" class="ath-modal-overlay" @click.self="closeApprovePayosModal">
+        <div class="ath-modal-content" role="dialog" aria-modal="true" aria-labelledby="approve-payos-title">
+          <div class="ath-modal-inner">
+            <div class="modal-head">
+              <h3 id="approve-payos-title" class="modal-title" style="color: var(--status-available, #17633b);">
+                Xác Nhận Duyệt Đền Bù Mất Sách (PayOS)
+              </h3>
+              <button type="button" class="modal-close" :disabled="processingPayos" @click="closeApprovePayosModal" aria-label="Đóng">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body" v-if="selectedPayosBorrow && selectedPayosTx">
+              <p class="modal-sub">
+                Xác nhận độc giả <strong>{{ readerName(selectedPayosBorrow.MaDocGia) }}</strong>
+                (<span class="font-mono-code">{{ selectedPayosBorrow.MaDocGia }}</span>) đã hoàn tất chuyển khoản đền bù cho cuốn
+                <strong>{{ bookName(selectedPayosBorrow.MaSach) }}</strong>.
+              </p>
+              <div class="payos-admin-summary">
+                <div><strong>Mã đơn PayOS:</strong> <span class="font-mono-code">#{{ selectedPayosTx.OrderCode }}</span></div>
+                <div><strong>Số tiền đền bù:</strong> <span class="text-danger fw-bold">{{ Number(selectedPayosTx.SoTien || 0).toLocaleString("vi-VN") }} ₫</span></div>
+                <div><strong>Nội dung CK:</strong> <span class="font-mono-code">{{ selectedPayosTx.NoiDungChuyenKhoan }}</span></div>
+                <div>
+                  <strong>Trạng thái cổng PayOS:</strong>
+                  <span :class="selectedPayosTx.TrangThaiPayOS === 'PAID' ? 'text-success fw-bold' : 'text-warning fw-bold'">
+                    {{ selectedPayosTx.TrangThaiPayOS === "PAID" ? "Đã xác thực PAID trên PayOS" : "Độc giả báo đã chuyển khoản (Vui lòng kiểm tra sao kê)" }}
+                  </span>
+                </div>
+                <div v-if="selectedPayosTx.GhiChuDocGia"><strong>Ghi chú độc giả:</strong> {{ selectedPayosTx.GhiChuDocGia }}</div>
+              </div>
+              <div class="modal-footer-actions mt-3">
+                <button class="ath-btn-outline" type="button" :disabled="processingPayos" @click="closeApprovePayosModal">Hủy</button>
+                <button class="ath-action-btn ath-action-btn-success px-3 py-2" type="button" :disabled="processingPayos" @click="confirmApprovePayos">
+                  {{ processingPayos ? "Đang duyệt..." : "Xác nhận Duyệt đền bù" }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PAYOS REJECT MODAL ===== -->
+      <div v-if="showRejectPayosModal" class="ath-modal-overlay" @click.self="closeRejectPayosModal">
+        <div class="ath-modal-content" role="dialog" aria-modal="true" aria-labelledby="reject-payos-title">
+          <div class="ath-modal-inner">
+            <div class="modal-head">
+              <h3 id="reject-payos-title" class="modal-title" style="color: var(--status-out);">
+                Từ Chối Yêu Cầu Đền Bù Mất Sách (PayOS)
+              </h3>
+              <button type="button" class="modal-close" :disabled="processingPayos" @click="closeRejectPayosModal" aria-label="Đóng">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body" v-if="selectedPayosBorrow && selectedPayosTx">
+              <p class="modal-sub">
+                Từ chối xác nhận đền bù mã đơn <strong class="font-mono-code">#{{ selectedPayosTx.OrderCode }}</strong> của độc giả
+                <strong>{{ readerName(selectedPayosBorrow.MaDocGia) }}</strong> cho sách <strong>{{ bookName(selectedPayosBorrow.MaSach) }}</strong>.
+              </p>
+              <div class="mb-3">
+                <label class="form-label-sm">Lý do từ chối (tối đa 500 ký tự):</label>
+                <textarea
+                  v-model.trim="rejectPayosReason"
+                  class="ath-input"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Nhập lý do từ chối (VD: Chưa nhận được khoản chuyển khoản tương ứng với mã đơn PayOS)..."
+                ></textarea>
+              </div>
+              <div class="modal-footer-actions">
+                <button class="ath-btn-outline" type="button" :disabled="processingPayos" @click="closeRejectPayosModal">Hủy</button>
+                <button class="ath-btn-danger" type="button" :disabled="processingPayos || !rejectPayosReason.trim()" @click="confirmRejectPayos">
+                  {{ processingPayos ? "Đang xử lý..." : "Xác nhận Từ chối" }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <ToastNotification ref="toast" />
     </div>
   </div>
@@ -338,6 +500,7 @@ import ToastNotification from "../components/ToastNotification.vue";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
 import docGiaService from "../services/docgia.service";
+import payosService from "../services/payos.service";
 import { dateKey, formatDateOnly, todayKey } from "../utils/date.util";
 
 export default {
@@ -348,6 +511,7 @@ export default {
       borrows: [],
       books: [],
       readers: [],
+      compensations: [],
       loading: false,
       activeTab: "pending",
       search: "",
@@ -359,6 +523,12 @@ export default {
       selectedRejectItem: null,
       rejectReason: "Độc giả đã đạt định mức tối đa 3 cuốn đang mượn",
       customRejectReason: "",
+      showApprovePayosModal: false,
+      showRejectPayosModal: false,
+      selectedPayosBorrow: null,
+      selectedPayosTx: null,
+      rejectPayosReason: "Chưa ghi nhận được giao dịch chuyển khoản tương ứng trên hệ thống ngân hàng / PayOS.",
+      processingPayos: false,
       revealObserver: null,
     };
   },
@@ -370,9 +540,14 @@ export default {
       return this.borrows.filter(b => b.TrangThai === "DangMuon" && b.NgayHenTra && today > dateKey(b.NgayHenTra));
     },
     completedList() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy", "QuaHanNhan"].includes(b.TrangThai)); },
+    compensationBorrowList() {
+      const txBorrowIds = new Set(this.compensations.map((tx) => tx.MaPhieuMuon));
+      return this.borrows.filter((b) => b.TrangThai === "MatSach" || txBorrowIds.has(String(b._id)));
+    },
     currentDisplayList() {
       if (this.activeTab === "pending") return this.pendingList;
       if (this.activeTab === "borrowing") return this.onlyOverdue ? this.overdueList : this.borrowingList;
+      if (this.activeTab === "compensation") return this.compensationBorrowList;
       return this.completedList;
     },
     filteredDisplayList() {
@@ -386,8 +561,10 @@ export default {
     }
   },
   watch: {
-    showLossModal(val) { this.syncModalScroll(val || this.showRejectModal); },
-    showRejectModal(val) { this.syncModalScroll(val || this.showLossModal); }
+    showLossModal(val) { this.syncModalScroll(val || this.showRejectModal || this.showApprovePayosModal || this.showRejectPayosModal); },
+    showRejectModal(val) { this.syncModalScroll(val || this.showLossModal || this.showApprovePayosModal || this.showRejectPayosModal); },
+    showApprovePayosModal(val) { this.syncModalScroll(val || this.showLossModal || this.showRejectModal || this.showRejectPayosModal); },
+    showRejectPayosModal(val) { this.syncModalScroll(val || this.showLossModal || this.showRejectModal || this.showApprovePayosModal); }
   },
   beforeUnmount() {
     document.body.style.overflow = "";
@@ -410,22 +587,114 @@ export default {
       else { document.body.style.overflow = ""; window.removeEventListener("keydown", this.handleKeyDown); }
     },
     handleKeyDown(e) {
-      if (e.key === "Escape") { this.showLossModal = false; this.showRejectModal = false; }
+      if (e.key === "Escape") {
+        this.showLossModal = false;
+        this.showRejectModal = false;
+        if (!this.processingPayos) {
+          this.showApprovePayosModal = false;
+          this.showRejectPayosModal = false;
+        }
+      }
     },
     async fetchData() {
       this.loading = true;
       try {
-        const [borrows, books, readers] = await Promise.all([
+        const [borrows, books, readers, txRes] = await Promise.all([
           theoDoiService.getAll(),
           sachService.getAll(),
           docGiaService.getAll(),
+          payosService.getTransactions({ latestPerBorrow: true }).catch(() => ({ data: [] })),
         ]);
         this.borrows = borrows;
         this.books = books;
         this.readers = readers;
+        this.compensations = Array.isArray(txRes?.data) ? txRes.data : [];
       }
       catch (err) { this.$refs.toast?.show(err.response?.data?.message || "Lỗi khi tải danh sách phiếu mượn.", "error"); }
       finally { this.loading = false; this.$nextTick(() => this.initReveal()); }
+    },
+    compensationFor(borrowId) {
+      return this.compensations.find((tx) => tx.MaPhieuMuon === String(borrowId)) || null;
+    },
+    openApprovePayosModal(borrowItem) {
+      const tx = this.compensationFor(borrowItem?._id);
+      if (!tx) return;
+      this.selectedPayosBorrow = borrowItem;
+      this.selectedPayosTx = tx;
+      this.showApprovePayosModal = true;
+    },
+    closeApprovePayosModal() {
+      if (this.processingPayos) return;
+      this.showApprovePayosModal = false;
+      this.selectedPayosBorrow = null;
+      this.selectedPayosTx = null;
+    },
+    async confirmApprovePayos() {
+      if (!this.selectedPayosTx || this.processingPayos) return;
+      this.processingPayos = true;
+      try {
+        const res = await payosService.approve(this.selectedPayosTx._id);
+        this.showApprovePayosModal = false;
+        this.selectedPayosBorrow = null;
+        this.selectedPayosTx = null;
+        this.$refs.toast?.show(res?.message || "Đã duyệt xác nhận đền bù mất sách thành công.");
+        await this.fetchData();
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || "Không thể duyệt giao dịch đền bù.", "error");
+      } finally {
+        this.processingPayos = false;
+      }
+    },
+    openRejectPayosModal(borrowItem) {
+      const tx = this.compensationFor(borrowItem?._id);
+      if (!tx) return;
+      this.selectedPayosBorrow = borrowItem;
+      this.selectedPayosTx = tx;
+      this.rejectPayosReason = "Chưa ghi nhận được giao dịch chuyển khoản tương ứng trên hệ thống ngân hàng / PayOS.";
+      this.showRejectPayosModal = true;
+    },
+    closeRejectPayosModal() {
+      if (this.processingPayos) return;
+      this.showRejectPayosModal = false;
+      this.selectedPayosBorrow = null;
+      this.selectedPayosTx = null;
+    },
+    async confirmRejectPayos() {
+      if (!this.selectedPayosTx || this.processingPayos) return;
+      const reason = this.rejectPayosReason.trim();
+      if (!reason) {
+        this.$refs.toast?.show("Vui lòng nhập lý do từ chối.", "error");
+        return;
+      }
+      this.processingPayos = true;
+      try {
+        const res = await payosService.reject(this.selectedPayosTx._id, reason);
+        this.showRejectPayosModal = false;
+        this.selectedPayosBorrow = null;
+        this.selectedPayosTx = null;
+        this.$refs.toast?.show(res?.message || "Đã từ chối giao dịch đền bù.");
+        await this.fetchData();
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || "Không thể từ chối giao dịch đền bù.", "error");
+      } finally {
+        this.processingPayos = false;
+      }
+    },
+    async handleSyncPayos(borrowItem) {
+      try {
+        const res = await payosService.getByBorrowId(borrowItem._id);
+        if (res?.data) {
+          await this.fetchData();
+          const st = res.data.TrangThaiPayOS;
+          this.$refs.toast?.show(
+            st === "PAID"
+              ? `PayOS xác nhận đơn #${res.data.OrderCode} ĐÃ THANH TOÁN (PAID). Bạn có thể duyệt ngay!`
+              : `Trạng thái cổng PayOS cho đơn #${res.data.OrderCode} hiện là: ${st}.`
+          );
+        }
+      } catch (err) {
+        this.$refs.toast?.show(err.response?.data?.message || "Không thể kiểm tra trạng thái PayOS.", "error");
+      }
     },
     readerFor(maDocGia) {
       return this.readers.find((reader) => reader.MaDocGia === maDocGia) || null;
@@ -1039,6 +1308,56 @@ export default {
 .warning-box svg {
   flex: 0 0 auto;
   margin-top: .15rem;
+}
+
+.payos-admin-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border: 1.5px solid #111111;
+  border-radius: 5px;
+}
+
+.payos-admin-pill.is-approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.payos-admin-pill.is-waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.payos-admin-pill.is-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payos-admin-pill.is-pending-pay {
+  background: #e0e7ff;
+  color: #1e3a8a;
+}
+
+.payos-tx-meta {
+  margin-top: 4px;
+  padding: 4px 6px;
+  background: #fffdf2;
+  border: 1px solid #111111;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  color: #111111;
+}
+
+.payos-admin-summary {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  background: #fffdf2;
+  border: 2px solid #111111;
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 #111111;
+  font-size: 0.84rem;
 }
 
 @media (max-width: 1100px) {

@@ -2,7 +2,7 @@
 
 ## 2.1. Tổng quan
 
-Hệ thống dùng MongoDB Native Driver với cơ sở dữ liệu `quanlymuonsach`. Theo code hiện tại, có **10 collection**: **6 collection nghiệp vụ** (`docgia`, `nhanvien`, `nhaxuatban`, `sach`, `theloai`, `theodoimuonsach`) và **4 collection hỗ trợ** (`yeucaunhanvien`, `nhatkykiemtoan`, `thongbao`, `jwt_revocations`).
+Hệ thống dùng MongoDB Native Driver với cơ sở dữ liệu `quanlymuonsach`. Theo code hiện tại, có **11 collection**: **6 collection nghiệp vụ** (`docgia`, `nhanvien`, `nhaxuatban`, `sach`, `theloai`, `theodoimuonsach`) và **5 collection hỗ trợ** (`yeucaunhanvien`, `nhatkykiemtoan`, `thongbao`, `jwt_revocations`, `giaodichboithuong`).
 
 Trong các bảng mô tả dưới đây, `_id` là khóa chính nội bộ MongoDB. Các mã nghiệp vụ duy nhất như `MaDocGia`, `MaSach`, `MaNXB`, `MaTheLoai`, `MSNV` là khóa định danh thay thế/khóa duy nhất, không phải khóa chính MongoDB. Cột tham chiếu ghi các liên kết logic do backend quản lý; MongoDB không tự cưỡng chế foreign key như hệ quản trị quan hệ. Tất cả thuộc tính ngày/thời gian trong MongoDB được lưu bằng BSON `Date`; các mốc ngày nghiệp vụ (ngày sinh, ngày đăng ký, ngày mượn, hạn nhận/trả, ngày trả) được chuẩn hóa về 00:00:00 UTC để giữ nguyên ngày lịch. Khi trả JSON, BSON `Date` được serialize thành chuỗi ISO 8601 UTC, ví dụ `2026-10-27T00:00:00.000Z`; giá trị `null` biểu thị mốc chưa phát sinh/không có dữ liệu.
 
@@ -20,6 +20,7 @@ Trong các bảng mô tả dưới đây, `_id` là khóa chính nội bộ Mong
 | 8 | `nhatkykiemtoan` | Hỗ trợ vận hành | Nhật ký append-only về sự kiện nghiệp vụ và thao tác quản trị. |
 | 9 | `thongbao` | Hỗ trợ vận hành | Thông báo nghiệp vụ gửi đến độc giả/nhân viên và trạng thái đã đọc. |
 | 10 | `jwt_revocations` | Hỗ trợ bảo mật | Hash của JWT bị thu hồi, dùng để vô hiệu hóa phiên đăng nhập. |
+| 11 | `giaodichboithuong` | Hỗ trợ thanh toán | Giao dịch chuyển khoản đền bù mất sách trực tuyến qua PayOS và trạng thái chờ quản trị viên duyệt. |
 
 ## 2.3. Mô tả các lớp dữ liệu nghiệp vụ
 
@@ -216,6 +217,38 @@ Lưu dấu vết token bị thu hồi, không lưu JWT gốc.
 | `_id` | ObjectId | Có | Không | Định danh nội bộ do MongoDB tạo. |
 | `tokenHash` | String | Không; dùng làm khóa tra cứu | Không | Hash SHA-256 của JWT đã thu hồi. |
 | `expiresAt` | Date | Không | Không | Hạn token; TTL index tự dọn document sau thời điểm này. |
+
+### 2.4.5. Giao dịch đền bù mất sách (`giaodichboithuong`)
+
+Lưu thông tin mã thanh toán PayOS khi độc giả báo mất sách trực tuyến và trạng thái xét duyệt của Quản trị viên / Thủ thư.
+
+| Thuộc tính | Kiểu dữ liệu | Khóa chính | Khóa ngoại | Mô tả |
+|---|---|---|---|---|
+| `_id` | ObjectId | Có | Không | Định danh nội bộ của giao dịch đền bù. |
+| `MaPhieuMuon` | String | Không | Tham chiếu logic `theodoimuonsach._id` (chuỗi) | Phiếu mượn bị mất sách tương ứng. |
+| `MaDocGia` | String | Không | Tham chiếu logic `docgia.MaDocGia` | Mã độc giả thực hiện đền bù. |
+| `TenDocGia` | String | Không | Không | Snapshot họ tên độc giả. |
+| `MaSach` | String | Không | Tham chiếu logic `sach.MaSach` | Mã sách bị mất. |
+| `TenSach` | String | Không | Không | Snapshot tên sách. |
+| `OrderCode` | Number | Không; unique index | Không | Mã đơn hàng số nguyên dương gửi lên PayOS. |
+| `SoTien` | Number | Không | Không | Số tiền bồi thường (VNĐ, tương ứng `GiaTriBoiThuong` = `Sach.DonGia`). |
+| `NoiDungChuyenKhoan` | String | Không | Không | Nội dung chuyển khoản PayOS (tối đa 25 ký tự). |
+| `PaymentLinkId` | String hoặc null | Không | Không | Mã liên kết thanh toán do PayOS cấp. |
+| `CheckoutUrl` | String hoặc null | Không | Không | Đường dẫn trang thanh toán PayOS. |
+| `QrCode` | String hoặc null | Không | Không | Chuỗi EMVCo VietQR do PayOS trả về. |
+| `VietQrImageUrl` | String hoặc null | Không | Không | URL ảnh mã VietQR hiển thị trong modal đền bù. |
+| `Bin` | String hoặc null | Không | Không | Mã BIN ngân hàng thụ hưởng từ PayOS. |
+| `AccountNumber` | String hoặc null | Không | Không | Số tài khoản thụ hưởng từ PayOS. |
+| `AccountName` | String hoặc null | Không | Không | Tên chủ tài khoản thụ hưởng từ PayOS. |
+| `TrangThaiPayOS` | String | Không | Không | Trạng thái trên cổng PayOS: `PENDING`, `PAID`, `CANCELLED`, `EXPIRED`. |
+| `TrangThaiDuyet` | String | Không | Không | Trạng thái nghiệp vụ: `ChoChuyenKhoan`, `ChoDuyet`, `DaDuyet`, `TuChoi`. |
+| `XacMinhTuDong` | Boolean | Không | Không | `true` nếu PayOS API/Webhook đã xác nhận `PAID`. |
+| `GhiChuDocGia` | String | Không | Không | Lý do báo mất / ghi chú chuyển khoản của độc giả. |
+| `NguoiDuyet` | String hoặc null | Không | Tham chiếu logic `nhanvien.MSNV` | Mã số nhân viên / quản trị viên duyệt hoặc từ chối. |
+| `LyDoTuChoi` | String hoặc null | Không | Không | Lý do từ chối giao dịch đền bù, nếu có. |
+| `ThoiGianTao` | Date | Không | Không | Thời điểm khởi tạo mã thanh toán. |
+| `ThoiGianThanhToan` | Date hoặc null | Không | Không | Thời điểm thanh toán / xác nhận chuyển khoản. |
+| `ThoiGianDuyet` | Date hoặc null | Không | Không | Thời điểm quản trị viên duyệt hoặc từ chối. |
 
 ## 2.5. Quan hệ tham chiếu giữa các lớp
 

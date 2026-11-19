@@ -22,6 +22,8 @@ const auditLogRouter = require("./app/routes/audit-log.route");
 const thongBaoRouter = require("./app/routes/thongbao.route");
 const theLoaiRouter = require("./app/routes/theloai.route");
 const staffApplicationRouter = require("./app/routes/yeu-cau-nhan-vien.route");
+const payosRouter = require("./app/routes/payos.route");
+const chatbotRouter = require("./app/routes/chatbot.route");
 
 // Chỉ cho phép hai frontend đã cấu hình; localhost là mặc định dành cho phát triển.
 const defaultOrigins = process.env.NODE_ENV === "production" ? "" : "http://localhost:3001,http://localhost:3002";
@@ -63,6 +65,8 @@ app.use("/api/nhatkykiemtoan", auditLogRouter);
 app.use("/api/thongbao", thongBaoRouter);
 app.use("/api/theloai", theLoaiRouter);
 app.use("/api/yeu-cau-nhan-vien", staffApplicationRouter);
+app.use("/api/payment/payos", payosRouter);
+app.use("/api/chatbot", chatbotRouter);
 
 // Endpoint kiểm tra tình trạng máy chủ (Health Check)
 app.get("/api/health", (req, res) => {
