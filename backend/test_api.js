@@ -1030,13 +1030,15 @@ async function runTests() {
             "PUT",
             `/api/theodoimuonsach/${borrowId}/duyet`,
             null,
-            { Authorization: `Bearer ${JwtUtil.sign({
-                id: temporaryReaderObjectId,
-                username: temporaryReaderId,
-                role: "STAFF",
-                type: "reader",
-                sessionVersion: JwtUtil.verify(temporaryReaderToken).sessionVersion || 0,
-            })}` }
+            {
+                Authorization: `Bearer ${JwtUtil.sign({
+                    id: temporaryReaderObjectId,
+                    username: temporaryReaderId,
+                    role: "STAFF",
+                    type: "reader",
+                    sessionVersion: JwtUtil.verify(temporaryReaderToken).sessionVersion || 0,
+                })}`
+            }
         );
         if (readerRequest.status !== 403) {
             throw new Error(`Kỳ vọng HTTP 403 khi độc giả duyệt phiếu, nhận status=${readerRequest.status}`);
@@ -1497,7 +1499,7 @@ async function runTests() {
         await db.collection("docgia").deleteOne({ _id: new ObjectId(temporaryGoogleReaderObjectId) });
     }
     if (temporaryGoogleAvatarPath) {
-        await fs.unlink(path.join(__dirname, "public", temporaryGoogleAvatarPath.replace(/^\/+/, ""))).catch(() => {});
+        await fs.unlink(path.join(__dirname, "public", temporaryGoogleAvatarPath.replace(/^\/+/, ""))).catch(() => { });
     }
     if (temporaryOtherReaderObjectId && ObjectId.isValid(temporaryOtherReaderObjectId)) {
         await db.collection("docgia").deleteOne({ _id: new ObjectId(temporaryOtherReaderObjectId) });
