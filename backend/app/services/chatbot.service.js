@@ -16,12 +16,19 @@ function normalizeText(value) {
         .trim();
 }
 
+const FALLBACK_GEMINI_URLS = [
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+];
+
 function getValidatedGeminiEndpoint() {
     const apiKey = process.env.GEMINI_API_KEY?.trim() || config.gemini?.apiKey;
     const rawUrl =
         process.env.GEMINI_API_URL?.trim() ||
         config.gemini?.apiUrl ||
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+        FALLBACK_GEMINI_URLS[0];
 
     if (!apiKey || !rawUrl) return null;
 
@@ -305,18 +312,32 @@ ${sessionText}
         const endpoint = getValidatedGeminiEndpoint();
         if (!endpoint) return null;
 
-        const contents = [];
+        // Gemini yêu cầu lượt đầu tiên trong contents phải có role "user" và luân phiên user/model.
+        const rawTurns = [];
         for (const turn of history) {
             if (!turn || typeof turn.text !== "string" || !turn.text.trim()) continue;
-            contents.push({
+            rawTurns.push({
                 role: turn.role === "assistant" || turn.role === "model" ? "model" : "user",
-                parts: [{ text: turn.text.trim().slice(0, 1500) }],
+                text: turn.text.trim().slice(0, 1500),
             });
         }
-        contents.push({
-            role: "user",
-            parts: [{ text: message }],
-        });
+        while (rawTurns.length && rawTurns[0].role !== "user") {
+            rawTurns.shift();
+        }
+        rawTurns.push({ role: "user", text: message });
+
+        const contents = [];
+        for (const turn of rawTurns) {
+            const last = contents[contents.length - 1];
+            if (last && last.role === turn.role) {
+                last.parts[0].text = `${last.parts[0].text}\n${turn.text}`;
+            } else {
+                contents.push({
+                    role: turn.role,
+                    parts: [{ text: turn.text }],
+                });
+            }
+        }
 
         const payload = {
             systemInstruction: {
@@ -324,32 +345,53 @@ ${sessionText}
             },
             contents,
             generationConfig: {
-                temperature: 0.35,
+                temperature: 0.4,
                 maxOutputTokens: 1024,
             },
         };
 
-        const response = await fetch(endpoint.apiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": endpoint.apiKey,
-            },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(18_000),
-        });
+        const candidateUrls = [
+            endpoint.apiUrl,
+            ...FALLBACK_GEMINI_URLS.filter((url) => url !== endpoint.apiUrl),
+        ];
 
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            return null;
+        for (const url of candidateUrls) {
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": endpoint.apiKey,
+                    },
+                    body: JSON.stringify(payload),
+                    signal: AbortSignal.timeout(15_000),
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const errMsg = data?.error?.message || `HTTP ${response.status}`;
+                    console.warn(`[Chatbot] Gemini endpoint ${url} thất bại (${response.status}): ${errMsg}`);
+                    // Chỉ thử model dự phòng khi model cũ bị 404 hoặc quá tải tạm thời (429/500/503)
+                    if ([404, 429, 500, 502, 503].includes(response.status)) {
+                        continue;
+                    }
+                    return null;
+                }
+
+                const candidateText = data?.candidates?.[0]?.content?.parts
+                    ?.map((part) => part.text || "")
+                    .join("")
+                    .trim();
+
+                if (candidateText) {
+                    return candidateText;
+                }
+            } catch (err) {
+                console.warn(`[Chatbot] Lỗi kết nối tới ${url}: ${err.message}`);
+            }
         }
 
-        const candidateText = data?.candidates?.[0]?.content?.parts
-            ?.map((part) => part.text || "")
-            .join("")
-            .trim();
-
-        return candidateText || null;
+        return null;
     }
 
     findSuggestedBooks(message, replyText, context) {

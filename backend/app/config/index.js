@@ -43,7 +43,7 @@ const config = {
     },
     gemini: {
         apiKey: process.env.GEMINI_API_KEY?.trim() || "",
-        apiUrl: process.env.GEMINI_API_URL?.trim() || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        apiUrl: process.env.GEMINI_API_URL?.trim() || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
     },
     payos: {
         clientId: process.env.PAYOS_CLIENT_ID?.trim() || "",
