@@ -92,7 +92,7 @@
                   <rect width="20" height="14" x="2" y="5" rx="2" />
                   <line x1="2" x2="22" y1="10" y2="10" />
                 </svg>
-                Đền bù PayOS <span class="tc">{{ compensationBorrowList.length }}</span>
+                Đền bù mất sách <span class="tc">{{ compensationBorrowList.length }}</span>
               </button>
             </div>
 
@@ -184,19 +184,19 @@
                       nhận</span>
                     <span v-else-if="item.TrangThai === 'DaHuy'" class="ath-badge ath-badge-neutral">Đã hủy</span>
 
-                    <!-- Trạng thái giao dịch đền bù PayOS -->
+                    <!-- Trạng thái giao dịch đền bù mất sách (PayOS / Trực tiếp tại quầy) -->
                     <div v-if="compensationFor(item._id)" class="mt-1">
                       <span
                         v-if="compensationFor(item._id).TrangThaiDuyet === 'DaDuyet'"
                         class="payos-admin-pill is-approved"
                       >
-                        Đã duyệt đền bù PayOS
+                        {{ compensationFor(item._id).PhuongThucDenBu === 'TrucTiep' ? 'Đã duyệt (Trả tại quầy)' : 'Đã duyệt (PayOS)' }}
                       </span>
                       <span
                         v-else-if="compensationFor(item._id).TrangThaiDuyet === 'ChoDuyet'"
                         class="payos-admin-pill is-waiting"
                       >
-                        Chờ duyệt đền bù PayOS
+                        {{ compensationFor(item._id).PhuongThucDenBu === 'TrucTiep' ? 'Chờ duyệt (Trả tại quầy)' : 'Chờ duyệt (PayOS)' }}
                       </span>
                       <span
                         v-else-if="compensationFor(item._id).TrangThaiDuyet === 'TuChoi'"
@@ -218,15 +218,27 @@
                       Đền bù: {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
                     </div>
                     <div v-if="compensationFor(item._id)" class="payos-tx-meta">
-                      <div class="font-mono-code">
-                        Mã đơn PayOS: <strong>#{{ compensationFor(item._id).OrderCode }}</strong> ·
-                        ND: <strong>{{ compensationFor(item._id).NoiDungChuyenKhoan }}</strong>
-                      </div>
                       <div>
+                        Phương thức:
+                        <strong>
+                          {{ compensationFor(item._id).PhuongThucDenBu === 'TrucTiep' ? 'Trả trực tiếp tại quầy' : 'Chuyển khoản PayOS' }}
+                        </strong>
+                      </div>
+                      <div class="font-mono-code">
+                        Mã {{ compensationFor(item._id).PhuongThucDenBu === 'TrucTiep' ? 'biên nhận' : 'đơn PayOS' }}:
+                        <strong>#{{ compensationFor(item._id).OrderCode }}</strong>
+                        <template v-if="compensationFor(item._id).PhuongThucDenBu !== 'TrucTiep'">
+                          · ND: <strong>{{ compensationFor(item._id).NoiDungChuyenKhoan }}</strong>
+                        </template>
+                      </div>
+                      <div v-if="compensationFor(item._id).PhuongThucDenBu !== 'TrucTiep'">
                         Cổng PayOS:
                         <strong :class="compensationFor(item._id).TrangThaiPayOS === 'PAID' ? 'text-success' : 'text-warning'">
                           {{ compensationFor(item._id).TrangThaiPayOS === 'PAID' ? 'Đã xác nhận PAID' : 'Chờ đối soát / Độc giả báo đã CK' }}
                         </strong>
+                      </div>
+                      <div v-else>
+                        Trạng thái quầy: <strong class="text-primary">Độc giả đăng ký thanh toán trực tiếp</strong>
                       </div>
                       <div v-if="compensationFor(item._id).NguoiDuyet" class="font-mono-code">
                         Người duyệt đền bù: {{ compensationFor(item._id).NguoiDuyet }}
@@ -298,6 +310,7 @@
                           Từ chối đền bù
                         </button>
                         <button
+                          v-if="compensationFor(item._id).PhuongThucDenBu !== 'TrucTiep'"
                           class="ath-action-btn"
                           type="button"
                           @click="handleSyncPayos(item)"
@@ -411,7 +424,7 @@
           <div class="ath-modal-inner">
             <div class="modal-head">
               <h3 id="approve-payos-title" class="modal-title" style="color: var(--status-available, #17633b);">
-                Xác Nhận Duyệt Đền Bù Mất Sách (PayOS)
+                Xác Nhận Duyệt Đền Bù Mất Sách
               </h3>
               <button type="button" class="modal-close" :disabled="processingPayos" @click="closeApprovePayosModal" aria-label="Đóng">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -423,14 +436,16 @@
             <div class="modal-body" v-if="selectedPayosBorrow && selectedPayosTx">
               <p class="modal-sub">
                 Xác nhận độc giả <strong>{{ readerName(selectedPayosBorrow.MaDocGia) }}</strong>
-                (<span class="font-mono-code">{{ selectedPayosBorrow.MaDocGia }}</span>) đã hoàn tất chuyển khoản đền bù cho cuốn
-                <strong>{{ bookName(selectedPayosBorrow.MaSach) }}</strong>.
+                (<span class="font-mono-code">{{ selectedPayosBorrow.MaDocGia }}</span>) đã hoàn tất đền bù
+                <strong>{{ selectedPayosTx.PhuongThucDenBu === "TrucTiep" ? "trực tiếp tại quầy" : "chuyển khoản qua PayOS" }}</strong>
+                cho cuốn <strong>{{ bookName(selectedPayosBorrow.MaSach) }}</strong>.
               </p>
               <div class="payos-admin-summary">
-                <div><strong>Mã đơn PayOS:</strong> <span class="font-mono-code">#{{ selectedPayosTx.OrderCode }}</span></div>
+                <div><strong>Phương thức:</strong> {{ selectedPayosTx.PhuongThucDenBu === "TrucTiep" ? "Trả trực tiếp tại quầy thư viện" : "Chuyển khoản qua PayOS" }}</div>
+                <div><strong>Mã {{ selectedPayosTx.PhuongThucDenBu === "TrucTiep" ? "biên nhận" : "đơn PayOS" }}:</strong> <span class="font-mono-code">#{{ selectedPayosTx.OrderCode }}</span></div>
                 <div><strong>Số tiền đền bù:</strong> <span class="text-danger fw-bold">{{ Number(selectedPayosTx.SoTien || 0).toLocaleString("vi-VN") }} ₫</span></div>
-                <div><strong>Nội dung CK:</strong> <span class="font-mono-code">{{ selectedPayosTx.NoiDungChuyenKhoan }}</span></div>
-                <div>
+                <div v-if="selectedPayosTx.PhuongThucDenBu !== 'TrucTiep'"><strong>Nội dung CK:</strong> <span class="font-mono-code">{{ selectedPayosTx.NoiDungChuyenKhoan }}</span></div>
+                <div v-if="selectedPayosTx.PhuongThucDenBu !== 'TrucTiep'">
                   <strong>Trạng thái cổng PayOS:</strong>
                   <span :class="selectedPayosTx.TrangThaiPayOS === 'PAID' ? 'text-success fw-bold' : 'text-warning fw-bold'">
                     {{ selectedPayosTx.TrangThaiPayOS === "PAID" ? "Đã xác thực PAID trên PayOS" : "Độc giả báo đã chuyển khoản (Vui lòng kiểm tra sao kê)" }}

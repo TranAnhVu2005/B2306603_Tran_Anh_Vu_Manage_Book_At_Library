@@ -292,19 +292,19 @@
                         <span v-else-if="item.TrangThai === 'DaHuy'" class="ath-badge ath-badge-neutral">Đã hủy</span>
                         <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn nhận</span>
 
-                        <!-- Trạng thái đền bù PayOS nếu phiếu Mất sách -->
+                        <!-- Trạng thái đền bù nếu phiếu Mất sách -->
                         <div v-if="item.TrangThai === 'MatSach' && compensationFor(item._id)" class="mt-1">
                           <span
                             v-if="compensationFor(item._id).TrangThaiDuyet === 'DaDuyet'"
                             class="payos-status-pill is-approved"
                           >
-                            Đã duyệt đền bù
+                            {{ compensationFor(item._id).PhuongThucDenBu === 'TrucTiep' ? 'Đã duyệt đền bù tại quầy' : 'Đã duyệt đền bù PayOS' }}
                           </span>
                           <span
                             v-else-if="compensationFor(item._id).TrangThaiDuyet === 'ChoDuyet'"
                             class="payos-status-pill is-waiting"
                           >
-                            Chờ Admin duyệt đền bù
+                            {{ compensationFor(item._id).PhuongThucDenBu === 'TrucTiep' ? 'Chờ duyệt tại quầy' : 'Chờ duyệt đền bù PayOS' }}
                           </span>
                           <span
                             v-else-if="compensationFor(item._id).TrangThaiDuyet === 'TuChoi'"
@@ -374,7 +374,7 @@
                             class="borrow-loss-payos-button"
                             @click="openLossPayosModal(item, true)"
                           >
-                            Đền bù lại (PayOS)
+                            Chọn lại phương thức
                           </button>
                           <button
                             v-else
@@ -382,7 +382,7 @@
                             class="borrow-loss-payos-button"
                             @click="openLossPayosModal(item)"
                           >
-                            {{ compensationFor(item._id) ? "Quét QR PayOS" : "Đền bù qua PayOS" }}
+                            {{ compensationFor(item._id) ? "Quét QR PayOS" : "Đền bù mất sách" }}
                           </button>
                         </template>
                         <span v-else class="borrow-renew-status">—</span>
@@ -544,9 +544,13 @@
                 </svg>
               </span>
               <div>
-                <span class="vg-section-label">BÁO MẤT &amp; ĐỀN BÙ TRỰC TUYẾN (PAYOS)</span>
+                <span class="vg-section-label">BÁO MẤT &amp; ĐỀN BÙ SÁCH</span>
                 <h2 id="loss-payos-title" class="modal-title">
-                  {{ activePayosTx ? "Chuyển khoản đền bù qua PayOS" : "Báo mất sách &amp; Khởi tạo đền bù" }}
+                  {{
+                    activePayosTx && !forceNewPayos
+                      ? (activePayosTx.PhuongThucDenBu === "TrucTiep" ? "Đền bù trực tiếp tại quầy" : "Chuyển khoản đền bù qua PayOS")
+                      : "Báo mất sách &amp; Chọn phương thức đền bù"
+                  }}
                 </h2>
               </div>
             </div>
@@ -568,8 +572,36 @@
               </div>
             </div>
 
-            <!-- Bước 1: Nhập lý do báo mất và tạo mã PayOS -->
+            <!-- Bước 1: Chọn phương thức đền bù & nhập lý do báo mất -->
             <template v-if="!activePayosTx || forceNewPayos">
+              <div class="payos-form-group">
+                <span class="payos-form-label">Chọn phương thức đền bù</span>
+                <div class="compensation-method-grid" role="radiogroup" aria-label="Phương thức đền bù mất sách">
+                  <button
+                    type="button"
+                    role="radio"
+                    :aria-checked="compensationMethod === 'PayOS' ? 'true' : 'false'"
+                    class="compensation-method-card"
+                    :class="{ 'is-selected': compensationMethod === 'PayOS' }"
+                    @click="selectCompensationMethod('PayOS')"
+                  >
+                    <span class="method-card-title">Chuyển khoản PayOS (VietQR)</span>
+                    <span class="method-card-desc">Quét mã QR chuyển khoản trực tuyến, không cần đến thư viện, rồi chờ Thủ thư / Quản trị viên duyệt.</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    :aria-checked="compensationMethod === 'TrucTiep' ? 'true' : 'false'"
+                    class="compensation-method-card"
+                    :class="{ 'is-selected': compensationMethod === 'TrucTiep' }"
+                    @click="selectCompensationMethod('TrucTiep')"
+                  >
+                    <span class="method-card-title">Trả trực tiếp tại quầy</span>
+                    <span class="method-card-desc">Ghi nhận báo mất trên website rồi đến quầy thư viện đóng tiền mặt để Thủ thư / Quản trị viên duyệt.</span>
+                  </button>
+                </div>
+              </div>
+
               <div class="payos-form-group">
                 <label class="payos-form-label" for="loss-reason-input">Lý do / Ghi chú báo mất sách</label>
                 <textarea
@@ -578,7 +610,7 @@
                   class="ath-input payos-textarea"
                   rows="3"
                   maxlength="500"
-                  placeholder="Nhập lý do làm mất sách (ví dụ: Làm thất lạc sách cá nhân, xin chuyển khoản đền bù trực tuyến)..."
+                  placeholder="Nhập lý do làm mất sách..."
                 ></textarea>
               </div>
               <p class="borrow-cancel-note">
@@ -586,13 +618,59 @@
                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" />
                 </svg>
-                <span>
-                  Bạn không cần đến trực tiếp thư viện. Sau khi xác nhận, hệ thống sẽ tạo mã <strong>VietQR / PayOS</strong> để bạn chuyển khoản và gửi chờ Quản trị viên duyệt.
+                <span v-if="compensationMethod === 'TrucTiep'">
+                  Hệ thống sẽ chuyển phiếu sang trạng thái <strong>Mất sách</strong> và gửi yêu cầu tới quầy thư viện. Khi bạn đến đóng tiền trực tiếp, Thủ thư / Quản trị viên sẽ duyệt hoàn tất.
+                </span>
+                <span v-else>
+                  Bạn không cần đến trực tiếp thư viện. Sau khi xác nhận, hệ thống sẽ tạo mã <strong>VietQR / PayOS</strong> để bạn chuyển khoản và gửi chờ Quản trị viên / Thủ thư duyệt.
                 </span>
               </p>
             </template>
 
-            <!-- Bước 2: Đã có mã thanh toán PayOS -->
+            <!-- Bước 2A: Đã đăng ký đền bù TRỰC TIẾP tại quầy -->
+            <template v-else-if="activePayosTx.PhuongThucDenBu === 'TrucTiep'">
+              <div
+                class="payos-review-banner"
+                :class="{
+                  'is-approved': activePayosTx.TrangThaiDuyet === 'DaDuyet',
+                  'is-waiting': activePayosTx.TrangThaiDuyet === 'ChoDuyet',
+                  'is-rejected': activePayosTx.TrangThaiDuyet === 'TuChoi',
+                }"
+              >
+                <strong v-if="activePayosTx.TrangThaiDuyet === 'DaDuyet'">
+                  Thư viện đã xác nhận nhận tiền trực tiếp tại quầy và duyệt hoàn tất khoản đền bù này.
+                </strong>
+                <strong v-else-if="activePayosTx.TrangThaiDuyet === 'TuChoi'">
+                  Yêu cầu trước bị từ chối: {{ activePayosTx.LyDoTuChoi || "Vui lòng liên hệ thư viện." }}
+                </strong>
+                <strong v-else>
+                  Đã đăng ký đền bù trực tiếp tại quầy — Vui lòng đến quầy thư viện đóng tiền mặt để Thủ thư / Quản trị viên duyệt.
+                </strong>
+              </div>
+
+              <div class="payos-bank-details">
+                <div class="payos-detail-row">
+                  <span class="payos-detail-label">Mã biên nhận</span>
+                  <span class="payos-detail-value font-mono-code">#{{ activePayosTx.OrderCode }}</span>
+                </div>
+                <div class="payos-detail-row">
+                  <span class="payos-detail-label">Phương thức</span>
+                  <span class="payos-detail-value">Đền bù trực tiếp tại quầy thư viện</span>
+                </div>
+                <div class="payos-detail-row">
+                  <span class="payos-detail-label">Số tiền cần đóng</span>
+                  <span class="payos-detail-value fw-bold text-danger">
+                    {{ Number(activePayosTx.SoTien || 0).toLocaleString("vi-VN") }} ₫
+                  </span>
+                </div>
+                <div v-if="activePayosTx.GhiChuDocGia" class="payos-detail-row">
+                  <span class="payos-detail-label">Ghi chú</span>
+                  <span class="payos-detail-value">{{ activePayosTx.GhiChuDocGia }}</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- Bước 2B: Đã có mã thanh toán chuyển khoản PayOS -->
             <template v-else>
               <!-- Banner trạng thái duyệt -->
               <div
@@ -686,17 +764,31 @@
             </button>
 
             <button
+              v-if="activePayosTx && !forceNewPayos && activePayosTx.TrangThaiDuyet !== 'DaDuyet'"
+              class="ath-btn-outline"
+              type="button"
+              :disabled="creatingPayos || confirmingPayos"
+              @click="switchCompensationMethod(activePayosTx.PhuongThucDenBu === 'TrucTiep' ? 'PayOS' : 'TrucTiep')"
+            >
+              {{ activePayosTx.PhuongThucDenBu === "TrucTiep" ? "Đổi sang chuyển khoản PayOS" : "Đổi sang trả trực tiếp tại quầy" }}
+            </button>
+
+            <button
               v-if="!activePayosTx || forceNewPayos"
               class="borrow-renew-confirm"
               type="button"
               :disabled="creatingPayos || !lossReason.trim()"
               @click="createPayosCompensation"
             >
-              {{ creatingPayos ? "Đang tạo mã PayOS..." : "Xác nhận báo mất & Tạo mã PayOS" }}
+              {{
+                creatingPayos
+                  ? "Đang xử lý..."
+                  : (compensationMethod === "TrucTiep" ? "Xác nhận báo mất & Trả tại quầy" : "Xác nhận báo mất & Tạo mã PayOS")
+              }}
             </button>
 
             <button
-              v-else-if="activePayosTx.TrangThaiDuyet === 'ChoChuyenKhoan'"
+              v-else-if="activePayosTx.PhuongThucDenBu !== 'TrucTiep' && activePayosTx.TrangThaiDuyet === 'ChoChuyenKhoan'"
               class="borrow-renew-confirm"
               type="button"
               :disabled="confirmingPayos"
@@ -711,7 +803,7 @@
               type="button"
               @click="forceNewPayos = true"
             >
-              Tạo mã PayOS mới
+              Chọn lại phương thức
             </button>
           </div>
         </div>
@@ -865,6 +957,7 @@ export default {
       renewingBorrow: false,
       showLossPayosModal: false,
       lossTarget: null,
+      compensationMethod: "PayOS",
       lossReason: "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS",
       activePayosTx: null,
       forceNewPayos: false,
@@ -1098,10 +1191,14 @@ export default {
       this.lossTarget = item;
       this.forceNewPayos = Boolean(forceNew);
       this.payosQrFallbackUsed = false;
+      this.compensationMethod = "PayOS";
       this.lossReason = "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS";
 
       const existing = this.compensationFor(item._id);
       this.activePayosTx = forceNew ? null : existing;
+      if (existing?.PhuongThucDenBu) {
+        this.compensationMethod = existing.PhuongThucDenBu;
+      }
       this.showLossPayosModal = true;
 
       if (!forceNew && item.TrangThai === "MatSach") {
@@ -1109,8 +1206,9 @@ export default {
           const res = await payosService.getByBorrowId(item._id);
           if (res?.data) {
             this.activePayosTx = res.data;
+            this.compensationMethod = res.data.PhuongThucDenBu || "PayOS";
             this.upsertCompensation(res.data);
-            if (res.data.TrangThaiDuyet === "ChoChuyenKhoan") {
+            if (res.data.PhuongThucDenBu !== "TrucTiep" && res.data.TrangThaiDuyet === "ChoChuyenKhoan") {
               this.startPayosPolling(item._id);
             }
           }
@@ -1118,6 +1216,24 @@ export default {
           // Chưa có giao dịch thì giữ form tạo mới
         }
       }
+    },
+    selectCompensationMethod(method) {
+      this.compensationMethod = method === "TrucTiep" ? "TrucTiep" : "PayOS";
+      if (
+        !this.lossReason.trim() ||
+        this.lossReason === "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS" ||
+        this.lossReason === "Làm mất sách cá nhân, đăng ký đền bù trực tiếp tại quầy thư viện"
+      ) {
+        this.lossReason =
+          this.compensationMethod === "TrucTiep"
+            ? "Làm mất sách cá nhân, đăng ký đền bù trực tiếp tại quầy thư viện"
+            : "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS";
+      }
+    },
+    switchCompensationMethod(targetMethod) {
+      this.stopPayosPolling();
+      this.forceNewPayos = true;
+      this.selectCompensationMethod(targetMethod);
     },
     closeLossPayosModal() {
       if (this.creatingPayos || this.confirmingPayos) return;
@@ -1187,6 +1303,7 @@ export default {
           borrowId: this.lossTarget._id,
           ghiChu: reason,
           forceNew: this.forceNewPayos,
+          phuongThuc: this.compensationMethod,
         });
         if (res?.data) {
           this.activePayosTx = res.data;
@@ -1195,12 +1312,15 @@ export default {
           this.upsertCompensation(res.data);
           await this.fetchData();
           this.activeTab = "history";
-          if (res.data.TrangThaiDuyet === "ChoChuyenKhoan") {
+          if (res.data.PhuongThucDenBu !== "TrucTiep" && res.data.TrangThaiDuyet === "ChoChuyenKhoan") {
             this.startPayosPolling(this.lossTarget._id);
           }
         }
         this.$refs.toast?.show(
-          res?.message || "Đã tạo mã thanh toán PayOS. Vui lòng quét mã QR để chuyển khoản đền bù."
+          res?.message ||
+            (this.compensationMethod === "TrucTiep"
+              ? "Đã đăng ký đền bù trực tiếp tại quầy. Vui lòng đến thư viện thanh toán để được duyệt."
+              : "Đã tạo mã thanh toán PayOS. Vui lòng quét mã QR để chuyển khoản đền bù.")
         );
       } catch (err) {
         this.$refs.toast?.show(
@@ -1601,6 +1721,61 @@ export default {
 .payos-form-group {
   display: grid;
   gap: 0.4rem;
+}
+
+.compensation-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.compensation-method-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  background: #ffffff;
+  color: #111111;
+  border: 2px solid #111111;
+  border-radius: 0.65rem;
+  box-shadow: 3px 3px 0 #111111;
+  cursor: pointer;
+  transition: transform 0.14s ease, background-color 0.14s ease;
+}
+
+.compensation-method-card:hover {
+  transform: translate(-1px, -1px);
+  background: #fff9db;
+}
+
+.compensation-method-card.is-selected {
+  background: #fdc800;
+  border-color: #111111;
+  box-shadow: 4px 4px 0 #432dd7;
+}
+
+.compensation-method-card:focus-visible {
+  outline: 3px solid #432dd7;
+  outline-offset: 2px;
+}
+
+.method-card-title {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #111111;
+}
+
+.method-card-desc {
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: #262626;
+}
+
+@media (max-width: 575.98px) {
+  .compensation-method-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .payos-form-label {

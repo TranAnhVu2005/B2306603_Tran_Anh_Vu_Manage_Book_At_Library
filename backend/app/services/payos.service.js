@@ -15,6 +15,7 @@ const transactionPublicFields = {
     MaSach: 1,
     TenSach: 1,
     OrderCode: 1,
+    PhuongThucDenBu: 1,
     SoTien: 1,
     NoiDungChuyenKhoan: 1,
     PaymentLinkId: 1,
@@ -211,7 +212,7 @@ class PayosService {
     }
 
     async syncTransactionWithPayos(tx) {
-        if (!tx || !tx.OrderCode || tx.TrangThaiPayOS === "PAID") return tx;
+        if (!tx || tx.PhuongThucDenBu === "TrucTiep" || !tx.OrderCode || tx.TrangThaiPayOS === "PAID") return tx;
 
         try {
             const remote = await this.callPayosGetLink(tx.OrderCode);
@@ -280,11 +281,14 @@ class PayosService {
             throw err;
         }
 
+        const phuongThuc = payload.phuongThuc === "TrucTiep" ? "TrucTiep" : "PayOS";
         const ghiChu = payload.ghiChu && String(payload.ghiChu).trim()
             ? String(payload.ghiChu).trim().slice(0, 500)
+            : phuongThuc === "TrucTiep"
+            ? "Độc giả báo mất sách và đăng ký đền bù trực tiếp tại quầy thư viện"
             : "Độc giả báo mất sách và đền bù trực tuyến qua PayOS";
 
-        // Nếu phiếu đang ở trạng thái DangMuon, tự động chuyển sang MatSach trước khi khởi tạo mã PayOS
+        // Nếu phiếu đang ở trạng thái DangMuon, tự động chuyển sang MatSach trước khi khởi tạo giao dịch đền bù
         if (borrowRecord.TrangThai === "DangMuon") {
             await this.BorrowService.baoMatDocGia(borrowId, ghiChu, maDocGia);
             borrowRecord = await this.TheoDoi.findOne({ _id: new ObjectId(borrowId) });
@@ -306,14 +310,17 @@ class PayosService {
                 err.statusCode = 409;
                 throw err;
             }
-            if (existing.TrangThaiDuyet === "ChoDuyet") {
-                const synced = await this.syncTransactionWithPayos(existing);
-                return await this.findById(synced._id);
-            }
-            if (existing.TrangThaiDuyet === "ChoChuyenKhoan" && !payload.forceNew) {
-                const synced = await this.syncTransactionWithPayos(existing);
-                if (synced.TrangThaiPayOS === "PENDING" || synced.TrangThaiPayOS === "PAID") {
+            const existingMethod = existing.PhuongThucDenBu || "PayOS";
+            if (!payload.forceNew && existingMethod === phuongThuc) {
+                if (existing.TrangThaiDuyet === "ChoDuyet") {
+                    const synced = await this.syncTransactionWithPayos(existing);
                     return await this.findById(synced._id);
+                }
+                if (existing.TrangThaiDuyet === "ChoChuyenKhoan") {
+                    const synced = await this.syncTransactionWithPayos(existing);
+                    if (synced.TrangThaiPayOS === "PENDING" || synced.TrangThaiPayOS === "PAID") {
+                        return await this.findById(synced._id);
+                    }
                 }
             }
         }
@@ -325,6 +332,92 @@ class PayosService {
 
         const soTien = Math.max(Number(borrowRecord.GiaTriBoiThuong || sach?.DonGia || 0), 2000);
         const orderCode = this.generateOrderCode();
+        const readerName = [docGia?.HoLot, docGia?.Ten].filter(Boolean).join(" ") || borrowRecord.MaDocGia;
+        const now = new Date();
+
+        // Phương thức 1: Đền bù trực tiếp tại quầy thư viện (chờ thủ thư / quản trị viên duyệt khi nhận tiền mặt)
+        if (phuongThuc === "TrucTiep") {
+            const directDoc = {
+                MaPhieuMuon: String(borrowRecord._id),
+                MaDocGia: borrowRecord.MaDocGia,
+                TenDocGia: readerName,
+                MaSach: borrowRecord.MaSach,
+                TenSach: sach?.TenSach || borrowRecord.MaSach,
+                OrderCode: orderCode,
+                PhuongThucDenBu: "TrucTiep",
+                SoTien: Number(borrowRecord.GiaTriBoiThuong || sach?.DonGia || 0),
+                NoiDungChuyenKhoan: `TRUCTIEP-${String(orderCode).slice(-6)}`,
+                PaymentLinkId: null,
+                CheckoutUrl: null,
+                QrCode: null,
+                VietQrImageUrl: null,
+                QrFallbackImageUrl: null,
+                Bin: null,
+                AccountNumber: null,
+                AccountName: null,
+                TrangThaiPayOS: "DIRECT_COUNTER",
+                TrangThaiDuyet: "ChoDuyet",
+                XacMinhTuDong: false,
+                GhiChuDocGia: ghiChu,
+                NguoiDuyet: null,
+                LyDoTuChoi: null,
+                ThoiGianTao: now,
+                ThoiGianThanhToan: null,
+                ThoiGianDuyet: null,
+                UpdatedAt: now,
+            };
+
+            const insertResult = await this.GiaoDich.insertOne(directDoc);
+
+            await this.TheoDoi.updateOne(
+                { _id: borrowRecord._id },
+                {
+                    $set: {
+                        GhiChu: `${ghiChu} (Đăng ký đền bù trực tiếp tại quầy #${orderCode}: ${directDoc.SoTien.toLocaleString("vi-VN")} ₫ — Chờ thủ thư/quản trị viên duyệt)`,
+                        UpdatedAt: now,
+                    },
+                }
+            );
+
+            await this.AuditLog.record({
+                action: "DIRECT_COMPENSATION_REQUESTED",
+                entityType: "borrow",
+                entityId: String(borrowRecord._id),
+                MaSach: borrowRecord.MaSach,
+                TenSach: directDoc.TenSach,
+                MaDocGia: borrowRecord.MaDocGia,
+                TenDocGia: readerName,
+                actorType: "reader",
+                actorId: borrowRecord.MaDocGia,
+                Details: {
+                    OrderCode: directDoc.OrderCode,
+                    PhuongThucDenBu: "TrucTiep",
+                    compensation: directDoc.SoTien,
+                    TrangThaiDuyet: "ChoDuyet",
+                    GhiChuDocGia: ghiChu,
+                },
+            });
+
+            await this.notifyAllStaffAndAdmins(
+                "DEN_BU_TRUC_TIEP_CHO_DUYET",
+                "Độc giả đăng ký đền bù mất sách trực tiếp tại quầy",
+                `Độc giả ${readerName} (${borrowRecord.MaDocGia}) đã báo mất cuốn “${directDoc.TenSach}” và chọn đền bù trực tiếp tại quầy (${directDoc.SoTien.toLocaleString("vi-VN")} ₫, Mã phiếu #${orderCode}). Vui lòng duyệt khi nhận đủ tiền.`,
+                String(borrowRecord._id)
+            );
+
+            await this.ThongBao.createSafely({
+                recipientCode: borrowRecord.MaDocGia,
+                recipientType: "docgia",
+                type: "DEN_BU_TRUC_TIEP_DA_DANG_KY",
+                title: "Đã đăng ký đền bù trực tiếp tại quầy",
+                message: `Bạn đã chọn đền bù trực tiếp tại quầy cho cuốn “${directDoc.TenSach}” (Số tiền: ${directDoc.SoTien.toLocaleString("vi-VN")} ₫, Mã #${orderCode}). Vui lòng đến quầy thư viện để hoàn tất và chờ thủ thư/quản trị viên duyệt.`,
+                reference: borrowRecord.MaSach,
+            });
+
+            return await this.findById(insertResult.insertedId);
+        }
+
+        // Phương thức 2: Chuyển khoản trực tuyến qua PayOS
         const cleanBookCode = String(borrowRecord.MaSach || "SACH").replace(/[^A-Z0-9]/gi, "").slice(-10);
         const description = `DENBU ${cleanBookCode} ${String(orderCode).slice(-5)}`.slice(0, 25);
         const readerOrigin = getReaderAppOrigin();
@@ -348,8 +441,6 @@ class PayosService {
         });
         const qrFallbackImageUrl = buildQrFallbackImageUrl(payosData.qrCode);
 
-        const readerName = [docGia?.HoLot, docGia?.Ten].filter(Boolean).join(" ") || borrowRecord.MaDocGia;
-        const now = new Date();
         const doc = {
             MaPhieuMuon: String(borrowRecord._id),
             MaDocGia: borrowRecord.MaDocGia,
@@ -357,6 +448,7 @@ class PayosService {
             MaSach: borrowRecord.MaSach,
             TenSach: sach?.TenSach || borrowRecord.MaSach,
             OrderCode: Number(payosData.orderCode || orderCode),
+            PhuongThucDenBu: "PayOS",
             SoTien: Number(payosData.amount || soTien),
             NoiDungChuyenKhoan: String(payosData.description || description),
             PaymentLinkId: payosData.paymentLinkId || null,
@@ -689,12 +781,15 @@ class PayosService {
             }
         );
 
+        const isDirect = tx.PhuongThucDenBu === "TrucTiep";
+        const methodText = isDirect ? "trực tiếp tại quầy" : "chuyển khoản qua PayOS";
+
         if (ObjectId.isValid(tx.MaPhieuMuon)) {
             await this.TheoDoi.updateOne(
                 { _id: new ObjectId(tx.MaPhieuMuon) },
                 {
                     $set: {
-                        GhiChu: `Đã hoàn tất đền bù mất sách qua PayOS (Mã đơn #${tx.OrderCode}: ${Number(tx.SoTien || 0).toLocaleString("vi-VN")} ₫ — Đã duyệt bởi ${msnv})`,
+                        GhiChu: `Đã hoàn tất đền bù mất sách ${methodText} (Mã #${tx.OrderCode}: ${Number(tx.SoTien || 0).toLocaleString("vi-VN")} ₫ — Đã duyệt bởi ${msnv})`,
                         UpdatedAt: now,
                     },
                 }
@@ -714,6 +809,7 @@ class PayosService {
             Details: {
                 from: tx.TrangThaiDuyet,
                 to: "DaDuyet",
+                PhuongThucDenBu: tx.PhuongThucDenBu || "PayOS",
                 OrderCode: tx.OrderCode,
                 compensation: tx.SoTien,
             },
@@ -723,8 +819,8 @@ class PayosService {
             recipientCode: tx.MaDocGia,
             recipientType: "docgia",
             type: "DEN_BU_MAT_SACH_DA_DUYET",
-            title: "Đã duyệt đền bù mất sách qua PayOS",
-            message: `Quản trị viên đã xác nhận và duyệt khoản chuyển khoản đền bù ${Number(tx.SoTien || 0).toLocaleString("vi-VN")} ₫ (Mã đơn #${tx.OrderCode}) cho cuốn “${tx.TenSach || tx.MaSach}”. Cảm ơn bạn đã hoàn tất nghĩa vụ bồi hoàn!`,
+            title: isDirect ? "Đã duyệt đền bù mất sách tại quầy" : "Đã duyệt đền bù mất sách qua PayOS",
+            message: `Thư viện đã xác nhận và duyệt khoản đền bù ${methodText} ${Number(tx.SoTien || 0).toLocaleString("vi-VN")} ₫ (Mã #${tx.OrderCode}) cho cuốn “${tx.TenSach || tx.MaSach}”. Cảm ơn bạn đã hoàn tất nghĩa vụ bồi hoàn!`,
             reference: tx.MaSach,
         });
 
@@ -779,12 +875,15 @@ class PayosService {
             }
         );
 
+        const isDirect = tx.PhuongThucDenBu === "TrucTiep";
+        const methodText = isDirect ? "trực tiếp tại quầy" : "qua PayOS";
+
         if (ObjectId.isValid(tx.MaPhieuMuon)) {
             await this.TheoDoi.updateOne(
                 { _id: new ObjectId(tx.MaPhieuMuon) },
                 {
                     $set: {
-                        GhiChu: `Yêu cầu đền bù PayOS (#${tx.OrderCode}) bị từ chối: ${cleanReason}`,
+                        GhiChu: `Yêu cầu đền bù ${methodText} (#${tx.OrderCode}) bị từ chối: ${cleanReason}`,
                         UpdatedAt: now,
                     },
                 }
@@ -804,6 +903,7 @@ class PayosService {
             Details: {
                 from: tx.TrangThaiDuyet,
                 to: "TuChoi",
+                PhuongThucDenBu: tx.PhuongThucDenBu || "PayOS",
                 OrderCode: tx.OrderCode,
                 compensation: tx.SoTien,
                 reason: cleanReason,
@@ -815,7 +915,7 @@ class PayosService {
             recipientType: "docgia",
             type: "DEN_BU_MAT_SACH_TU_CHOI",
             title: "Yêu cầu đền bù mất sách chưa được duyệt",
-            message: `Yêu cầu xác nhận đền bù cuốn “${tx.TenSach || tx.MaSach}” (Mã đơn #${tx.OrderCode}) bị từ chối. Lý do: ${cleanReason}. Bạn có thể kiểm tra lại giao dịch trong mục Hồ sơ cá nhân.`,
+            message: `Yêu cầu đền bù ${methodText} cho cuốn “${tx.TenSach || tx.MaSach}” (Mã #${tx.OrderCode}) bị từ chối. Lý do: ${cleanReason}. Bạn có thể chọn lại phương thức đền bù trong mục Hồ sơ cá nhân.`,
             reference: tx.MaSach,
         });
 

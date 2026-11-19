@@ -8,12 +8,12 @@ const router = express.Router();
 // Webhook callback từ máy chủ PayOS (xác thực bằng chữ ký HMAC-SHA256)
 router.post("/webhook", controller.webhook);
 
-// Độc giả khởi tạo mã thanh toán PayOS (kèm tự động báo mất nếu phiếu đang ở DangMuon)
+// Độc giả khởi tạo đền bù mất sách (chuyển khoản PayOS hoặc đăng ký trả trực tiếp tại quầy)
 router.post(
     "/create",
     authenticate,
     authorizeReader,
-    allowFields("borrowId", "ghiChu", "forceNew"),
+    allowFields("borrowId", "ghiChu", "forceNew", "phuongThuc"),
     controller.createPayment
 );
 

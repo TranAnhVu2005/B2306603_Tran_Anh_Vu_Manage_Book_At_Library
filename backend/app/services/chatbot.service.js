@@ -17,10 +17,10 @@ function normalizeText(value) {
 }
 
 const FALLBACK_GEMINI_URLS = [
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
 ];
 
 function getValidatedGeminiEndpoint() {
@@ -281,11 +281,12 @@ Nhiệm vụ của bạn là hỗ trợ độc giả, thủ thư và quản tr�
   + Hủy yêu cầu: Độc giả có thể hủy phiếu khi đang ở trạng thái "ChoDuyet" hoặc "ChoNhan" (trước khi nhận sách). Nếu hủy phiếu "ChoNhan", sách giữ được hoàn lại kho ngay lập tức.
   + Vi phạm & Danh sách đen: Trả sách trễ hạn hoặc làm mất sách sẽ tăng 01 lần vi phạm ("SoLanViPham"). Khi đạt 03 lần vi phạm, thẻ tự động chuyển sang "DanhSachDen" (tạm dừng quyền đăng ký mượn sách mới cho đến khi Admin xét gỡ). Khác với trạng thái "Khoa" (khóa khẩn cấp tài khoản, không thể đăng nhập).
 
-- Quy trình Báo mất sách & Đền bù trực tuyến qua PayOS (Không cần đến trực tiếp):
-  + Bước 1: Khi làm mất sách đang mượn, độc giả vào trang "Hồ sơ cá nhân" (/profile) -> tab "Đang mượn" (hoặc tab "Lịch sử" nếu phiếu đã ở trạng thái Mất sách) -> bấm nút "Báo mất & Đền bù" (hoặc "Đền bù qua PayOS").
-  + Bước 2: Nhập lý do làm mất sách và xác nhận. Hệ thống ghi nhận trạng thái "MatSach", tính mức tiền đền bù bằng đúng 100% Đơn giá sách ("DonGia") và tự động tạo mã QR chuyển khoản PayOS (kèm đường dẫn cổng thanh toán PayOS).
-  + Bước 3: Độc giả quét mã VietQR bằng ứng dụng ngân hàng để chuyển khoản đúng số tiền và nội dung, sau đó bấm "Tôi đã chuyển khoản — Gửi chờ duyệt" (hoặc hệ thống tự động đồng bộ từ PayOS).
-  + Bước 4: Giao dịch chuyển sang trạng thái "Chờ quản trị viên duyệt" (ChoDuyet). Quản trị viên kiểm tra tại trang Quản lý Mượn - Trả và bấm "Duyệt đền bù". Khi được duyệt, độc giả nhận thông báo hoàn tất đền bù ngay trên website.
+- Quy trình Báo mất sách & Đền bù (Hỗ trợ 2 phương thức: Chuyển khoản PayOS hoặc Trả trực tiếp tại quầy):
+  + Bước 1: Khi làm mất sách đang mượn, độc giả vào trang "Hồ sơ cá nhân" (/profile) -> tab "Đang mượn" (hoặc tab "Lịch sử" nếu phiếu đã ở trạng thái Mất sách) -> bấm nút "Báo mất & Đền bù".
+  + Bước 2: Nhập lý do làm mất sách và chọn 1 trong 2 phương thức đền bù (mức bồi thường bằng đúng 100% Đơn giá sách "DonGia"):
+    * Cách 1 — Chuyển khoản trực tuyến qua PayOS (VietQR): Hệ thống tạo mã VietQR và link thanh toán PayOS; độc giả quét mã chuyển khoản rồi bấm "Tôi đã chuyển khoản — Gửi chờ duyệt".
+    * Cách 2 — Đền bù trực tiếp tại quầy thư viện: Hệ thống ghi nhận yêu cầu đăng ký trả trực tiếp tại quầy (Mã biên nhận #...); độc giả đến quầy đóng tiền mặt để Thủ thư hoặc Quản trị viên xác nhận duyệt hoàn tất.
+  + Bước 3: Thủ thư / Quản trị viên kiểm tra tại trang Quản lý Mượn - Trả ("/manager/borrows" -> tab "Đền bù mất sách") và bấm "Duyệt đền bù". Khi được duyệt, độc giả nhận thông báo hoàn tất ngay trên website. Độc giả cũng có thể đổi phương thức giữa PayOS và trực tiếp tại quầy trước khi giao dịch được duyệt.
 
 === 2. THỐNG KÊ KHO SÁCH HIỆN TẠI ===
 - Tổng số đầu sách đang phục vụ: ${totalTitles} đầu sách (${availableTitles} đầu sách còn trong kho, tổng cộng ${totalCopies} quyển).
@@ -364,7 +365,7 @@ ${sessionText}
                         "x-goog-api-key": endpoint.apiKey,
                     },
                     body: JSON.stringify(payload),
-                    signal: AbortSignal.timeout(15_000),
+                    signal: AbortSignal.timeout(30_000),
                 });
 
                 const data = await response.json().catch(() => ({}));
@@ -379,6 +380,7 @@ ${sessionText}
                 }
 
                 const candidateText = data?.candidates?.[0]?.content?.parts
+                    ?.filter((part) => !part.thought)
                     ?.map((part) => part.text || "")
                     .join("")
                     .trim();

@@ -4,17 +4,23 @@ const ApiError = require("../api-error");
 
 exports.createPayment = async (req, res, next) => {
     try {
-        const { borrowId, ghiChu, forceNew } = req.body || {};
+        const { borrowId, ghiChu, forceNew, phuongThuc } = req.body || {};
         if (!borrowId || typeof borrowId !== "string") {
             return next(new ApiError(400, "Vui lòng cung cấp mã phiếu mượn (borrowId) hợp lệ."));
         }
+        const normalizedMethod = phuongThuc === "TrucTiep" ? "TrucTiep" : "PayOS";
         const service = new PayosService(MongoDB.client);
         const result = await service.reportLostAndCreatePayment(borrowId, req.user.username, {
             ghiChu,
             forceNew: forceNew === true || forceNew === "true",
+            phuongThuc: normalizedMethod,
         });
+        const message =
+            normalizedMethod === "TrucTiep"
+                ? "Đã ghi nhận đăng ký đền bù trực tiếp tại quầy. Vui lòng đến thư viện thanh toán để thủ thư/quản trị viên duyệt hoàn tất."
+                : "Đã khởi tạo mã thanh toán đền bù PayOS. Vui lòng quét mã QR hoặc mở cổng thanh toán để chuyển khoản.";
         return res.status(201).json({
-            message: "Đã khởi tạo mã thanh toán đền bù PayOS. Vui lòng quét mã QR hoặc mở cổng thanh toán để chuyển khoản.",
+            message,
             data: result,
         });
     } catch (error) {
