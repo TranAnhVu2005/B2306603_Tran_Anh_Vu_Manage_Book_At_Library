@@ -4,21 +4,26 @@
     <button
       type="button"
       class="neo-chat-launcher"
-      :class="{ 'is-open': isOpen }"
+      :class="{ 'is-open': isOpen, 'is-icon-only': !isOpen }"
       :aria-expanded="isOpen ? 'true' : 'false'"
-      aria-label="Mở Trợ lý AI Thư viện"
+      :aria-label="isOpen ? 'Đóng Trợ lý AI Thư viện' : 'Mở Trợ lý AI Thư viện'"
+      :title="isOpen ? 'Đóng trợ lý' : 'Trợ lý Thư viện AI'"
       @click="toggleChat"
     >
-      <span class="launcher-icon" aria-hidden="true">
-        <svg v-if="!isOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          <path d="M8 9h8M8 13h5" />
-        </svg>
-        <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </span>
-      <span class="launcher-text">{{ isOpen ? "Đóng trợ lý" : "Trợ lý Thư viện AI" }}</span>
+      <img
+        v-if="!isOpen"
+        :src="chatIcon"
+        alt="Trợ lý Thư viện AI"
+        class="neo-chat-launcher-img"
+      />
+      <template v-else>
+        <span class="launcher-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </span>
+        <span class="launcher-text">Đóng trợ lý</span>
+      </template>
     </button>
 
     <!-- Khung cửa sổ chat Neo-brutalism -->
@@ -191,6 +196,7 @@
 
 <script>
 import chatbotService from "../services/chatbot.service";
+import chatIcon from "../assets/chat_icon.webp";
 
 const INITIAL_GREETING =
   "Xin chào! Mình là **Trợ lý Thư viện CTU** trên Cổng Quản lý. Mình nắm rõ toàn bộ danh mục kho sách, thể loại, tóm tắt nội dung sách và quy trình nghiệp vụ Thủ thư / Quản trị viên (bao gồm duyệt chuyển khoản đền bù mất sách qua PayOS).";
@@ -205,6 +211,7 @@ export default {
   },
   data() {
     return {
+      chatIcon,
       isOpen: false,
       draft: "",
       loading: false,
@@ -384,6 +391,24 @@ export default {
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.16s ease;
+}
+
+.neo-chat-launcher.is-icon-only {
+  width: 60px;
+  height: 60px;
+  min-height: 60px;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fffdf2;
+  justify-content: center;
+}
+
+.neo-chat-launcher-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .neo-chat-launcher:hover {
