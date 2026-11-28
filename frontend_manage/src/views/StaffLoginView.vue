@@ -50,12 +50,6 @@ export default {
       this.loading = true;
       try {
         const response = await authService.login(this.phone, this.password);
-        if (!authService.isStaffOrAdmin(response?.data)) {
-          await authService.logout();
-          this.password = "";
-          this.$refs.toast.show("Tài khoản này không có quyền truy cập cổng nhân viên.", "error");
-          return;
-        }
         const defaultDestination = authService.isAdmin(response?.data) ? "/admin/users" : "/manager/borrows";
         const requested = typeof this.$route.query.redirect === "string" ? this.$route.query.redirect : defaultDestination;
         const redirect = /^\/(manager\/|admin\/|profile(?:\?|$)|catalog(?:\/|\?|$))/.test(requested) && !requested.startsWith("//")

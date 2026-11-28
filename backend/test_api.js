@@ -9,11 +9,9 @@ const DocGiaService = require("./app/services/docgia.service");
 const NhanVienService = require("./app/services/nhanvien.service");
 const ThongBaoService = require("./app/services/thongbao.service");
 const TheLoaiService = require("./app/services/theloai.service");
-const { migrateLegacyRoles } = require("./app/utils/role-migration.util");
 const { ObjectId } = require("mongodb");
 const { resetAuthRateLimitsForTests } = require("./app/middleware/security.middleware");
 const GoogleAuthService = require("./app/services/google-auth.service");
-const { migrateLegacyNotificationRecipients } = require("./app/utils/notification-migration.util");
 const { dateFromCalendarKey, calendarKey, localCalendarKey } = require("./app/utils/date.util");
 
 let server = null;
@@ -111,8 +109,6 @@ async function runTests() {
 
     // Khởi động kết nối MongoDB và máy chủ kiểm thử nếu chưa chạy
     await MongoDB.connect(config.db.uri, config.db.name);
-    await migrateLegacyRoles(MongoDB.client.db());
-    await migrateLegacyNotificationRecipients(MongoDB.client.db());
     await new TheLoaiService(MongoDB.client).ensureDefaults();
     server = await new Promise((resolve, reject) => {
         const s = app.listen(0, "127.0.0.1", () => {
@@ -189,13 +185,6 @@ async function runTests() {
         ) {
             throw new Error(`Kỳ vọng HTTP 200, ChucVu và JWT role phải là STAFF, nhận status=${res.status}`);
         }
-        const staffCollection = MongoDB.client.db().collection("nhanvien");
-        await staffCollection.updateOne({ _id: staff._id }, { $set: { ChucVu: "THUTHU" } });
-        const migration = await migrateLegacyRoles(MongoDB.client.db());
-        const migratedStaff = await staffCollection.findOne({ _id: staff._id }, { projection: { ChucVu: 1 } });
-        if (migration.staff < 1 || migratedStaff?.ChucVu !== "STAFF") {
-            throw new Error("Migration không chuyển chức vụ legacy của nhân viên thành STAFF.");
-        }
         const codeLogin = await request("POST", "/api/auth/login", { phone: temporaryStaffCode, password: "staff_test_password" });
         if (codeLogin.status !== 401) throw new Error("Đăng nhập nhân viên bằng mã MSNV vẫn được chấp nhận.");
     });
@@ -257,18 +246,6 @@ async function runTests() {
             password: "reader_test_password",
         });
         if (readerCodeLogin.status !== 401) throw new Error("Mã độc giả không được chấp nhận làm thông tin đăng nhập.");
-        const readerCollection = MongoDB.client.db().collection("docgia");
-        await readerCollection.updateOne({ MaDocGia: temporaryReaderId }, { $set: { VaiTro: "MANAGER" } });
-        const legacyRoleMe = await request("GET", "/api/auth/me", null, { Authorization: `Bearer ${temporaryReaderToken}` });
-        const legacyRoleList = await request("GET", "/api/docgia", null, { Authorization: `Bearer ${temporaryStaffToken}` });
-        if (legacyRoleMe.data?.data?.VaiTro !== "USER" || legacyRoleList.data?.find((item) => item.MaDocGia === temporaryReaderId)?.VaiTro !== "USER") {
-            throw new Error("Vai trò MANAGER cũ của độc giả vẫn được dùng như quyền nhân viên.");
-        }
-        const migration = await migrateLegacyRoles(MongoDB.client.db());
-        const migratedReader = await readerCollection.findOne({ MaDocGia: temporaryReaderId }, { projection: { VaiTro: 1 } });
-        if (migration.readers < 1 || migratedReader?.VaiTro !== "USER") {
-            throw new Error("Migration không đưa vai trò legacy của độc giả về USER.");
-        }
     });
 
     await assert("TC-NOTIFICATION-01: Người dùng chỉ xem và đánh dấu đã đọc thông báo của chính mình", async () => {
@@ -283,16 +260,6 @@ async function runTests() {
         const storedNotification = await MongoDB.client.db().collection("thongbao").findOne({ _id: created._id });
         if (storedNotification?.MaNguoiNhan !== temporaryReaderId || "NguoiNhanId" in storedNotification) {
             throw new Error("Thông báo mới phải lưu mã độc giả vào MaNguoiNhan, không lưu ObjectId.");
-        }
-        const legacyNotification = await MongoDB.client.db().collection("thongbao").insertOne({
-            NguoiNhanId: new ObjectId(temporaryReaderObjectId), LoaiNguoiNhan: "docgia",
-            LoaiThongBao: "KIEM_THU_MIGRATION", TieuDe: "Thông báo cũ", NoiDung: "Kiểm tra migration.",
-            DaDoc: false, ThoiGian: new Date(),
-        });
-        await migrateLegacyNotificationRecipients(MongoDB.client.db());
-        const migratedNotification = await MongoDB.client.db().collection("thongbao").findOne({ _id: legacyNotification.insertedId });
-        if (migratedNotification?.MaNguoiNhan !== temporaryReaderId || "NguoiNhanId" in migratedNotification) {
-            throw new Error("Migration thông báo cũ không đổi ObjectId sang mã độc giả.");
         }
         temporaryNotificationId = String(created._id);
         const unauthorized = await request("GET", "/api/thongbao");

@@ -169,10 +169,6 @@ export default {
       this.googleError = "";
       try {
         const result = await authService.loginWithGoogle(response.credential);
-        if (!authService.isReader(result.data)) {
-          await authService.logout();
-          throw new Error("Cổng này chỉ hỗ trợ đăng nhập Google cho độc giả.");
-        }
         this.$refs.toast.show(result.message || "Đăng nhập bằng Google thành công.");
         setTimeout(() => {
           const requested = typeof this.$route.query.redirect === "string" ? this.$route.query.redirect : "/";

@@ -33,13 +33,6 @@ class AuthService {
         return response.data;
     }
 
-    /**
-     * Đăng ký thẻ độc giả mới trực tuyến.
-     */
-    async register(data) {
-        return (await this.api.post("/register", data)).data;
-    }
-
     async registerStaff(data) {
         return (await this.staffApplicationApi.post("/", data)).data;
     }
@@ -92,7 +85,7 @@ class AuthService {
     getRole(user = this.getUser()) {
         if (!user) return null;
         if (user.ChucVu === "ADMIN") return "ADMIN";
-        if (["STAFF", "THUTHU", "MANAGER"].includes(user.ChucVu)) return "STAFF";
+        if (user.ChucVu === "STAFF") return "STAFF";
         if (user.ChucVu) return null;
         return "USER";
     }

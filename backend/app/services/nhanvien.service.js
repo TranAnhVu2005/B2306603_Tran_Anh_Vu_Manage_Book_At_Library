@@ -114,7 +114,6 @@ class NhanVienService {
     }
 
     async createFromApprovedRequest(request) {
-        await this.NhanVien.createIndex({ MaYeuCauDangKy: 1 }, { unique: true, sparse: true, name: "uq_nhanvien_yeucau_dangky" });
         const existing = await this.NhanVien.findOne({ MaYeuCauDangKy: String(request._id) }, { projection: { _id: 1 } });
         if (existing) return this.findById(existing._id);
         const data = {
@@ -196,11 +195,6 @@ class NhanVienService {
         if (!isValid) return { staff: null, status: "invalid" };
         if (staff.TrangThaiThe === "Khoa") return { staff: null, status: "locked" };
         return { staff, status: "authenticated" };
-    }
-
-    async login(phone, password) {
-        const result = await this.loginWithStatus(phone, password);
-        return result.staff;
     }
 
     async setAccountStatus(id, status, actor = {}) {

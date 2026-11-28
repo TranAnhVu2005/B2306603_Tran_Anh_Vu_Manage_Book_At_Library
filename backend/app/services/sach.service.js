@@ -291,15 +291,6 @@ class SachService {
         });
         return { MaSach: current.MaSach };
     }
-
-    // Cập nhật số quyển - Completed !!! Chưa được gọi ở bất kỳ đâu
-    async changeSoQuyen(maSach, soLuong) {
-        return await this.Sach.findOneAndUpdate(
-            { MaSach: maSach },
-            { $inc: { SoQuyen: soLuong }, $set: { UpdatedAt: new Date() } },
-            { returnDocument: "after" }
-        );
-    }
 }
 
 module.exports = SachService;

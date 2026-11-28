@@ -79,10 +79,9 @@ function allowFields(...fields) {
     const allowed = new Set(fields);
     return (req, res, next) => {
         const body = req.body || {};
-        const invalidValue = body && typeof body === "object" && Object.entries(body).some(([key, value]) =>
+        const invalidValue = body && typeof body === "object" && Object.entries(body).some(([, value]) =>
             (typeof value === "string" && value.length > 10000) ||
-            value === null || typeof value === "object" ||
-            (key === "HinhAnh" && value !== "" && !/^\/uploads\/books\/[A-Za-z0-9._-]+$/.test(value))
+            value === null || typeof value === "object"
         );
         if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some((key) => !allowed.has(key)) || invalidValue) {
             return next(new ApiError(400, "Request chứa trường không được phép."));

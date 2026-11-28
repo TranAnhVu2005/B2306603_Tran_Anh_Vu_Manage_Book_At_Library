@@ -52,19 +52,6 @@ class TheoDoiMuonSachService {
         return addCalendarDays(key, days);
     }
 
-    async migrateLegacyPendingRecords() {
-        const cursor = this.TheoDoi.find(
-            { TrangThai: "ChoDuyet", NgayMuon: { $ne: null } },
-            { projection: { _id: 1, NgayMuon: 1, NgayDangKy: 1 } }
-        );
-        for await (const record of cursor) {
-            await this.TheoDoi.updateOne(
-                { _id: record._id, TrangThai: "ChoDuyet" },
-                { $set: { NgayDangKy: dateFromCalendarKey(record.NgayDangKy || record.NgayMuon) }, $unset: { NgayMuon: "", NgayHenTra: "" } }
-            );
-        }
-    }
-
     // Hết hạn nhận sau hết ngày HanNhan; cập nhật trạng thái có điều kiện để worker nhiều instance không hoàn kho trùng.
     async expirePickupReservations() {
         const today = dateFromCalendarKey(this.dateKey());

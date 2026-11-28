@@ -16,10 +16,6 @@ class YeuCauNhanVienService {
         this.DocGia = client.db().collection("docgia");
     }
 
-    async ensureIndexes() {
-        await this.YeuCau.createIndex({ SoDienThoai: 1, TrangThai: 1 }, { unique: true, name: "uq_yeucaunv_phone_status" });
-    }
-
     async submit(payload) {
         const HoTenNV = String(payload.HoTenNV || "").trim();
         const SoDienThoai = String(payload.SoDienThoai || "").trim();
@@ -30,7 +26,6 @@ class YeuCauNhanVienService {
         if (!/^\+?[0-9]{9,15}$/.test(SoDienThoai)) throw new Error("Số điện thoại phải có từ 9 đến 15 chữ số.");
         if (MatKhau.length < 8 || MatKhau.length > 128) throw new Error("Mật khẩu phải có từ 8 đến 128 ký tự.");
 
-        await this.ensureIndexes();
         if (await this.NhanVien.findOne({ SoDienThoai }, { projection: { _id: 1 } })) {
             throw new Error("Số điện thoại này đã có tài khoản nhân viên.");
         }
@@ -66,7 +61,6 @@ class YeuCauNhanVienService {
     }
 
     async findAll() {
-        await this.ensureIndexes();
         return this.YeuCau.find({ TrangThai: { $in: ["ChoDuyet", "DangDuyet"] } }, { projection: publicFields })
             .sort({ ThoiGianGui: 1, _id: 1 }).toArray();
     }

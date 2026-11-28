@@ -16,19 +16,15 @@ function normalizeText(value) {
         .trim();
 }
 
-const FALLBACK_GEMINI_URLS = [
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
-];
+const DEFAULT_GEMINI_URL =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
 
 function getValidatedGeminiEndpoint() {
     const apiKey = process.env.GEMINI_API_KEY?.trim() || config.gemini?.apiKey;
     const rawUrl =
         process.env.GEMINI_API_URL?.trim() ||
         config.gemini?.apiUrl ||
-        FALLBACK_GEMINI_URLS[0];
+        DEFAULT_GEMINI_URL;
 
     if (!apiKey || !rawUrl) return null;
 
@@ -351,49 +347,30 @@ ${sessionText}
             },
         };
 
-        const candidateUrls = [
-            endpoint.apiUrl,
-            ...FALLBACK_GEMINI_URLS.filter((url) => url !== endpoint.apiUrl),
-        ];
+        const response = await fetch(endpoint.apiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": endpoint.apiKey,
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(30_000),
+        });
 
-        for (const url of candidateUrls) {
-            try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": endpoint.apiKey,
-                    },
-                    body: JSON.stringify(payload),
-                    signal: AbortSignal.timeout(30_000),
-                });
-
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    const errMsg = data?.error?.message || `HTTP ${response.status}`;
-                    console.warn(`[Chatbot] Gemini endpoint ${url} thất bại (${response.status}): ${errMsg}`);
-                    // Chỉ thử model dự phòng khi model cũ bị 404 hoặc quá tải tạm thời (429/500/503)
-                    if ([404, 429, 500, 502, 503].includes(response.status)) {
-                        continue;
-                    }
-                    return null;
-                }
-
-                const candidateText = data?.candidates?.[0]?.content?.parts
-                    ?.filter((part) => !part.thought)
-                    ?.map((part) => part.text || "")
-                    .join("")
-                    .trim();
-
-                if (candidateText) {
-                    return candidateText;
-                }
-            } catch (err) {
-                console.warn(`[Chatbot] Lỗi kết nối tới ${url}: ${err.message}`);
-            }
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const errMsg = data?.error?.message || `HTTP ${response.status}`;
+            console.warn(`[Chatbot] Gemini endpoint thất bại (${response.status}): ${errMsg}`);
+            return null;
         }
 
-        return null;
+        const candidateText = data?.candidates?.[0]?.content?.parts
+            ?.filter((part) => !part.thought)
+            ?.map((part) => part.text || "")
+            .join("")
+            .trim();
+
+        return candidateText || null;
     }
 
     findSuggestedBooks(message, replyText, context) {
@@ -470,178 +447,6 @@ ${sessionText}
         return [];
     }
 
-    generateSmartLocalAnswer(message, context) {
-        const { books, genres, publishers, userContext } = context;
-        const qNorm = normalizeText(message);
-
-        // 1. Hỏi về báo mất sách / PayOS / đền bù / chuyển khoản
-        if (/mat sach|bao mat|den bu|boi thuong|payos|chuyen khoan|qr/.test(qNorm)) {
-            const lines = [
-                "### Hướng dẫn Báo mất sách & Đền bù trực tuyến qua PayOS",
-                "Khi làm mất sách, bạn **không cần đến trực tiếp thư viện** mà có thể báo cáo và chuyển khoản đền bù ngay trên website theo 4 bước:",
-                "1. **Báo mất trực tuyến**: Đăng nhập vào cổng Độc giả → mở **Hồ sơ cá nhân (`/profile`)** → ở tab **Đang mượn** (hoặc **Lịch sử**), nhấn nút **\"Báo mất & Đền bù\"** cạnh cuốn sách bị mất và nhập lý do.",
-                "2. **Nhận mã QR PayOS**: Hệ thống tự động ghi nhận phiếu sang trạng thái **Mất sách**, tính tiền bồi thường bằng **100% đơn giá sách (`DonGia`)** và khởi tạo **mã VietQR / cổng thanh toán PayOS**.",
-                "3. **Chuyển khoản & Xác nhận**: Bạn quét mã QR bằng ứng dụng ngân hàng để chuyển khoản đúng số tiền & nội dung, sau đó bấm **\"Tôi đã chuyển khoản — Gửi chờ duyệt\"**.",
-                "4. **Đợi Quản trị viên duyệt**: Yêu cầu chuyển sang trạng thái **Chờ duyệt đền bù**. Sau khi Quản trị viên kiểm tra và bấm **Duyệt đền bù**, bạn sẽ nhận được thông báo hoàn tất ngay trên chuông thông báo của website.",
-            ];
-            if (userContext?.type === "reader" && userContext.transactions?.length) {
-                lines.push("\n**Giao dịch đền bù gần đây của bạn:**");
-                for (const tx of userContext.transactions.slice(0, 3)) {
-                    const statusLabel =
-                        tx.TrangThaiDuyet === "DaDuyet"
-                            ? "Đã được Quản trị viên duyệt hoàn tất"
-                            : tx.TrangThaiDuyet === "ChoDuyet"
-                            ? "Đang chờ Quản trị viên duyệt"
-                            : tx.TrangThaiDuyet === "TuChoi"
-                            ? `Bị từ chối (${tx.LyDoTuChoi || "Vui lòng kiểm tra lại"})`
-                            : "Đang chờ chuyển khoản";
-                    lines.push(
-                        `- Đơn **#${tx.OrderCode}** — Sách **"${tx.TenSach}"** (${Number(tx.SoTien || 0).toLocaleString("vi-VN")} ₫): **${statusLabel}**`
-                    );
-                }
-            }
-            return lines.join("\n");
-        }
-
-        // 2. Hỏi về thông tin cá nhân / phiếu mượn của tôi / trạng thái thẻ
-        if (/phieu muon cua toi|sach toi dang muon|the cua toi|tai khoan cua toi|vi pham cua toi|lich su muon/.test(qNorm)) {
-            if (!userContext) {
-                return "Bạn hiện chưa đăng nhập. Vui lòng **Đăng nhập** (bằng Số điện thoại hoặc Google tại trang `/login`) để mình kiểm tra trạng thái thẻ, số lần vi phạm và danh sách phiếu mượn cá nhân của bạn nhé!";
-            }
-            if (userContext.type === "reader") {
-                const active = userContext.borrows.filter((b) =>
-                    ["ChoDuyet", "ChoNhan", "DangMuon"].includes(b.TrangThai)
-                );
-                const lines = [
-                    `### Thông tin thẻ độc giả: **${userContext.HoTen}** (\`${userContext.MaDocGia}\`)`,
-                    `- **Trạng thái thẻ**: ${userContext.TrangThaiThe === "HoatDong" ? "Đang hoạt động" : userContext.TrangThaiThe === "DanhSachDen" ? "Danh sách đen (Tạm dừng mượn mới)" : "Tạm khóa"}`,
-                    `- **Số lần vi phạm**: ${userContext.SoLanViPham}/3`,
-                    `- **Số sách đang lưu thông**: ${active.length}/3 quyển tối đa`,
-                ];
-                if (userContext.borrows.length) {
-                    lines.push("\n**Các phiếu mượn gần nhất của bạn:**");
-                    for (const b of userContext.borrows.slice(0, 5)) {
-                        lines.push(
-                            `- **"${b.TenSach}"** (\`${b.MaSach}\`): Trạng thái **${b.TrangThai}**${b.HanNhan && b.TrangThai === "ChoNhan" ? ` · Hạn nhận: ${b.HanNhan}` : ""}${b.NgayHenTra && b.TrangThai === "DangMuon" ? ` · Hạn trả: ${b.NgayHenTra}` : ""}${b.GiaTriBoiThuong > 0 ? ` · Đền bù: ${b.GiaTriBoiThuong.toLocaleString("vi-VN")} ₫` : ""}`
-                        );
-                    }
-                } else {
-                    lines.push("\nHiện tại bạn chưa có phiếu mượn nào.");
-                }
-                return lines.join("\n");
-            }
-            if (userContext.type === "staff") {
-                return [
-                    `### Xin chào ${userContext.ChucVu === "ADMIN" ? "Quản trị viên" : "Thủ thư"} **${userContext.HoTenNV}** (\`${userContext.MSNV}\`)`,
-                    "Thống kê nhanh hệ thống hiện tại:",
-                    `- **Chờ duyệt mượn**: ${userContext.stats.pendingCount} phiếu`,
-                    `- **Chờ độc giả đến nhận**: ${userContext.stats.pickupCount} phiếu`,
-                    `- **Đang mượn lưu hành**: ${userContext.stats.borrowingCount} phiếu`,
-                    `- **Phiếu báo mất sách**: ${userContext.stats.lostCount} phiếu`,
-                    `- **Giao dịch đền bù PayOS chờ duyệt**: ${userContext.stats.pendingPayosCount} giao dịch`,
-                ].join("\n");
-            }
-        }
-
-        // 3. Hỏi về quy định mượn sách, gia hạn, hạn trả, danh sách đen, website
-        if (/quy dinh|luat|gioi han|may cuon|bao nhieu cuon|gia han|han tra|14 ngay|3 ngay|giu sach|danh sach den|vi pham|huong dan|website/.test(qNorm) && !/the loai|mo ta|noi dung/.test(qNorm)) {
-            return [
-                "### Quy định & Hướng dẫn sử dụng Hệ thống Thư viện CTU",
-                "- **Định mức mượn**: Tối đa **03 cuốn** đang lưu thông (`Chờ duyệt`, `Chờ nhận sách`, `Đang mượn`).",
-                "- **Duyệt & Giữ sách 03 ngày**: Sau khi thủ thư duyệt, sách được trừ tồn kho để giữ riêng cho bạn trong **03 ngày** (`Chờ nhận sách`). Nếu quá 3 ngày chưa nhận, phiếu tự động đóng (`Quá hạn nhận`) và hoàn sách về kho.",
-                "- **Thời hạn mượn 14 ngày**: Bắt đầu tính từ ngày thủ thư xác nhận bàn giao sách thực tế tại quầy.",
-                "- **Gia hạn trực tuyến**: Mỗi phiếu đang mượn được gia hạn **01 lần thêm 07 ngày** tại mục **Hồ sơ cá nhân (`/profile`)** (phải thực hiện trước ngày đến hạn trả).",
-                "- **Hủy yêu cầu**: Bạn có thể hủy phiếu khi đang ở `Chờ duyệt` hoặc `Chờ nhận sách` trước khi nhận bàn giao.",
-                "- **Kỷ luật & Danh sách đen**: Trả trễ hạn hoặc làm mất sách tăng **+1 lần vi phạm**. Đạt **03 lần vi phạm** thẻ sẽ vào **Danh sách đen** (`DanhSachDen`), tạm dừng đăng ký mượn mới cho đến khi Quản trị viên xét gỡ.",
-                "- **Báo mất & Đền bù PayOS**: Có thể báo mất và quét mã QR PayOS để đền bù 100% đơn giá sách trực tuyến tại trang `/profile`, sau đó đợi Quản trị viên duyệt.",
-            ].join("\n");
-        }
-
-        // 4. Hỏi về danh sách Thể loại sách
-        if (/the loai|danh muc|nhung loai sach|phan loai/.test(qNorm) && !books.some((b) => qNorm.includes(normalizeText(b.TenSach)))) {
-            const genreLines = genres.map((g) => {
-                const genreBooks = books.filter((b) => b.MaTheLoai === g.MaTheLoai);
-                const availCount = genreBooks.filter((b) => b.SoQuyen > 0).length;
-                const sampleNames = genreBooks
-                    .slice(0, 3)
-                    .map((b) => `*"${b.TenSach}"*`)
-                    .join(", ");
-                return `- **${g.TenTheLoai}** (\`${g.MaTheLoai}\` — ${genreBooks.length} đầu sách, ${availCount} đầu sách còn kho): ${g.MoTa || " Đa dạng tài liệu học tập và tham khảo."}${sampleNames ? ` Tiêu biểu: ${sampleNames}.` : ""}`;
-            });
-
-            return [
-                `### Các thể loại sách hiện có tại Thư viện (${genres.length} thể loại)`,
-                ...genreLines,
-                "\nBạn muốn mình tư vấn sâu hơn về thể loại nào hoặc mô tả nội dung cuốn sách nào, hãy nhắn tên thể loại/tên sách nhé!",
-            ].join("\n");
-        }
-
-        // 5. Hỏi về Nhà xuất bản
-        if (/nha xuat ban|nxb/.test(qNorm) && !books.some((b) => qNorm.includes(normalizeText(b.TenSach)))) {
-            const pubLines = publishers.map((p) => {
-                const count = books.filter((b) => b.MaNXB === p.MaNXB).length;
-                return `- **${p.TENNXB}** (\`${p.MaNXB}\`): ${count} đầu sách — Địa chỉ: ${p.DiaChi || "—"}`;
-            });
-            return [
-                `### Danh sách Nhà xuất bản liên kết (${publishers.length} NXB)`,
-                ...pubLines,
-            ].join("\n");
-        }
-
-        // 6. Tìm sách khớp trực tiếp để mô tả nội dung / tư vấn chọn sách
-        const suggested = this.findSuggestedBooks(message, "", context);
-        if (suggested.length === 1) {
-            const b = suggested[0];
-            return [
-                `### Thông tin & Nội dung sách: **${b.TenSach}** (\`${b.MaSach}\`)`,
-                `- **Tác giả**: ${b.TacGia}`,
-                `- **Thể loại**: ${b.TenTheLoai} (\`${b.MaTheLoai}\`)`,
-                `- **Nhà xuất bản**: ${b.TENNXB} (Năm xuất bản: ${b.NamXuatBan})`,
-                `- **Đơn giá / Giá trị bảo lưu**: ${b.DonGia.toLocaleString("vi-VN")} ₫`,
-                `- **Tình trạng kho**: ${b.SoQuyen > 0 ? `Còn **${b.SoQuyen} quyển** (Có thể đăng ký mượn ngay)` : "**Tạm hết sách**"}`,
-                `- **Mô tả nội dung**: ${b.MoTa}`,
-                "\nBạn có thể nhấn trực tiếp vào thẻ sách bên dưới để xem trang chi tiết và đăng ký mượn!",
-            ].join("\n");
-        }
-
-        if (suggested.length > 1) {
-            const listText = suggested
-                .map(
-                    (b, idx) =>
-                        `${idx + 1}. **${b.TenSach}** (\`${b.MaSach}\`)\n   - **Tác giả**: ${b.TacGia} · **Thể loại**: ${b.TenTheLoai} · **NXB**: ${b.TENNXB}\n   - **Đơn giá**: ${b.DonGia.toLocaleString("vi-VN")} ₫ · **Tồn kho**: ${b.SoQuyen > 0 ? `Còn ${b.SoQuyen} quyển` : "Tạm hết sách"}\n   - **Tóm tắt nội dung**: ${b.MoTa}`
-                )
-                .join("\n\n");
-
-            return [
-                `Mình tìm thấy **${suggested.length} đầu sách** phù hợp nhất với yêu cầu của bạn trong thư viện:`,
-                "",
-                listText,
-                "",
-                "Bạn có thể bấm vào thẻ sách bên dưới để mở trang chi tiết hoặc hỏi mình thêm về bất kỳ cuốn sách nào nhé!",
-            ].join("\n");
-        }
-
-        // 7. Tổng quan chung nếu câu hỏi mở
-        const topBooks = books.filter((b) => b.SoQuyen > 0).slice(0, 4);
-        const topLines = topBooks.map(
-            (b) =>
-                `- **${b.TenSach}** (\`${b.MaSach}\` — ${b.TenTheLoai}, Tác giả: ${b.TacGia}): Còn **${b.SoQuyen} quyển** · Giá: ${b.DonGia.toLocaleString("vi-VN")} ₫. *${b.MoTa}*`
-        );
-
-        return [
-            `Xin chào! Mình là **Trợ lý Thư viện CTU**. Hiện thư viện đang có **${books.length} đầu sách** thuộc **${genres.length} thể loại** (${genres.map((g) => g.TenTheLoai).join(", ")}).`,
-            "",
-            "**Một số đầu sách nổi bật đang còn sẵn trong kho:**",
-            ...topLines,
-            "",
-            "**Mình có thể hỗ trợ bạn:**",
-            "- Tư vấn chọn sách theo chủ đề, thể loại, tác giả, mức giá hoặc mô tả chi tiết nội dung từng cuốn sách.",
-            "- Giải đáp quy định mượn (tối đa 3 cuốn, giữ sách 3 ngày, hạn mượn 14 ngày, gia hạn 7 ngày).",
-            "- Hướng dẫn **Báo mất sách & Chuyển khoản đền bù trực tuyến qua PayOS**.",
-            "- Kiểm tra trạng thái thẻ và phiếu mượn cá nhân khi bạn đã đăng nhập.",
-        ].join("\n");
-    }
-
     async ask({ message, history = [] }, user = null) {
         const cleanMessage = String(message || "").trim();
         if (!cleanMessage) {
@@ -669,23 +474,23 @@ ${sessionText}
         const systemInstruction = this.buildSystemInstruction(context);
 
         let reply = null;
-        let source = "gemini";
         try {
             reply = await this.callGeminiApi(systemInstruction, sanitizedHistory, cleanMessage);
-        } catch {
-            reply = null;
+        } catch (err) {
+            console.warn(`[Chatbot] Lỗi kết nối Gemini API: ${err.message}`);
         }
 
         if (!reply) {
-            source = "library_knowledge_engine";
-            reply = this.generateSmartLocalAnswer(cleanMessage, context);
+            const err = new Error("Trợ lý AI hiện đang bận hoặc tạm thời gián đoạn. Vui lòng thử lại sau giây lát.");
+            err.statusCode = 503;
+            throw err;
         }
 
         const suggestedBooks = this.findSuggestedBooks(cleanMessage, reply, context);
 
         return {
             reply,
-            source,
+            source: "gemini",
             suggestedBooks,
             timestamp: new Date().toISOString(),
         };

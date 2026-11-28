@@ -4,8 +4,8 @@
       <!-- ===== PAGE HEADER ===== -->
       <div class="vg-page-header d-flex justify-content-between align-items-center flex-wrap gap-3 reveal" data-reveal>
         <div>
-          <span class="vg-section-label">{{ isReader ? "TÀI KHOẢN ĐỘC GIẢ" : "TÀI KHOẢN NHÂN VIÊN" }}</span>
-          <h1 class="page-title">{{ isReader ? "Hồ sơ cá nhân" : "Thông tin tài khoản" }}</h1>
+          <span class="vg-section-label">TÀI KHOẢN ĐỘC GIẢ</span>
+          <h1 class="page-title">Hồ sơ cá nhân</h1>
           <p class="profile-page-intro">Cập nhật thông tin thẻ độc giả và theo dõi các phiếu mượn của bạn.</p>
         </div>
         <router-link to="/" class="ath-btn-outline text-decoration-none">
@@ -47,7 +47,7 @@
       <div v-else class="profile-layout">
         <!-- ===== LEFT: Reader Card ===== -->
         <aside class="reveal" data-reveal>
-          <div v-if="isReader" class="vg-shell reader-card-shell">
+          <div class="vg-shell reader-card-shell">
             <div class="vg-core reader-card">
               <!-- Avatar & name -->
               <div class="reader-card-top">
@@ -144,48 +144,10 @@
               </div>
             </div>
           </div>
-          <div v-else class="vg-shell reader-card-shell">
-            <div class="vg-core reader-card">
-              <div class="reader-card-top">
-                <div class="vg-avatar shadow-sm overflow-hidden">
-                  <img v-if="profileAvatarUrl" :src="profileAvatarUrl" :alt="displayName" class="profile-avatar-img"
-                    @error="onAvatarError" />
-                  <span v-else>{{ userInitials }}</span>
-                </div>
-                <h2 class="reader-name">{{ displayName }}</h2>
-                <span class="reader-code font-mono-code">Mã nhân viên: {{ staffInfo?.MSNV || currentUser.MSNV }}</span>
-                <span class="ath-badge mt-3" :class="isAdmin ? 'ath-badge-out' : 'ath-badge-available'">
-                  {{ isAdmin ? "QUẢN TRỊ VIÊN" : "THỦ THƯ" }}
-                </span>
-              </div>
-
-              <div class="reader-info-list">
-                <div class="reader-info-row">
-                  <span class="reader-info-label">Số điện thoại</span>
-                  <span class="reader-info-val font-mono-code">{{ staffInfo?.SoDienThoai || "—" }}</span>
-                </div>
-                <div class="reader-info-row border-0">
-                  <span class="reader-info-label">Địa chỉ</span>
-                  <span class="reader-info-val reader-address text-truncate" :title="staffInfo?.DiaChi">{{
-                    staffInfo?.DiaChi || "—" }}</span>
-                </div>
-              </div>
-
-              <button v-if="staffInfo?._id" class="ath-btn-outline profile-edit-button" type="button"
-                @click="openProfileEditor">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-                </svg>
-                Chỉnh sửa hồ sơ
-              </button>
-            </div>
-          </div>
         </aside>
 
         <!-- ===== RIGHT: Borrow History ===== -->
-        <div v-if="isReader" class="borrows-panel reveal reveal-d1" data-reveal>
+        <div class="borrows-panel reveal reveal-d1" data-reveal>
           <div class="profile-section-heading">
             <span class="vg-section-label">HOẠT ĐỘNG THƯ VIỆN</span>
             <h2 class="profile-section-title">Sách đang mượn và lịch sử</h2>
@@ -256,7 +218,7 @@
                       <th>Hạn nhận / trả</th>
                       <th>Trạng thái</th>
                       <th class="pe-4">Ghi chú / Bồi thường</th>
-                      <th v-if="isReader" class="pe-4 borrow-actions-heading">Thao tác</th>
+                      <th class="pe-4 borrow-actions-heading">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -339,7 +301,7 @@
                           Hủy yêu cầu
                         </button>
                       </td>
-                      <td v-else-if="isReader && activeTab === 'active'" class="pe-4 borrow-actions-cell">
+                      <td v-else-if="activeTab === 'active'" class="pe-4 borrow-actions-cell">
                         <div class="d-flex flex-column align-items-end gap-2">
                           <button v-if="canRenew(item)" type="button" class="borrow-renew-button" @click="openRenewBorrowModal(item)">
                             Gia hạn 7 ngày
@@ -352,7 +314,7 @@
                           </button>
                         </div>
                       </td>
-                      <td v-else-if="isReader && activeTab === 'history'" class="pe-4 borrow-actions-cell">
+                      <td v-else-if="activeTab === 'history'" class="pe-4 borrow-actions-cell">
                         <template v-if="item.TrangThai === 'MatSach'">
                           <span
                             v-if="compensationFor(item._id)?.TrangThaiDuyet === 'DaDuyet'"
@@ -390,31 +352,6 @@
                     </tr>
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="borrows-panel reveal reveal-d1" data-reveal>
-          <div class="vg-shell">
-            <div class="vg-core p-4 p-md-5">
-              <span class="vg-section-label">Tài khoản nhân viên</span>
-              <h2 class="panel-title mb-2">Thông tin cơ bản</h2>
-              <p class="empty-sub mb-4 text-start">
-                Bạn có thể tự cập nhật họ tên, số điện thoại, địa chỉ và ảnh đại diện. Mã nhân viên và chức vụ được quản
-                lý
-                riêng, không thể thay đổi tại trang cá nhân.
-              </p>
-              <div class="reader-info-list border-top pt-3">
-                <div class="reader-info-row">
-                  <span class="reader-info-label">Mã nhân viên</span>
-                  <span class="reader-info-val font-mono-code">{{ staffInfo?.MSNV || "—" }}</span>
-                </div>
-                <div class="reader-info-row border-0">
-                  <span class="reader-info-label">Chức vụ</span>
-                  <span class="reader-info-val fw-semibold">
-                    {{ staffInfo?.ChucVu === "ADMIN" ? "Quản trị viên" : "Thủthư" }}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -697,12 +634,11 @@
 
               <!-- Khung QR & Thông tin chuyển khoản -->
               <div class="payos-qr-grid">
-                <div v-if="currentQrImageUrl" class="payos-qr-box">
+                <div v-if="activePayosTx.VietQrImageUrl" class="payos-qr-box">
                   <img
-                    :src="currentQrImageUrl"
+                    :src="activePayosTx.VietQrImageUrl"
                     alt="Mã VietQR thanh toán đền bù PayOS"
                     class="payos-qr-img"
-                    @error="onPayosQrError"
                   />
                   <span class="payos-qr-caption">Quét bằng App Ngân hàng bất kỳ</span>
                 </div>
@@ -855,59 +791,40 @@
             </div>
 
             <div class="profile-form-grid">
-              <template v-if="isReader">
-                <label class="profile-form-field">
-                  <span>Họ và tên đệm</span>
-                  <input v-model.trim="profileForm.HoLot" class="ath-input" type="text" autocomplete="family-name"
-                    required maxlength="100" />
-                </label>
-                <label class="profile-form-field">
-                  <span>Tên</span>
-                  <input v-model.trim="profileForm.Ten" class="ath-input" type="text" autocomplete="given-name" required
-                    maxlength="50" />
-                </label>
-                <label class="profile-form-field">
-                  <span>Ngày sinh</span>
-                  <input v-model="profileForm.NgaySinh" class="ath-input" type="date" />
-                </label>
-                <label class="profile-form-field">
-                  <span>Giới tính</span>
-                  <select v-model.number="profileForm.Phai" class="ath-input form-select py-2">
-                    <option :value="1">Nam</option>
-                    <option :value="0">Nữ</option>
-                    <option :value="2">Khác</option>
-                  </select>
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Số điện thoại đăng nhập</span>
-                  <input v-model.trim="profileForm.DienThoai" class="ath-input" type="tel" autocomplete="tel"
-                    :required="Boolean(readerInfo?.DienThoai)"
-                    maxlength="20" />
-                  <small v-if="!readerInfo?.DienThoai" class="profile-field-hint">Tài khoản Google chưa có số điện thoại. Bạn có thể bổ sung sau; trường này không bắt buộc để lưu hồ sơ.</small>
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Địa chỉ</span>
-                  <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address"
-                    maxlength="250" />
-                </label>
-              </template>
-              <template v-else>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Họ và tên</span>
-                  <input v-model.trim="profileForm.HoTenNV" class="ath-input" type="text" autocomplete="name" required
-                    maxlength="150" />
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Số điện thoại</span>
-                  <input v-model.trim="profileForm.SoDienThoai" class="ath-input" type="tel" autocomplete="tel"
-                    maxlength="20" />
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Địa chỉ</span>
-                  <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address"
-                    maxlength="250" />
-                </label>
-              </template>
+              <label class="profile-form-field">
+                <span>Họ và tên đệm</span>
+                <input v-model.trim="profileForm.HoLot" class="ath-input" type="text" autocomplete="family-name"
+                  required maxlength="100" />
+              </label>
+              <label class="profile-form-field">
+                <span>Tên</span>
+                <input v-model.trim="profileForm.Ten" class="ath-input" type="text" autocomplete="given-name" required
+                  maxlength="50" />
+              </label>
+              <label class="profile-form-field">
+                <span>Ngày sinh</span>
+                <input v-model="profileForm.NgaySinh" class="ath-input" type="date" />
+              </label>
+              <label class="profile-form-field">
+                <span>Giới tính</span>
+                <select v-model.number="profileForm.Phai" class="ath-input form-select py-2">
+                  <option :value="1">Nam</option>
+                  <option :value="0">Nữ</option>
+                  <option :value="2">Khác</option>
+                </select>
+              </label>
+              <label class="profile-form-field profile-form-field-wide">
+                <span>Số điện thoại đăng nhập</span>
+                <input v-model.trim="profileForm.DienThoai" class="ath-input" type="tel" autocomplete="tel"
+                  :required="Boolean(readerInfo?.DienThoai)"
+                  maxlength="20" />
+                <small v-if="!readerInfo?.DienThoai" class="profile-field-hint">Tài khoản Google chưa có số điện thoại. Bạn có thể bổ sung sau; trường này không bắt buộc để lưu hồ sơ.</small>
+              </label>
+              <label class="profile-form-field profile-form-field-wide">
+                <span>Địa chỉ</span>
+                <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address"
+                  maxlength="250" />
+              </label>
             </div>
             <p class="profile-editor-note">{{ profileEditorNote }}</p>
             <div class="profile-editor-actions">
@@ -930,7 +847,6 @@ import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
 import { addCalendarDays, dateKey, formatDateOnly, todayKey } from "../utils/date.util";
 import docGiaService from "../services/docgia.service";
-import nhanVienService from "../services/nhanvien.service";
 import theoDoiService from "../services/theodoimuon.service";
 import sachService from "../services/sach.service";
 import payosService from "../services/payos.service";
@@ -943,7 +859,6 @@ export default {
     return {
       currentUser: null,
       readerInfo: null,
-      staffInfo: null,
       borrows: [],
       books: [],
       compensations: [],
@@ -963,7 +878,6 @@ export default {
       forceNewPayos: false,
       creatingPayos: false,
       confirmingPayos: false,
-      payosQrFallbackUsed: false,
       payosPollTimer: null,
       showEditProfileModal: false,
       savingProfile: false,
@@ -976,25 +890,17 @@ export default {
       profileForm: {
         HoLot: "",
         Ten: "",
-        HoTenNV: "",
         NgaySinh: "",
         Phai: 1,
         DiaChi: "",
         DienThoai: "",
-        SoDienThoai: "",
       },
       revealObserver: null,
     };
   },
   computed: {
-    isReader() {
-      return authService.isReader(this.currentUser);
-    },
-    isAdmin() {
-      return authService.isAdmin(this.staffInfo);
-    },
     displayName() {
-      return authService.getDisplayName(this.readerInfo || this.staffInfo || this.currentUser);
+      return authService.getDisplayName(this.readerInfo || this.currentUser);
     },
     userInitials() {
       if (!this.currentUser) return "DG";
@@ -1005,7 +911,7 @@ export default {
     },
     profileAvatarUrl() {
       if (this.avatarLoadError) return "";
-      const path = this.readerInfo?.AnhDaiDien || this.staffInfo?.AnhDaiDien || this.currentUser?.AnhDaiDien;
+      const path = this.readerInfo?.AnhDaiDien || this.currentUser?.AnhDaiDien;
       if (!path) return "";
       if (path.startsWith("https://")) return path;
       if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith("//")) return "";
@@ -1028,19 +934,10 @@ export default {
       if (this.activeTab === "pending") return this.pendingBorrows;
       return this.historyBorrows;
     },
-    currentQrImageUrl() {
-      if (!this.activePayosTx) return "";
-      if (this.payosQrFallbackUsed && this.activePayosTx.QrFallbackImageUrl) {
-        return this.activePayosTx.QrFallbackImageUrl;
-      }
-      return this.activePayosTx.VietQrImageUrl || this.activePayosTx.QrFallbackImageUrl || "";
-    },
     profileEditorNote() {
-      return this.isReader
-        ? (this.readerInfo?.DienThoai
-          ? "Nếu đổi số điện thoại, số mới sẽ được dùng để đăng nhập. Vai trò và trạng thái thẻ không thể chỉnh sửa tại đây."
-          : "Bạn có thể lưu hồ sơ và ảnh đại diện khi chưa có số điện thoại. Bổ sung số điện thoại nếu muốn đăng nhập bằng số điện thoại/mật khẩu.")
-        : "Mã nhân viên và chức vụ không thể chỉnh sửa tại đây.";
+      return this.readerInfo?.DienThoai
+        ? "Nếu đổi số điện thoại, số mới sẽ được dùng để đăng nhập. Vai trò và trạng thái thẻ không thể chỉnh sửa tại đây."
+        : "Bạn có thể lưu hồ sơ và ảnh đại diện khi chưa có số điện thoại. Bổ sung số điện thoại nếu muốn đăng nhập bằng số điện thoại/mật khẩu.";
     }
   },
   watch: {
@@ -1132,19 +1029,15 @@ export default {
         if (!user) throw new Error("Không thể tải hồ sơ người dùng.");
         this.currentUser = user;
 
-        if (authService.isReader(user)) {
-          const [borrows, books, txRes] = await Promise.all([
-            theoDoiService.getAll({ maDocGia: user.MaDocGia }),
-            sachService.getAll(),
-            payosService.getTransactions({ latestPerBorrow: true }).catch(() => ({ data: [] })),
-          ]);
-          this.readerInfo = user;
-          this.borrows = borrows;
-          this.books = books;
-          this.compensations = Array.isArray(txRes?.data) ? txRes.data : [];
-        } else {
-          this.staffInfo = user;
-        }
+        const [borrows, books, txRes] = await Promise.all([
+          theoDoiService.getAll({ maDocGia: user.MaDocGia }),
+          sachService.getAll(),
+          payosService.getTransactions({ latestPerBorrow: true }).catch(() => ({ data: [] })),
+        ]);
+        this.readerInfo = user;
+        this.borrows = borrows;
+        this.books = books;
+        this.compensations = Array.isArray(txRes?.data) ? txRes.data : [];
       } catch (err) {
         this.$refs.toast?.show(err.response?.data?.message || err.message || "Lỗi khi tải thông tin hồ sơ.", "error");
       } finally {
@@ -1190,7 +1083,6 @@ export default {
       if (!item) return;
       this.lossTarget = item;
       this.forceNewPayos = Boolean(forceNew);
-      this.payosQrFallbackUsed = false;
       this.compensationMethod = "PayOS";
       this.lossReason = "Làm mất sách cá nhân, xin chuyển khoản đền bù trực tuyến qua PayOS";
 
@@ -1245,11 +1137,6 @@ export default {
     },
     handleLossPayosKeydown(event) {
       if (event.key === "Escape") this.closeLossPayosModal();
-    },
-    onPayosQrError() {
-      if (!this.payosQrFallbackUsed && this.activePayosTx?.QrFallbackImageUrl) {
-        this.payosQrFallbackUsed = true;
-      }
     },
     upsertCompensation(tx) {
       if (!tx || !tx.MaPhieuMuon) return;
@@ -1308,7 +1195,6 @@ export default {
         if (res?.data) {
           this.activePayosTx = res.data;
           this.forceNewPayos = false;
-          this.payosQrFallbackUsed = false;
           this.upsertCompensation(res.data);
           await this.fetchData();
           this.activeTab = "history";
@@ -1396,7 +1282,7 @@ export default {
       }
     },
     openProfileEditor() {
-      const profile = this.isReader ? this.readerInfo : this.staffInfo;
+      const profile = this.readerInfo;
       if (!profile?._id) {
         this.$refs.toast?.show("Không tìm thấy định danh hồ sơ để cập nhật.", "error");
         return;
@@ -1406,20 +1292,14 @@ export default {
       this.avatarPreviewError = false;
       if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
 
-      this.profileForm = this.isReader
-        ? {
-          HoLot: profile.HoLot || "",
-          Ten: profile.Ten || "",
-          NgaySinh: profile.NgaySinh ? String(profile.NgaySinh).slice(0, 10) : "",
-          Phai: profile.Phai ?? 1,
-          DiaChi: profile.DiaChi || "",
-          DienThoai: profile.DienThoai || "",
-        }
-        : {
-          HoTenNV: profile.HoTenNV || "",
-          SoDienThoai: profile.SoDienThoai || "",
-          DiaChi: profile.DiaChi || "",
-        };
+      this.profileForm = {
+        HoLot: profile.HoLot || "",
+        Ten: profile.Ten || "",
+        NgaySinh: profile.NgaySinh ? String(profile.NgaySinh).slice(0, 10) : "",
+        Phai: profile.Phai ?? 1,
+        DiaChi: profile.DiaChi || "",
+        DienThoai: profile.DienThoai || "",
+      };
       this.showEditProfileModal = true;
     },
     closeProfileEditor() {
@@ -1460,7 +1340,7 @@ export default {
       }
     },
     canRenew(item) {
-      if (!this.isReader || item?.TrangThai !== "DangMuon" || Number(item.SoLanGiaHan || 0) >= 1 || !item.NgayHenTra) return false;
+      if (item?.TrangThai !== "DangMuon" || Number(item.SoLanGiaHan || 0) >= 1 || !item.NgayHenTra) return false;
       return dateKey(item.NgayHenTra) > todayKey();
     },
     openRenewBorrowModal(item) {
@@ -1501,35 +1381,25 @@ export default {
     async saveProfile() {
       this.savingProfile = true;
       try {
-        const profile = this.isReader ? this.readerInfo : this.staffInfo;
+        const profile = this.readerInfo;
         const formData = new FormData();
 
-        if (this.isReader) {
-          formData.append("HoLot", this.profileForm.HoLot);
-          formData.append("Ten", this.profileForm.Ten);
-          if (this.profileForm.NgaySinh) formData.append("NgaySinh", this.profileForm.NgaySinh);
-          formData.append("Phai", this.profileForm.Phai);
-          if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
-          if (this.profileForm.DienThoai) formData.append("DienThoai", this.profileForm.DienThoai);
-        } else {
-          formData.append("HoTenNV", this.profileForm.HoTenNV);
-          if (this.profileForm.SoDienThoai) formData.append("SoDienThoai", this.profileForm.SoDienThoai);
-          if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
-        }
+        formData.append("HoLot", this.profileForm.HoLot);
+        formData.append("Ten", this.profileForm.Ten);
+        if (this.profileForm.NgaySinh) formData.append("NgaySinh", this.profileForm.NgaySinh);
+        formData.append("Phai", this.profileForm.Phai);
+        if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
+        if (this.profileForm.DienThoai) formData.append("DienThoai", this.profileForm.DienThoai);
 
         if (this.selectedAvatarFile) {
           formData.append("AnhDaiDien", this.selectedAvatarFile);
         }
 
-        const result = this.isReader
-          ? await docGiaService.update(profile._id, formData)
-          : await nhanVienService.update(profile._id, formData);
+        const result = await docGiaService.update(profile._id, formData);
 
         if (!result?.data) throw new Error("Máy chủ không trả về hồ sơ sau khi cập nhật.");
 
-        if (this.isReader) this.readerInfo = result.data;
-        else this.staffInfo = result.data;
-
+        this.readerInfo = result.data;
         this.currentUser = result.data;
         authService.setUser(result.data);
         this.avatarLoadError = false;

@@ -8,8 +8,7 @@ const CloudinaryService = require("../services/cloudinary.service");
 async function deleteAvatarIfUnreferenced(publicId) {
     if (!publicId) return;
     try {
-        const reference = await MongoDB.client.db().collection("nhanvien").findOne({ AnhDaiDienPublicId: publicId }, { projection: { _id: 1 } });
-        if (!reference) await CloudinaryService.deleteImage(publicId);
+        await CloudinaryService.deleteImage(publicId);
     } catch { /* Cleanup is best-effort; never hide the original request result. */ }
 }
 

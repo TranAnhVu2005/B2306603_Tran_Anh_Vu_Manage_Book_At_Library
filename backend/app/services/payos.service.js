@@ -22,7 +22,6 @@ const transactionPublicFields = {
     CheckoutUrl: 1,
     QrCode: 1,
     VietQrImageUrl: 1,
-    QrFallbackImageUrl: 1,
     Bin: 1,
     AccountNumber: 1,
     AccountName: 1,
@@ -109,11 +108,6 @@ function buildVietQrImageUrl({ bin, accountNumber, amount, description, accountN
     if (description) params.set("addInfo", String(description));
     if (accountName) params.set("accountName", String(accountName));
     return `https://img.vietqr.io/image/${encodeURIComponent(bin)}-${encodeURIComponent(accountNumber)}-compact2.png?${params.toString()}`;
-}
-
-function buildQrFallbackImageUrl(qrCode) {
-    if (!qrCode) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=${encodeURIComponent(qrCode)}`;
 }
 
 class PayosService {
@@ -351,7 +345,6 @@ class PayosService {
                 CheckoutUrl: null,
                 QrCode: null,
                 VietQrImageUrl: null,
-                QrFallbackImageUrl: null,
                 Bin: null,
                 AccountNumber: null,
                 AccountName: null,
@@ -439,7 +432,6 @@ class PayosService {
             description: payosData.description || description,
             accountName: payosData.accountName,
         });
-        const qrFallbackImageUrl = buildQrFallbackImageUrl(payosData.qrCode);
 
         const doc = {
             MaPhieuMuon: String(borrowRecord._id),
@@ -454,8 +446,7 @@ class PayosService {
             PaymentLinkId: payosData.paymentLinkId || null,
             CheckoutUrl: payosData.checkoutUrl || null,
             QrCode: payosData.qrCode || null,
-            VietQrImageUrl: vietQrImageUrl || qrFallbackImageUrl || null,
-            QrFallbackImageUrl: qrFallbackImageUrl || null,
+            VietQrImageUrl: vietQrImageUrl || null,
             Bin: payosData.bin || null,
             AccountNumber: payosData.accountNumber || null,
             AccountName: payosData.accountName || null,
@@ -746,13 +737,6 @@ class PayosService {
 
         let tx = await this.GiaoDich.findOne({ _id: new ObjectId(id) });
         if (!tx) {
-            // Cho phép truyền MaPhieuMuon nếu cần
-            tx = await this.GiaoDich.findOne(
-                { MaPhieuMuon: String(id) },
-                { sort: { ThoiGianTao: -1, _id: -1 } }
-            );
-        }
-        if (!tx) {
             const err = new Error("Không tìm thấy giao dịch đền bù mất sách.");
             err.statusCode = 404;
             throw err;
@@ -841,13 +825,7 @@ class PayosService {
             throw err;
         }
 
-        let tx = await this.GiaoDich.findOne({ _id: new ObjectId(id) });
-        if (!tx) {
-            tx = await this.GiaoDich.findOne(
-                { MaPhieuMuon: String(id) },
-                { sort: { ThoiGianTao: -1, _id: -1 } }
-            );
-        }
+        const tx = await this.GiaoDich.findOne({ _id: new ObjectId(id) });
         if (!tx) {
             const err = new Error("Không tìm thấy giao dịch đền bù mất sách.");
             err.statusCode = 404;

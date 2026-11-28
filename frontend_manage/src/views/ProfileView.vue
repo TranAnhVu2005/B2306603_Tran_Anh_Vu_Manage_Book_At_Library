@@ -4,8 +4,8 @@
       <!-- ===== PAGE HEADER ===== -->
       <div class="vg-page-header d-flex justify-content-between align-items-center flex-wrap gap-3 reveal" data-reveal>
         <div>
-          <span class="vg-section-label">{{ isReader ? "Hồ Sơ Độc Giả" : "Hồ Sơ Nhân Viên" }}</span>
-          <h1 class="page-title">{{ isReader ? 'Thẻ Thư Viện & Sách Đang Mượn' : 'Thông Tin Tài Khoản' }}</h1>
+          <span class="vg-section-label">Hồ Sơ Nhân Viên</span>
+          <h1 class="page-title">Thông Tin Tài Khoản</h1>
         </div>
       </div>
 
@@ -36,106 +36,9 @@
 
       <!-- Main content -->
       <div v-else class="profile-layout">
-        <!-- ===== LEFT: Reader Card ===== -->
+        <!-- ===== LEFT: Staff Card ===== -->
         <aside class="reveal" data-reveal>
-          <div v-if="isReader" class="vg-shell reader-card-shell">
-            <div class="vg-core reader-card">
-              <!-- Avatar & name -->
-              <div class="reader-card-top">
-                <div class="vg-avatar shadow-sm overflow-hidden">
-                  <img v-if="profileAvatarUrl" :src="profileAvatarUrl" :alt="displayName" class="profile-avatar-img"
-                    @error="onAvatarError" />
-                  <span v-else>{{ userInitials }}</span>
-                </div>
-                <h2 class="reader-name">{{ displayName }}</h2>
-                <span class="reader-code font-mono-code">Mã thẻ: {{ currentUser.MaDocGia }}</span>
-
-                <!-- Status badge -->
-                <span v-if="readerInfo?.TrangThaiThe === 'DanhSachDen'" class="ath-badge ath-badge-danh-sach-den mt-3">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                    aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m4.9 4.9 14.2 14.2" />
-                  </svg>
-                  Danh sách đen
-                </span>
-                <span v-else-if="readerInfo?.TrangThaiThe === 'Khoa'" class="ath-badge ath-badge-out mt-3">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                    aria-hidden="true">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  Tạm Khóa
-                </span>
-                <span v-else class="ath-badge ath-badge-available mt-3">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                    aria-hidden="true">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <path d="m9 11 3 3L22 4" />
-                  </svg>
-                  Đang Hoạt Động
-                </span>
-              </div>
-
-              <!-- Info rows -->
-              <div class="reader-info-list">
-                <!-- Vi phạm progress -->
-                <div class="reader-info-row">
-                  <span class="reader-info-label">Số lần vi phạm</span>
-                  <span class="reader-info-val fw-bold"
-                    :class="viPhamCount >= 3 ? 'text-danger' : viPhamCount > 0 ? 'text-warning' : 'text-success'">
-                    {{ viPhamCount }} / 3
-                  </span>
-                </div>
-                <div class="vg-progress-track mb-3">
-                  <div class="vg-progress-bar"
-                    :class="viPhamCount >= 3 ? 'danger' : viPhamCount > 0 ? 'warning' : 'safe'"
-                    :style="{ width: Math.min((viPhamCount / 3) * 100, 100) + '%' }"></div>
-                </div>
-
-                <div class="reader-info-row">
-                  <span class="reader-info-label">Số điện thoại</span>
-                  <span class="reader-info-val font-mono-code">{{ readerInfo?.DienThoai || '—' }}</span>
-                </div>
-                <div class="reader-info-row">
-                  <span class="reader-info-label">Giới tính</span>
-                  <span class="reader-info-val">{{ genderText }}</span>
-                </div>
-                <div class="reader-info-row">
-                  <span class="reader-info-label">Địa chỉ</span>
-                  <span class="reader-info-val reader-address text-truncate" :title="readerInfo?.DiaChi">{{
-                    readerInfo?.DiaChi || '—' }}</span>
-                </div>
-                <div class="reader-info-row border-0">
-                  <span class="reader-info-label">Vai trò</span>
-                  <span class="ath-badge ath-badge-neutral">ĐỘC GIẢ</span>
-                </div>
-              </div>
-
-              <button v-if="readerInfo?.MaDocGia" class="ath-btn-outline profile-edit-button" type="button"
-                @click="openProfileEditor">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-                </svg>
-                Chỉnh sửa hồ sơ
-              </button>
-
-              <!-- Cảnh báo trạng thái danh sách đen -->
-              <div v-if="readerInfo?.TrangThaiThe === 'DanhSachDen'" class="danh-sach-den-warning">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  aria-hidden="true" class="flex-shrink-0 mt-0.5">
-                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                  <path d="M12 9v4" />
-                  <circle cx="12" cy="17" r="1" fill="currentColor" />
-                </svg>
-                <span>Thẻ đang trong Danh sách đen do đạt 3 lần vi phạm. Vui lòng liên hệ quản trị viên để được xem xét
-                  gỡ thẻ; lịch sử vi phạm vẫn được bảo toàn.</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="vg-shell reader-card-shell">
+          <div class="vg-shell reader-card-shell">
             <div class="vg-core reader-card">
               <div class="reader-card-top">
                 <div class="vg-avatar shadow-sm overflow-hidden">
@@ -175,119 +78,8 @@
           </div>
         </aside>
 
-        <!-- ===== RIGHT: Borrow History ===== -->
-        <div v-if="isReader" class="borrows-panel reveal reveal-d1" data-reveal>
-          <div class="vg-shell">
-            <div class="vg-core p-0 overflow-hidden">
-              <!-- Tab bar -->
-              <div class="borrows-tabs">
-                <div class="vg-tabs">
-                  <button class="vg-tab" :class="{ 'is-active': activeTab === 'active' }" @click="activeTab = 'active'"
-                    type="button">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                      aria-hidden="true">
-                      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-                    </svg>
-                    Đang mượn <span class="tab-count">{{ activeBorrows.length }}</span>
-                  </button>
-                  <button class="vg-tab" :class="{ 'is-active': activeTab === 'pending' }"
-                    @click="activeTab = 'pending'" type="button">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                      aria-hidden="true">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 6v6l4 2" />
-                    </svg>
-                    Chờ xử lý <span class="tab-count">{{ pendingBorrows.length }}</span>
-                  </button>
-                  <button class="vg-tab" :class="{ 'is-active': activeTab === 'history' }"
-                    @click="activeTab = 'history'" type="button">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                      aria-hidden="true">
-                      <path d="M3 3v5h5" />
-                      <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
-                    </svg>
-                    Lịch sử <span class="tab-count">{{ historyBorrows.length }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Loading -->
-              <div v-if="loading" class="borrows-state">
-                <div class="vg-spinner"></div>
-                <p class="state-text">Đang tải lịch sử mượn sách...</p>
-              </div>
-
-              <!-- Empty tab -->
-              <div v-else-if="currentTabList.length === 0" class="borrows-state">
-                <div class="empty-icon-wrap mb-2">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
-                    stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-muted);" aria-hidden="true">
-                    <rect width="16" height="20" x="4" y="2" rx="2" />
-                    <path d="M8 10h8M8 14h4" />
-                  </svg>
-                </div>
-                <p class="state-text">Chưa có bản ghi nào trong mục này.</p>
-              </div>
-
-              <!-- Table -->
-              <div v-else class="borrows-table-wrap">
-                <table class="ath-table mb-0">
-                  <thead>
-                    <tr>
-                      <th class="ps-4">Sách</th>
-                      <th>Ngày đăng ký / mượn</th>
-                      <th>Hạn nhận / trả</th>
-                      <th>Trạng thái</th>
-                      <th class="pe-4">Ghi chú / Bồi thường</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in currentTabList" :key="item._id">
-                      <td class="ps-4">
-                        <router-link :to="'/books/' + item.MaSach" class="book-link">
-                          <strong>{{ bookName(item.MaSach) }}</strong>
-                        </router-link>
-                        <span class="font-mono-code text-muted d-block" style="font-size: 0.7rem;">{{ item.MaSach
-                        }}</span>
-                      </td>
-                      <td class="font-mono-code text-nowrap" style="font-size: 0.82rem;">{{ formatDateOnly(item.TrangThai === 'DangMuon' ? item.NgayMuon : (item.NgayDangKy || item.NgayDuyet)) }}</td>
-                      <td class="text-nowrap">
-                        <span class="font-mono-code" style="font-size: 0.82rem;"
-                          :class="isOverdue(item) ? 'overdue-text' : ''">
-                          {{ formatDateOnly(item.TrangThai === 'ChoNhan' ? item.HanNhan : item.NgayHenTra) }}
-                        </span>
-                        <span v-if="item.TrangThai === 'ChoNhan'" class="d-block small text-muted">Hạn đến nhận</span>
-                        <span v-if="isOverdue(item)" class="ath-badge ath-badge-out d-inline-flex ms-1"
-                          style="font-size: 0.6rem; padding: 0.1rem 0.35rem;">Quá hạn</span>
-                      </td>
-                      <td>
-                        <span v-if="item.TrangThai === 'DangMuon'" class="ath-badge ath-badge-available">Đang
-                          mượn</span>
-                        <span v-else-if="item.TrangThai === 'ChoDuyet'" class="ath-badge ath-badge-pending">Chờ
-                          duyệt</span>
-                        <span v-else-if="item.TrangThai === 'ChoNhan'" class="ath-badge ath-badge-pending">Chờ nhận sách</span>
-                        <span v-else-if="item.TrangThai === 'DaTra'" class="ath-badge ath-badge-neutral">Đã trả</span>
-                        <span v-else-if="item.TrangThai === 'MatSach'" class="ath-badge ath-badge-out">Mất sách</span>
-                        <span v-else-if="item.TrangThai === 'TuChoi'" class="ath-badge ath-badge-rejected">Từ
-                          chối</span>
-                        <span v-else-if="item.TrangThai === 'QuaHanNhan'" class="ath-badge ath-badge-out">Quá hạn nhận</span>
-                      </td>
-                      <td class="pe-4" style="font-size: 0.82rem; color: var(--ink-muted);">
-                        <span>{{ item.GhiChu || '—' }}</span>
-                        <template v-if="item.GiaTriBoiThuong > 0">
-                          <div class="boi-thuong fw-bold">
-                            {{ item.GiaTriBoiThuong.toLocaleString('vi-VN') }} ₫
-                          </div>
-                        </template>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="borrows-panel reveal reveal-d1" data-reveal>
+        <!-- ===== RIGHT: Staff Account Details ===== -->
+        <div class="borrows-panel reveal reveal-d1" data-reveal>
           <div class="vg-shell">
             <div class="vg-core p-4 p-md-5">
               <span class="vg-section-label">Tài khoản nhân viên</span>
@@ -359,59 +151,23 @@
             </div>
 
             <div class="profile-form-grid">
-              <template v-if="isReader">
-                <label class="profile-form-field">
-                  <span>Họ và tên đệm</span>
-                  <input v-model.trim="profileForm.HoLot" class="ath-input" type="text" autocomplete="family-name"
-                    required maxlength="100" />
-                </label>
-                <label class="profile-form-field">
-                  <span>Tên</span>
-                  <input v-model.trim="profileForm.Ten" class="ath-input" type="text" autocomplete="given-name" required
-                    maxlength="50" />
-                </label>
-                <label class="profile-form-field">
-                  <span>Ngày sinh</span>
-                  <input v-model="profileForm.NgaySinh" class="ath-input" type="date" />
-                </label>
-                <label class="profile-form-field">
-                  <span>Giới tính</span>
-                  <select v-model.number="profileForm.Phai" class="ath-input form-select py-2">
-                    <option :value="1">Nam</option>
-                    <option :value="0">Nữ</option>
-                    <option :value="2">Khác</option>
-                  </select>
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Số điện thoại đăng nhập</span>
-                  <input v-model.trim="profileForm.DienThoai" class="ath-input" type="tel" autocomplete="tel" required
-                    maxlength="20" />
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Địa chỉ</span>
-                  <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address"
-                    maxlength="250" />
-                </label>
-              </template>
-              <template v-else>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Họ và tên</span>
-                  <input v-model.trim="profileForm.HoTenNV" class="ath-input" type="text" autocomplete="name" required
-                    maxlength="150" />
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Số điện thoại</span>
-                  <input v-model.trim="profileForm.SoDienThoai" class="ath-input" type="tel" autocomplete="tel"
-                    maxlength="20" />
-                </label>
-                <label class="profile-form-field profile-form-field-wide">
-                  <span>Địa chỉ</span>
-                  <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address"
-                    maxlength="250" />
-                </label>
-              </template>
+              <label class="profile-form-field profile-form-field-wide">
+                <span>Họ và tên</span>
+                <input v-model.trim="profileForm.HoTenNV" class="ath-input" type="text" autocomplete="name" required
+                  maxlength="150" />
+              </label>
+              <label class="profile-form-field profile-form-field-wide">
+                <span>Số điện thoại</span>
+                <input v-model.trim="profileForm.SoDienThoai" class="ath-input" type="tel" autocomplete="tel"
+                  maxlength="20" />
+              </label>
+              <label class="profile-form-field profile-form-field-wide">
+                <span>Địa chỉ</span>
+                <input v-model.trim="profileForm.DiaChi" class="ath-input" type="text" autocomplete="street-address"
+                  maxlength="250" />
+              </label>
             </div>
-            <p class="profile-editor-note">{{ profileEditorNote }}</p>
+            <p class="profile-editor-note">Mã nhân viên và chức vụ không thể chỉnh sửa tại đây.</p>
             <div class="profile-editor-actions">
               <button class="ath-btn-outline" type="button" :disabled="savingProfile"
                 @click="closeProfileEditor">Hủy</button>
@@ -430,11 +186,7 @@
 <script>
 import ToastNotification from "../components/ToastNotification.vue";
 import authService from "../services/auth.service";
-import { dateKey, formatDateOnly, todayKey } from "../utils/date.util";
-import docGiaService from "../services/docgia.service";
 import nhanVienService from "../services/nhanvien.service";
-import theoDoiService from "../services/theodoimuon.service";
-import sachService from "../services/sach.service";
 import { prepareImageUpload } from "../utils/image-upload.util";
 
 export default {
@@ -443,12 +195,8 @@ export default {
   data() {
     return {
       currentUser: null,
-      readerInfo: null,
       staffInfo: null,
-      borrows: [],
-      books: [],
       loading: false,
-      activeTab: "active",
       showEditProfileModal: false,
       savingProfile: false,
       selectedAvatarFile: null,
@@ -457,65 +205,35 @@ export default {
       avatarSelectionVersion: 0,
       previousBodyOverflow: "",
       profileForm: {
-        HoLot: "",
-        Ten: "",
         HoTenNV: "",
-        NgaySinh: "",
-        Phai: 1,
         DiaChi: "",
-        DienThoai: "",
         SoDienThoai: "",
       },
       revealObserver: null,
     };
   },
   computed: {
-    isReader() {
-      return authService.isReader(this.currentUser);
-    },
     isAdmin() {
       return authService.isAdmin(this.staffInfo);
     },
     displayName() {
-      return authService.getDisplayName(this.readerInfo || this.staffInfo || this.currentUser);
+      return authService.getDisplayName(this.staffInfo || this.currentUser);
     },
     userInitials() {
-      if (!this.currentUser) return "DG";
-      const name = this.displayName || this.currentUser.MaDocGia || "";
+      if (!this.currentUser) return "NV";
+      const name = this.displayName || this.currentUser.MSNV || "";
       const parts = name.trim().split(" ");
       if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
       return name.slice(0, 2).toUpperCase();
     },
     profileAvatarUrl() {
       if (this.avatarLoadError) return "";
-      const path = this.readerInfo?.AnhDaiDien || this.staffInfo?.AnhDaiDien || this.currentUser?.AnhDaiDien;
+      const path = this.staffInfo?.AnhDaiDien || this.currentUser?.AnhDaiDien;
       if (!path) return "";
       if (path.startsWith("https://")) return path;
       if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith("//")) return "";
       return `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${path}`;
     },
-    genderText() {
-      const phai = this.readerInfo?.Phai ?? this.currentUser?.Phai;
-      if (phai === 1 || phai === "Nam") return "Nam";
-      if (phai === 0 || phai === "Nữ") return "Nữ";
-      return "Khác";
-    },
-    viPhamCount() {
-      return this.readerInfo?.SoLanViPham || this.currentUser?.SoLanViPham || 0;
-    },
-    activeBorrows() { return this.borrows.filter(b => b.TrangThai === "DangMuon"); },
-    pendingBorrows() { return this.borrows.filter(b => ["ChoDuyet", "ChoNhan"].includes(b.TrangThai)); },
-    historyBorrows() { return this.borrows.filter(b => ["DaTra", "MatSach", "TuChoi", "DaHuy", "QuaHanNhan"].includes(b.TrangThai)); },
-    currentTabList() {
-      if (this.activeTab === "active") return this.activeBorrows;
-      if (this.activeTab === "pending") return this.pendingBorrows;
-      return this.historyBorrows;
-    },
-    profileEditorNote() {
-      return this.isReader
-        ? "Nếu đổi số điện thoại, số mới sẽ được dùng để đăng nhập. Vai trò và trạng thái thẻ không thể chỉnh sửa tại đây."
-        : "Mã nhân viên và chức vụ không thể chỉnh sửa tại đây.";
-    }
   },
   watch: {
     showEditProfileModal(isOpen) {
@@ -558,18 +276,7 @@ export default {
         const user = await authService.fetchMe();
         if (!user) throw new Error("Không thể tải hồ sơ người dùng.");
         this.currentUser = user;
-
-        if (authService.isReader(user)) {
-          const [borrows, books] = await Promise.all([
-            theoDoiService.getAll({ maDocGia: user.MaDocGia }),
-            sachService.getAll(),
-          ]);
-          this.readerInfo = user;
-          this.borrows = borrows;
-          this.books = books;
-        } else {
-          this.staffInfo = user;
-        }
+        this.staffInfo = user;
       } catch (err) {
         this.$refs.toast?.show(err.response?.data?.message || err.message || "Lỗi khi tải thông tin hồ sơ.", "error");
       } finally {
@@ -614,7 +321,7 @@ export default {
       }
     },
     openProfileEditor() {
-      const profile = this.isReader ? this.readerInfo : this.staffInfo;
+      const profile = this.staffInfo;
       if (!profile?._id) {
         this.$refs.toast?.show("Không tìm thấy định danh hồ sơ để cập nhật.", "error");
         return;
@@ -623,20 +330,11 @@ export default {
       this.releaseAvatarPreview();
       if (this.$refs.avatarInput) this.$refs.avatarInput.value = "";
 
-      this.profileForm = this.isReader
-        ? {
-          HoLot: profile.HoLot || "",
-          Ten: profile.Ten || "",
-          NgaySinh: profile.NgaySinh ? String(profile.NgaySinh).slice(0, 10) : "",
-          Phai: profile.Phai ?? 1,
-          DiaChi: profile.DiaChi || "",
-          DienThoai: profile.DienThoai || "",
-        }
-        : {
-          HoTenNV: profile.HoTenNV || "",
-          SoDienThoai: profile.SoDienThoai || "",
-          DiaChi: profile.DiaChi || "",
-        };
+      this.profileForm = {
+        HoTenNV: profile.HoTenNV || "",
+        SoDienThoai: profile.SoDienThoai || "",
+        DiaChi: profile.DiaChi || "",
+      };
       this.showEditProfileModal = true;
     },
     closeProfileEditor() {
@@ -652,35 +350,22 @@ export default {
     async saveProfile() {
       this.savingProfile = true;
       try {
-        const profile = this.isReader ? this.readerInfo : this.staffInfo;
+        const profile = this.staffInfo;
         const formData = new FormData();
 
-        if (this.isReader) {
-          formData.append("HoLot", this.profileForm.HoLot);
-          formData.append("Ten", this.profileForm.Ten);
-          if (this.profileForm.NgaySinh) formData.append("NgaySinh", this.profileForm.NgaySinh);
-          formData.append("Phai", this.profileForm.Phai);
-          if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
-          formData.append("DienThoai", this.profileForm.DienThoai);
-        } else {
-          formData.append("HoTenNV", this.profileForm.HoTenNV);
-          if (this.profileForm.SoDienThoai) formData.append("SoDienThoai", this.profileForm.SoDienThoai);
-          if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
-        }
+        formData.append("HoTenNV", this.profileForm.HoTenNV);
+        if (this.profileForm.SoDienThoai) formData.append("SoDienThoai", this.profileForm.SoDienThoai);
+        if (this.profileForm.DiaChi) formData.append("DiaChi", this.profileForm.DiaChi);
 
         if (this.selectedAvatarFile) {
           formData.append("AnhDaiDien", this.selectedAvatarFile);
         }
 
-        const result = this.isReader
-          ? await docGiaService.update(profile._id, formData)
-          : await nhanVienService.update(profile._id, formData);
+        const result = await nhanVienService.update(profile._id, formData);
 
         if (!result?.data) throw new Error("Máy chủ không trả về hồ sơ sau khi cập nhật.");
 
-        if (this.isReader) this.readerInfo = result.data;
-        else this.staffInfo = result.data;
-
+        this.staffInfo = result.data;
         this.currentUser = result.data;
         authService.setUser(result.data);
         this.avatarLoadError = false;
@@ -695,14 +380,6 @@ export default {
         this.savingProfile = false;
       }
     },
-    isOverdue(item) {
-      if (item.TrangThai !== "DangMuon" || !item.NgayHenTra) return false;
-      return todayKey() > dateKey(item.NgayHenTra);
-    },
-    formatDateOnly,
-    bookName(maSach) {
-      return this.books.find((book) => book.MaSach === maSach)?.TenSach || maSach;
-    }
   }
 };
 </script>

@@ -33,16 +33,11 @@ export async function prepareImageUpload(file) {
 
   let bitmap;
   try {
-    if (typeof createImageBitmap === "function") {
-      bitmap = await createImageBitmap(normalizedFile);
-    } else {
-      bitmap = await loadImageFallback(normalizedFile);
-    }
+    bitmap = await createImageBitmap(normalizedFile);
     if (!bitmap.width || !bitmap.height || bitmap.width * bitmap.height > 40_000_000) {
       throw new Error("Kích thước ảnh không hợp lệ hoặc vượt quá giới hạn xử lý.");
     }
 
-    // Dùng preview raster nhỏ thay cho blob URL của tệp gốc để tránh lỗi giải mã lại trong thẻ img.
     const scale = Math.min(1, 256 / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
@@ -57,20 +52,4 @@ export async function prepareImageUpload(file) {
   } finally {
     bitmap?.close?.();
   }
-}
-
-function loadImageFallback(file) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Không thể giải mã ảnh."));
-    };
-    image.src = objectUrl;
-  });
 }

@@ -91,7 +91,7 @@ class AuthService {
     getRole(user = this.getUser()) {
         if (!user) return null;
         if (user.ChucVu === "ADMIN") return "ADMIN";
-        if (["STAFF", "THUTHU", "MANAGER"].includes(user.ChucVu)) return "STAFF";
+        if (user.ChucVu === "STAFF") return "STAFF";
         if (user.ChucVu) return null;
         return "USER";
     }

@@ -164,11 +164,6 @@ class DocGiaService {
         const email = String(profile?.email || "").trim().toLowerCase();
         if (!googleId || !email) throw new Error("Thông tin Google không đầy đủ.");
 
-        await this.DocGia.createIndex(
-            { GoogleId: 1 },
-            { unique: true, sparse: true, name: "uq_docgia_google_id" }
-        );
-
         let reader = await this.DocGia.findOne({ GoogleId: googleId });
         if (reader?.deleted === true) {
             const error = new Error("Tài khoản độc giả đã bị xóa mềm. Vui lòng liên hệ thư viện.");
@@ -425,29 +420,6 @@ class DocGiaService {
             { returnDocument: "after" }
         );
         return result ? this.findById(id) : null;
-    }
-
-    // Tăng số lần vi phạm, từ 3 trở lên thì đổi trạng thái thẻ thành "DanhSachDen" - Completed
-    async incrementViPham(maDocGia) {
-        const user = await this.DocGia.findOne({ MaDocGia: maDocGia, deleted: { $ne: true } });
-        if (!user) return null;
-
-        const newCount = (user.SoLanViPham || 0) + 1;
-        const newStatus = newCount >= 3 ? "DanhSachDen" : user.TrangThaiThe;
-
-        const result = await this.DocGia.findOneAndUpdate(
-            { MaDocGia: maDocGia, deleted: { $ne: true } },
-            {
-                $set: {
-                    SoLanViPham: newCount,
-                    TrangThaiThe: newStatus,
-                    UpdatedAt: new Date()
-                }
-            },
-            { returnDocument: "after" }
-        );
-
-        return result;
     }
 
     //Hàm xóa hồ sơ độc giả, ràng buộc không xóa khi còn phiếu mượn - Completed
